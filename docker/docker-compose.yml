@@ -1,0 +1,22 @@
+services:
+
+  qdrant:
+    image: qdrant/qdrant:v1.17
+    container_name: qdrant
+    volumes:
+      - eduhub_qdrant_data:/qdrant/storage
+    networks:
+      - backend
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    restart: always
+
+
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  eduhub_qdrant_data:

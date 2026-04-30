@@ -1,0 +1,491 @@
+2026-04-17 21:20:51,245 - services.pdf_document_service - ERROR - Azure Document Intelligence call failed
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 819, in _analyze_document_initial
+    raise HttpResponseError(response=response, model=error)
+azure.core.exceptions.HttpResponseError: (InvalidRequest) Invalid request.
+Code: InvalidRequest
+Message: Invalid request.
+Inner error: {
+    "code": "InvalidContent",
+    "message": "The file is corrupted or format is unsupported. Refer to documentation for the list of supported formats."
+}
+2026-04-17 21:20:51,248 - core.handler - ERROR - Failed to analyze PDF with Azure Document Intelligence
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 819, in _analyze_document_initial
+    raise HttpResponseError(response=response, model=error)
+azure.core.exceptions.HttpResponseError: (InvalidRequest) Invalid request.
+Code: InvalidRequest
+Message: Invalid request.
+Inner error: {
+    "code": "InvalidContent",
+    "message": "The file is corrupted or format is unsupported. Refer to documentation for the list of supported formats."
+}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\routers\document_router.py", line 31, in analyze_pdf_url
+    return service.analyze_pdf_url(pdf_url=payload.url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 51, in analyze_pdf_url
+    raise AppException(
+core.app_exceptions.AppException
+2026-04-17 21:26:23,946 - services.pdf_document_service - ERROR - Azure Document Intelligence call failed
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 817, in _analyze_document_initial
+    map_error(status_code=response.status_code, response=response, error_map=error_map)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\exceptions.py", line 163, in map_error
+    raise error
+azure.core.exceptions.ResourceNotFoundError: (NotFound) Resource not found.
+Code: NotFound
+Message: Resource not found.
+Inner error: {
+    "code": "ModelNotFound",
+    "message": "The requested model was not found."
+}
+2026-04-17 21:26:23,950 - core.handler - ERROR - Failed to analyze PDF with Azure Document Intelligence
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 817, in _analyze_document_initial
+    map_error(status_code=response.status_code, response=response, error_map=error_map)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\exceptions.py", line 163, in map_error
+    raise error
+azure.core.exceptions.ResourceNotFoundError: (NotFound) Resource not found.
+Code: NotFound
+Message: Resource not found.
+Inner error: {
+    "code": "ModelNotFound",
+    "message": "The requested model was not found."
+}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\routers\document_router.py", line 31, in analyze_pdf_url
+    return service.analyze_pdf_url(pdf_url=payload.url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 51, in analyze_pdf_url
+    raise AppException(
+core.app_exceptions.AppException
+2026-04-17 21:27:38,269 - services.pdf_document_service - ERROR - Azure Document Intelligence call failed
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 817, in _analyze_document_initial
+    map_error(status_code=response.status_code, response=response, error_map=error_map)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\exceptions.py", line 163, in map_error
+    raise error
+azure.core.exceptions.ResourceNotFoundError: (NotFound) Resource not found.
+Code: NotFound
+Message: Resource not found.
+Inner error: {
+    "code": "ModelNotFound",
+    "message": "The requested model was not found."
+}
+2026-04-17 21:27:38,270 - core.handler - ERROR - Failed to analyze PDF with Azure Document Intelligence
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 32, in analyze_pdf_url
+    poller = self.client.begin_analyze_document(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\tracing\decorator.py", line 119, in wrapper_use_tracer
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_patch.py", line 603, in begin_analyze_document
+    raw_result = self._analyze_document_initial(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\ai\documentintelligence\_operations\_operations.py", line 817, in _analyze_document_initial
+    map_error(status_code=response.status_code, response=response, error_map=error_map)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\azure\core\exceptions.py", line 163, in map_error
+    raise error
+azure.core.exceptions.ResourceNotFoundError: (NotFound) Resource not found.
+Code: NotFound
+Message: Resource not found.
+Inner error: {
+    "code": "ModelNotFound",
+    "message": "The requested model was not found."
+}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\routers\document_router.py", line 31, in analyze_pdf_url
+    return service.analyze_pdf_url(pdf_url=payload.url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\services\pdf_document_service.py", line 51, in analyze_pdf_url
+    raise AppException(
+core.app_exceptions.AppException
+2026-04-30 02:38:05,630 - main - INFO - Runtime config: cwd=D:\training\AI\projects\eduhub\src env_file_exists=True
+2026-04-30 02:38:05,631 - main - INFO - Runtime config: QDRANT_URL=http://localhost:6333 REDIS_URL=redis://:redisadmin123@localhost:6379 VECTOR_DB_BACKEND=QDRANT VECTOR_DB_DISTANCE_METHOD=cosine
+2026-04-30 02:38:05,846 - main - INFO - VectorDB client loaded successfully
+2026-04-30 02:38:05,848 - main - INFO - VectorDB Collections: ['vdb_testdoc_0413_0']
+2026-04-30 02:38:08,931 - main - INFO - Embedding client loaded successfully
+2026-04-30 02:38:08,933 - main - INFO - LangChain client loaded successfully
+2026-04-30 02:38:25,191 - main - INFO - VectorDB client loaded successfully
+2026-04-30 02:38:25,192 - main - INFO - VectorDB Collections: ['vdb_testdoc_0413_0']
+2026-04-30 02:38:27,819 - main - INFO - Embedding client loaded successfully
+2026-04-30 02:38:27,820 - main - INFO - LangChain client loaded successfully
+2026-04-30 02:43:20,268 - main - INFO - VectorDB client loaded successfully
+2026-04-30 02:43:20,269 - main - INFO - VectorDB Collections: []
+2026-04-30 02:43:23,068 - main - INFO - Embedding client loaded successfully
+2026-04-30 02:43:23,069 - main - INFO - LangChain client loaded successfully
+2026-04-30 02:46:02,295 - main - INFO - VectorDB client loaded successfully
+2026-04-30 02:46:02,297 - main - INFO - VectorDB Collections: []
+2026-04-30 02:46:05,254 - main - INFO - Embedding client loaded successfully
+2026-04-30 02:46:05,255 - main - INFO - LangChain client loaded successfully
+2026-04-30 02:46:44,529 - main - INFO - VectorDB client loaded successfully
+2026-04-30 02:46:44,530 - main - INFO - VectorDB Collections: []
+2026-04-30 02:46:47,117 - main - INFO - Embedding client loaded successfully
+2026-04-30 02:46:47,118 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:01:13,561 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:01:13,562 - main - INFO - VectorDB Collections: []
+2026-04-30 03:01:16,603 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:01:16,604 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:07:07,737 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:07:07,738 - main - INFO - VectorDB Collections: []
+2026-04-30 03:07:10,725 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:07:10,726 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:07:28,677 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:07:28,678 - main - INFO - VectorDB Collections: []
+2026-04-30 03:07:31,540 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:07:31,541 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:10:38,712 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:10:38,713 - main - INFO - VectorDB Collections: []
+2026-04-30 03:10:41,531 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:10:41,532 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:12:31,582 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:12:31,584 - main - INFO - VectorDB Collections: []
+2026-04-30 03:12:34,244 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:12:34,245 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:13:22,976 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:13:22,976 - main - INFO - VectorDB Collections: []
+2026-04-30 03:13:26,135 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:13:26,136 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:13:42,432 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:13:42,433 - main - INFO - VectorDB Collections: []
+2026-04-30 03:13:45,168 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:13:45,169 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:14:11,024 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:14:11,025 - main - INFO - VectorDB Collections: []
+2026-04-30 03:14:13,769 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:14:13,770 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:14:30,240 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:14:30,241 - main - INFO - VectorDB Collections: []
+2026-04-30 03:14:32,889 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:14:32,890 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:14:50,214 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:14:50,214 - main - INFO - VectorDB Collections: []
+2026-04-30 03:14:52,869 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:14:52,870 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:15:09,401 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:15:09,401 - main - INFO - VectorDB Collections: []
+2026-04-30 03:15:12,402 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:15:12,403 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:16:53,350 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:16:53,351 - main - INFO - VectorDB Collections: []
+2026-04-30 03:16:56,265 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:16:56,266 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:18:25,906 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:18:25,907 - main - INFO - VectorDB Collections: []
+2026-04-30 03:18:28,946 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:18:28,947 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:22:15,785 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:22:15,786 - main - INFO - VectorDB Collections: []
+2026-04-30 03:22:19,631 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:22:19,632 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:22:37,657 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:22:37,657 - main - INFO - VectorDB Collections: []
+2026-04-30 03:22:46,184 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:22:46,185 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:23:05,281 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:23:05,282 - main - INFO - VectorDB Collections: []
+2026-04-30 03:23:08,337 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:23:08,341 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:23:27,851 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:23:27,852 - main - INFO - VectorDB Collections: []
+2026-04-30 03:23:30,609 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:23:30,610 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:23:50,625 - integrations.vector_db.providers.qdrant_provider - ERROR - Batch insert failed: Unexpected Response: 400 (Bad Request)
+Raw response content:
+b'{"status":{"error":"Format error in JSON body: value eb8ced58-a30c-4480-b647-28d247a480ae-1 is not a valid point ID, valid values are either an unsigned integer or a UUID"},"time":0.0}'
+2026-04-30 03:23:50,626 - core.handler - ERROR - Failed to insert batch into Vector DB
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 381, in _insert_many
+    self.client.upsert(
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\qdrant_client.py", line 944, in upsert
+    return self._client.upsert(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\qdrant_remote.py", line 1134, in upsert
+    http_result = self.openapi_client.points_api.upsert_points(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api\points_api.py", line 1056, in upsert_points
+    return self._build_for_upsert_points(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api\points_api.py", line 542, in _build_for_upsert_points
+    return self.api_client.request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api_client.py", line 95, in request
+    return self.send(request, type_)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api_client.py", line 130, in send
+    raise UnexpectedResponse.for_response(response)
+qdrant_client.http.exceptions.UnexpectedResponse: Unexpected Response: 400 (Bad Request)
+Raw response content:
+b'{"status":{"error":"Format error in JSON body: value eb8ced58-a30c-4480-b647-28d247a480ae-1 is not a valid point ID, valid values are either an unsigned integer or a UUID"},"time":0.0}'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\routers\grading_router.py", line 25, in set_reference_answer
+    return await orchestrator.set_reference_answer(payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\orchestrator\grading_orchestrator.py", line 38, in set_reference_answer
+    await self.vdb_client.store_batch(
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 307, in store_batch
+    success = self._insert_many(
+              ^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 387, in _insert_many
+    raise VectorDBBatchInsertError(
+integrations.vector_db.exceptions.VectorDBBatchInsertError: Batch insert failed: Unexpected Response: 400 (Bad Request)
+Raw response content:
+b'{"status":{"error":"Format error in JSON body: value eb8ced58-a30c-4480-b647-28d247a480ae-1 is not a valid point ID, valid values are either an unsigned integer or a UUID"},"time":0.0}'
+2026-04-30 03:25:09,065 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:25:09,065 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:25:46,575 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:25:46,576 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:26:04,209 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:26:04,210 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:26:12,480 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:26:12,481 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:26:36,390 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:26:36,392 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:26:39,918 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:26:39,919 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:26:58,117 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:26:58,117 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:27:01,025 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:27:01,026 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:27:21,811 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:27:21,812 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:27:25,181 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:27:25,182 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:27:41,984 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:27:41,985 - main - INFO - VectorDB Collections: ['grading_reference']
+2026-04-30 03:27:44,705 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:27:44,705 - main - INFO - LangChain client loaded successfully
+2026-04-30 03:59:39,251 - main - INFO - VectorDB client loaded successfully
+2026-04-30 03:59:39,252 - main - INFO - VectorDB Collections: ['answer_references', 'grading_reference']
+2026-04-30 03:59:41,921 - main - INFO - Embedding client loaded successfully
+2026-04-30 03:59:41,922 - main - INFO - LangChain client loaded successfully
+2026-04-30 04:02:06,675 - main - INFO - VectorDB client loaded successfully
+2026-04-30 04:02:06,675 - main - INFO - VectorDB Collections: ['answer_references', 'grading_reference']
+2026-04-30 04:02:09,649 - main - INFO - Embedding client loaded successfully
+2026-04-30 04:02:09,650 - main - INFO - LangChain client loaded successfully
+2026-04-30 04:02:26,034 - main - INFO - VectorDB client loaded successfully
+2026-04-30 04:02:26,035 - main - INFO - VectorDB Collections: ['answer_references', 'grading_reference']
+2026-04-30 04:02:28,745 - main - INFO - Embedding client loaded successfully
+2026-04-30 04:02:28,746 - main - INFO - LangChain client loaded successfully
+2026-04-30 04:02:45,332 - main - INFO - VectorDB client loaded successfully
+2026-04-30 04:02:45,333 - main - INFO - VectorDB Collections: ['answer_references', 'grading_reference']
+2026-04-30 04:02:48,657 - main - INFO - Embedding client loaded successfully
+2026-04-30 04:02:48,658 - main - INFO - LangChain client loaded successfully
+2026-04-30 04:04:01,372 - main - INFO - VectorDB client loaded successfully
+2026-04-30 04:04:01,373 - main - INFO - VectorDB Collections: ['answer_references', 'grading_reference']
+2026-04-30 04:04:04,267 - main - INFO - Embedding client loaded successfully
+2026-04-30 04:04:04,268 - main - INFO - LangChain client loaded successfully
+2026-04-30 04:09:22,637 - integrations.vector_db.providers.qdrant_provider - ERROR - Batch insert failed: Unexpected Response: 500 (Internal Server Error)
+Raw response content:
+b'{"status":{"error":"Service internal error: IO Error: failed to open file `./storage/collections/answer_references/0/segments/03f450e4-4038-4a78-894e-77f1fe1dcd39/vector_storage/vectors/chunk_0.tmp ...'
+2026-04-30 04:09:22,637 - core.handler - ERROR - Failed to insert batch into Vector DB
+Traceback (most recent call last):
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 381, in _insert_many
+    self.client.upsert(
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\qdrant_client.py", line 944, in upsert
+    return self._client.upsert(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\qdrant_remote.py", line 1134, in upsert
+    http_result = self.openapi_client.points_api.upsert_points(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api\points_api.py", line 1056, in upsert_points
+    return self._build_for_upsert_points(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api\points_api.py", line 542, in _build_for_upsert_points
+    return self.api_client.request(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api_client.py", line 95, in request
+    return self.send(request, type_)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\qdrant_client\http\api_client.py", line 130, in send
+    raise UnexpectedResponse.for_response(response)
+qdrant_client.http.exceptions.UnexpectedResponse: Unexpected Response: 500 (Internal Server Error)
+Raw response content:
+b'{"status":{"error":"Service internal error: IO Error: failed to open file `./storage/collections/answer_references/0/segments/03f450e4-4038-4a78-894e-77f1fe1dcd39/vector_storage/vectors/chunk_0.tmp ...'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\miniconda\envs\lc_env\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\routers\grading_router.py", line 25, in set_reference_answer
+    return await orchestrator.set_reference_answer(payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\orchestrator\grading_orchestrator.py", line 38, in set_reference_answer
+    await self.vdb_client.store_batch(
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 307, in store_batch
+    success = self._insert_many(
+              ^^^^^^^^^^^^^^^^^^
+  File "D:\training\AI\projects\eduhub\src\integrations\vector_db\providers\qdrant_provider.py", line 387, in _insert_many
+    raise VectorDBBatchInsertError(
+integrations.vector_db.exceptions.VectorDBBatchInsertError: Batch insert failed: Unexpected Response: 500 (Internal Server Error)
+Raw response content:
+b'{"status":{"error":"Service internal error: IO Error: failed to open file `./storage/collections/answer_references/0/segments/03f450e4-4038-4a78-894e-77f1fe1dcd39/vector_storage/vectors/chunk_0.tmp ...'
+2026-04-30 05:11:49,260 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:11:49,261 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:11:52,014 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:11:52,015 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:12:10,141 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:12:10,141 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:12:12,985 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:12:12,986 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:14:21,153 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:14:21,154 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:14:24,017 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:14:24,017 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:14:43,454 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:14:43,456 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:14:46,320 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:14:46,322 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:15:24,334 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:15:24,335 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:15:27,348 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:15:27,348 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:15:44,037 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:15:44,038 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:15:46,648 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:15:46,649 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:18:19,578 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:18:19,579 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:18:22,742 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:18:22,743 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:18:40,243 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:18:40,244 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:18:43,398 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:18:43,399 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:19:04,965 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:19:04,967 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:19:07,915 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:19:07,915 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:19:27,726 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:19:27,727 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:19:30,471 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:19:30,472 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:19:49,480 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:19:49,481 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:19:52,321 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:19:52,321 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:20:51,001 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:20:51,002 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:20:53,799 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:20:53,800 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:21:11,529 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:21:11,531 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:21:14,204 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:21:14,204 - main - INFO - LangChain client loaded successfully
+2026-04-30 05:21:31,410 - main - INFO - VectorDB client loaded successfully
+2026-04-30 05:21:31,410 - main - INFO - VectorDB Collections: ['answer_references']
+2026-04-30 05:21:34,084 - main - INFO - Embedding client loaded successfully
+2026-04-30 05:21:34,085 - main - INFO - LangChain client loaded successfully

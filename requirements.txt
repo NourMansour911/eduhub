@@ -1,0 +1,2 @@
+azure-ai-documentintelligence==1.0.2
+PyMuPDF==1.26.0
