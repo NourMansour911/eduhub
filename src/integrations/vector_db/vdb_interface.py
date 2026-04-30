@@ -47,7 +47,6 @@ class VectorDBInterface(ABC):
     def get_collection_info(self, collection_name: str) -> dict:
         pass
 
-    # Insert
     @abstractmethod
     async def store_batch(
         self,
@@ -69,7 +68,8 @@ class VectorDBInterface(ABC):
         page: int = 1,
         limit: int = 10,
         text_limit: Optional[int] = 100,
-        filters: Optional[Any] = None
+        filters: Optional[Any] = None,
+        with_vectors: bool = False,
     ) -> Dict[str, Any]:
         pass
 

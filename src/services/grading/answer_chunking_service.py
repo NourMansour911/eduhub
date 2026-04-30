@@ -3,15 +3,16 @@ import re
 from typing import List
 
 from fastapi import Depends
-from flask import config
 
 from core import Settings, get_settings
 from helpers import get_logger
 from integrations.llm import LCOpenAI
-from integrations.integrations_dependencies import get_langchain_client
+from integrations.integrations_dependencies import get_langchain_client, get_vdb_client
+from integrations.vector_db import VectorDBInterface
 from models.answer_chunk_model import AnsChunkMetadata
 from models.vdb_payload_model import VDBChunkPayload
 from services.grading.answer_chunking_chain import build_answer_chunking_chain, AnswerChunk
+from services.service_exceptions import NotFoundError
 
 logger = get_logger(__name__)
 
@@ -23,13 +24,55 @@ class AnswerChunkingService:
     _MAX_RETRIES = 3
     _RETRY_DELAY_SECONDS = 1
 
-    def __init__(self, settings: Settings, langchain_client: LCOpenAI):
+    def __init__(
+        self,
+        settings: Settings,
+        langchain_client: LCOpenAI,
+        vdb_client: VectorDBInterface,
+    ):
         self.settings = settings
         self.llm = langchain_client.get_langchain_llm(
             model=self.settings.GENERATION_MODEL_ID,
             temperature=0,
         )
         self.chunking_chain = build_answer_chunking_chain(self.llm)
+        self.vdb_client = vdb_client
+
+    def get_reference_chunks(
+        self,
+        question_id: str,
+        collection_name: str,
+        page_limit: int = 200,
+        include_vectors: bool = True,
+    ) -> List[dict]:
+        filters = [{"field": "question_id", "value": question_id, "op": "eq"}]
+        page = 1
+        all_chunks: List[dict] = []
+
+        while True:
+            result = self.vdb_client.get_collection_chunks(
+                collection_name=collection_name,
+                page=page,
+                limit=page_limit,
+                text_limit=None,
+                filters=filters,
+                with_vectors=include_vectors,
+            )
+            chunks = result.get("chunks", [])
+            if not chunks:
+                break
+            all_chunks.extend(chunks)
+            if len(chunks) < page_limit:
+                break
+            page += 1
+
+        if not all_chunks:
+            raise NotFoundError(
+                message="Reference answer not found",
+                details={"question_id": question_id},
+            )
+
+        return all_chunks
 
     async def build_reference_chunks(
         self,
@@ -207,8 +250,10 @@ class AnswerChunkingService:
 def get_answer_chunking_service(
     settings: Settings = Depends(get_settings),
     langchain_client: LCOpenAI = Depends(get_langchain_client),
+    vdb_client: VectorDBInterface = Depends(get_vdb_client),
 ) -> AnswerChunkingService:
     return AnswerChunkingService(
         settings=settings,
         langchain_client=langchain_client,
+        vdb_client=vdb_client,
     )

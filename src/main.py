@@ -5,7 +5,7 @@ from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
-from routers import grading_router, home_router
+from routers import grading_router, home_router, vectordb_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
 import os
@@ -57,3 +57,4 @@ app = FastAPI(lifespan=lifespan)
 app.add_exception_handler(AppException, app_exception_handler)
 app.include_router(home_router.home_route)
 app.include_router(grading_router.grading_route)
+app.include_router(vectordb_router.vectordb_route)

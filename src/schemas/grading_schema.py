@@ -15,12 +15,13 @@ class GradingRequest(BaseModel):
     
     
 class GradingResponse(BaseModel):
-    degree: float = Field(
+    test: dict = Field(..., description="Detailed grading results, including chunk-level scores and overall score.")
+    """ score: float = Field(
         ...,
         ge=0,
         le=100,
         description="The similarity percentage between the student's answer and the reference answer.",
-    )
+    ) """
 
 
 class AnswerChunkItem(BaseModel):

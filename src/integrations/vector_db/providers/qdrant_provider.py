@@ -397,6 +397,7 @@ class QdrantDBProvider(VectorDBInterface):
         limit: int = 10,
         text_limit: Optional[int] = 100,
         filters: Optional[Any] = None,
+        with_vectors: bool = False,
     ) -> Dict[str, Any]:
         if page < 1:
             page = 1
@@ -421,7 +422,7 @@ class QdrantDBProvider(VectorDBInterface):
                     "limit": limit,
                     "offset": offset,
                     "with_payload": True,
-                    "with_vectors": False,
+                    "with_vectors": with_vectors,
                 }
                 resolved_filters = self._resolve_filters(filters)
                 
@@ -444,11 +445,14 @@ class QdrantDBProvider(VectorDBInterface):
                 text = payload.get("text", "")
                 if text_limit and len(text) > text_limit:
                     text = text[:text_limit]
-                chunks.append({
+                chunk_item = {
                     "id": str(p.id),
                     "text": text,
-                    "metadata": payload.get("metadata", {})
-                })
+                    "metadata": payload.get("metadata", {}),
+                }
+                if with_vectors:
+                    chunk_item["vector"] = p.vector
+                chunks.append(chunk_item)
 
             total_pages = (
                 (total_points + limit - 1) // limit
