@@ -50,16 +50,18 @@ class ScoringService:
         if input_max == input_min:
             raise ValueError("input_min and input_max must be different")
 
-
-        boosted = min(
-            1.0,
-            score + (boost_factor * (1.0 - score))
-        )
-
-        normalized = (boosted - input_min) / (input_max - input_min)
+        
+        boosted = score + 0.1
 
         if clamp:
-            normalized = max(0.0, min(1.0, normalized))
+            boosted = max(0.0, min(1.0, boosted))
+
+        boosted = boosted * boost_factor
+
+        if clamp:
+            boosted = max(0.0, min(1.0, boosted))
+
+        normalized = (boosted - input_min) / (input_max - input_min)
 
         scaled = output_min + normalized * (output_max - output_min)
 

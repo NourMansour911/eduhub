@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -11,7 +13,8 @@ class RefGradingResponse(BaseModel):
 
 class GradingRequest(BaseModel):
     question_id: str = Field(..., description="Question identifier.")
-    student_answer: str = Field(..., description="The student's answer to be graded.")
+    boost_factor: Optional[float] = Field(default=1.0, description="Factor to boost the grading score.")
+    answer: str = Field(..., description="The student's answer to be graded.")
     
     
 class GradingResponse(BaseModel):

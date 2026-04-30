@@ -64,7 +64,7 @@ class GradingOrchestrator:
   
 		student_payloads = [
 			VDBChunkPayload(
-				text=payload.student_answer,
+				text=payload.answer,
 				metadata={"question_id": payload.question_id},
 			)
 		]
@@ -79,7 +79,7 @@ class GradingOrchestrator:
 		scoring_result = self.scoring_service.calculate_weighted_score(
 			reference_chunks=reference_chunks,
 			student_vector=student_vector,
-			boost_factor=1.0,
+			boost_factor=payload.boost_factor,
 		)
 
 		

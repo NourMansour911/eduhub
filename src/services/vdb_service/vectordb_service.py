@@ -5,7 +5,7 @@ from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
 from typing import Optional
 import json
-from models import ChunkMetadata
+
 
 
 from .vdb_exceptions import (
