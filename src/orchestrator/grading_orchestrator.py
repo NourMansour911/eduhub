@@ -84,7 +84,7 @@ class GradingOrchestrator:
 
 		
 
-		return GradingResponse(test=scoring_result)
+		return GradingResponse(score=scoring_result["final_score"])
 
 
 def get_grading_orchestrator(
