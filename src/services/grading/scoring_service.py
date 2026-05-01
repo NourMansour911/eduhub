@@ -1,20 +1,15 @@
 import re
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Tuple
 
 from fastapi import Request
 import numpy as np
 import torch
 from sentence_transformers import CrossEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 class ScoringService:
-    _SEMANTIC_WEIGHT = 0.6
-    _KEYWORD_WEIGHT = 0.3
-    _NUMBER_WEIGHT = 0.1
-    _NUMBER_MISMATCH_PENALTY = 0.1
-    _MAX_KEYWORDS_PER_CHUNK = 8
-    _NUMBER_PATTERN = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+    _SPACE_PATTERN = re.compile(r"\s+")
+    _EPSILON = 1e-6
 
     def __init__(self, model_id: str, device: str):
         self.model_id = model_id
@@ -38,7 +33,8 @@ class ScoringService:
                 "details": [],
             }
 
-        if not student_chunks:
+        student_texts = self._extract_student_texts(student_chunks)
+        if not student_texts:
             details = [
                 {
                     "teacher_chunk": chunk["text"],
@@ -54,70 +50,78 @@ class ScoringService:
                 "details": details,
             }
 
+        score_matrix, calibrated_matrix = self._predict_score_matrices(
+            teacher_chunks=prepared_teacher_chunks,
+            student_texts=student_texts,
+        )
+
         total_weighted_score = 0.0
-        covered_chunks = 0
         details: List[Dict[str, Any]] = []
+        for teacher_index, teacher_chunk in enumerate(prepared_teacher_chunks):
+            row = calibrated_matrix[teacher_index]
+            best_student_index = int(np.argmax(row))
+            semantic_score = self._clamp(float(row[best_student_index]))
+            best_student_chunk = student_texts[best_student_index]
 
-        for teacher_chunk in prepared_teacher_chunks:
-            pairs = [
-                (teacher_chunk["text"], student_chunk.get("text", ""))
-                for student_chunk in student_chunks
-            ]
-            reranker_scores = self.cross_encoder.predict(
-                pairs,
-                batch_size=32,
-                show_progress_bar=False,
-            )
-            normalized_scores = self._normalize_reranker_scores(reranker_scores)
-
-            best_index = int(np.argmax(normalized_scores))
-            semantic_score = float(normalized_scores[best_index])
-            student_chunk = student_chunks[best_index]
-            covered_chunks += 1
-
-            keyword_score = self._keyword_overlap_ratio(
-                teacher_keywords=teacher_chunk["keywords"],
-                student_keywords=student_chunk.get("keywords") or [],
-            )
-
-            number_score = self._number_score(
-                teacher_numbers=teacher_chunk["numbers"],
-                student_numbers=student_chunk.get("numbers") or [],
-            )
-
-            score = (
-                (self._SEMANTIC_WEIGHT * semantic_score)
-                + (self._KEYWORD_WEIGHT * keyword_score)
-                + (self._NUMBER_WEIGHT * number_score)
-            )
-
-            if (
-                teacher_chunk["numbers"]
-                and (student_chunk.get("numbers") or [])
-                and number_score == 0.0
-            ):
-                score -= self._NUMBER_MISMATCH_PENALTY
-
-            score = self._clamp(score)
-            total_weighted_score += teacher_chunk["weight"] * score
+            total_weighted_score += teacher_chunk["weight"] * semantic_score
 
             details.append(
                 {
                     "teacher_chunk": teacher_chunk["text"],
-                    "best_student_chunk": student_chunk.get("text", ""),
-                    "similarity": round(semantic_score, 4),
-                    "score": round(score, 4),
+                    "best_student_chunk": best_student_chunk,
+                    "similarity": round(float(score_matrix[teacher_index][best_student_index]), 4),
+                    "score": round(semantic_score, 4),
                 }
             )
 
-        coverage = covered_chunks / len(prepared_teacher_chunks)
-        final_score = self._clamp(total_weighted_score * coverage)
+        final_score = self._clamp(total_weighted_score)
 
         return {
             "final_score": round(final_score, 4),
-            "coverage": round(coverage, 4),
+            "coverage": 1.0,
             "details": details,
         }
+
+    def _predict_score_matrices(
+        self,
+        teacher_chunks: List[Dict[str, Any]],
+        student_texts: List[str],
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        teacher_texts = [chunk["text"] for chunk in teacher_chunks]
+        teacher_count = len(teacher_texts)
+        student_count = len(student_texts)
+
+        pairs: List[Tuple[str, str]] = []
+        for teacher_text in teacher_texts:
+            for student_text in student_texts:
+                pairs.append((teacher_text, student_text))
+
+        main_scores = self.cross_encoder.predict(
+            pairs,
+            batch_size=32,
+            show_progress_bar=False,
+        )
+        main_matrix = self._normalize_reranker_scores(main_scores).reshape(teacher_count, student_count)
+
+        upper_anchor_scores = self.cross_encoder.predict(
+            [(teacher_text, teacher_text) for teacher_text in teacher_texts],
+            batch_size=32,
+            show_progress_bar=False,
+        )
+        lower_anchor_scores = self.cross_encoder.predict(
+            [(teacher_text, "") for teacher_text in teacher_texts],
+            batch_size=32,
+            show_progress_bar=False,
+        )
+
+        upper = self._normalize_reranker_scores(upper_anchor_scores).reshape(teacher_count, 1)
+        lower = self._normalize_reranker_scores(lower_anchor_scores).reshape(teacher_count, 1)
+        denom = np.maximum(upper - lower, self._EPSILON)
+
+        calibrated = (main_matrix - lower) / denom
+        calibrated = np.clip(calibrated, 0.0, 1.0)
+
+        return main_matrix, calibrated
 
     def _prepare_teacher_chunks(
         self,
@@ -157,89 +161,20 @@ class ScoringService:
             for item in prepared:
                 item["weight"] = item["weight"] / total_weight
 
-        teacher_keywords_map = self._extract_keywords_by_text(
-            [item["text"] for item in prepared]
-        )
-
-        for index, item in enumerate(prepared):
-            item["keywords"] = teacher_keywords_map[index]
-            item["numbers"] = self._extract_numbers(item["text"])
-
         return prepared
 
-    def _extract_keywords_by_text(self, texts: List[str]) -> Dict[int, List[str]]:
-        if not texts:
-            return {}
-
-        try:
-            vectorizer = TfidfVectorizer(
-                lowercase=True,
-                stop_words="english",
-                ngram_range=(1, 2),
-                token_pattern=r"(?u)\b[a-zA-Z][a-zA-Z0-9_]+\b",
-            )
-            matrix = vectorizer.fit_transform(texts)
-        except ValueError:
-            return {index: [] for index in range(len(texts))}
-
-        feature_names = vectorizer.get_feature_names_out()
-        keywords_map: Dict[int, List[str]] = {}
-
-        for row_index in range(matrix.shape[0]):
-            row = matrix.getrow(row_index)
-            if row.nnz == 0:
-                keywords_map[row_index] = []
-                continue
-
-            scored_terms = sorted(
-                (
-                    (feature_names[column_index], value)
-                    for column_index, value in zip(row.indices, row.data)
-                    if value > 0
-                ),
-                key=lambda item: (-item[1], item[0]),
-            )
-            keywords_map[row_index] = [
-                term for term, _ in scored_terms[: self._MAX_KEYWORDS_PER_CHUNK]
-            ]
-
-        return keywords_map
-
-    def _extract_numbers(self, text: str) -> List[str]:
-        if not text:
+    def _extract_student_texts(self, student_chunks: List[Dict[str, Any]]) -> List[str]:
+        if not student_chunks:
             return []
-        return [match.group(0) for match in self._NUMBER_PATTERN.finditer(text)]
 
-    def _keyword_overlap_ratio(
-        self,
-        teacher_keywords: Sequence[str],
-        student_keywords: Sequence[str],
-    ) -> float:
-        teacher_set = {keyword.lower() for keyword in teacher_keywords if keyword}
-        if not teacher_set:
-            return 1.0
+        values = []
+        for chunk in student_chunks:
+            text = str(chunk.get("text") or "")
+            normalized = self._SPACE_PATTERN.sub(" ", text).strip()
+            if normalized:
+                values.append(normalized)
 
-        student_set = {keyword.lower() for keyword in student_keywords if keyword}
-        overlap = teacher_set.intersection(student_set)
-        return len(overlap) / len(teacher_set)
-
-    def _number_score(
-        self,
-        teacher_numbers: Sequence[str],
-        student_numbers: Sequence[str],
-    ) -> float:
-        teacher_set = set(teacher_numbers)
-        student_set = set(student_numbers)
-
-        if not teacher_set:
-            return 1.0
-        if not student_set:
-            return 0.5
-        if teacher_set == student_set:
-            return 1.0
-        if teacher_set.intersection(student_set):
-            return 0.5
-        return 0.0
+        return values
 
     def _normalize_reranker_scores(self, scores: Sequence[float]) -> np.ndarray:
         values = np.asarray(scores, dtype=np.float32).reshape(-1)
