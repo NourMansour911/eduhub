@@ -14,17 +14,11 @@ class RefGradingResponse(BaseModel):
 class GradingRequest(BaseModel):
     question_id: str = Field(..., description="Question identifier.")
     boost_factor: Optional[float] = Field(default=1.0, description="Factor to boost the grading score.")
-    student_answer: str = Field(..., description="The student's answer to be graded.")
+    answer: str = Field(..., description="The student's answer to be graded.")
     
     
 class GradingResponse(BaseModel):
-    score: float = Field(
-        ...,
-        ge=0,
-        le=100,
-        description="The similarity percentage between the student's answer and the reference answer.",
-    )
-
+    score: dict
 
 class AnswerChunkItem(BaseModel):
     text: str = Field(..., description="Chunk text content.")

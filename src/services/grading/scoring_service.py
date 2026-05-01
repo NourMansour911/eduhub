@@ -9,7 +9,6 @@ class ScoringService:
         student_vector: Sequence[float],
         default_weight: float = 1.0,
         decimals: Optional[int] = 1,
-        boost_factor: float = 1.0,
     ) -> Dict[str, Any]:
 
         weighted_map = self._build_weighted_similarity_map(
@@ -25,7 +24,6 @@ class ScoringService:
 
         final_score = self._compute_final_score(
             score=total_weighted,
-            boost_factor=boost_factor,
             decimals=decimals,
         )
 
@@ -38,30 +36,22 @@ class ScoringService:
     def _compute_final_score(
         self,
         score: float,
-        boost_factor: float = 1.0,
         decimals: Optional[int] = 1,
-        input_min: float = 0.0,
-        input_max: float = 1.0,
+        input_min: float = 0.55,  
+        input_max: float = 0.7,   
         output_min: float = 0.0,
-        output_max: float = 100.0,
+        output_max: float = 1.0,
         clamp: bool = True,
     ) -> float:
 
         if input_max == input_min:
             raise ValueError("input_min and input_max must be different")
 
-        
-        boosted = score + 0.1
+
+        normalized = (score - input_min) / (input_max - input_min)
 
         if clamp:
-            boosted = max(0.0, min(1.0, boosted))
-
-        boosted = boosted * boost_factor
-
-        if clamp:
-            boosted = max(0.0, min(1.0, boosted))
-
-        normalized = (boosted - input_min) / (input_max - input_min)
+            normalized = max(0.0, min(1.0, normalized))
 
         scaled = output_min + normalized * (output_max - output_min)
 
@@ -85,7 +75,6 @@ class ScoringService:
                 student_vector,
                 vector
             )
-
 
             similarity = max(0.0, min(1.0, similarity))
 

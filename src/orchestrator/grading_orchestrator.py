@@ -79,12 +79,11 @@ class GradingOrchestrator:
 		scoring_result = self.scoring_service.calculate_weighted_score(
 			reference_chunks=reference_chunks,
 			student_vector=student_vector,
-			boost_factor=payload.boost_factor,
 		)
 
 		
 
-		return GradingResponse(score=scoring_result["final_score"])
+		return GradingResponse(score=scoring_result)
 
 
 def get_grading_orchestrator(
