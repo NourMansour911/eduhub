@@ -3,6 +3,7 @@
 from . import grading_schema
 from .grading_schema import GradingRequest
 from .grading_schema import GradingResponse
+from .grading_schema import GradingDetailItem
 from .grading_schema import RefGradingRequest
 from .grading_schema import RefGradingResponse
 from .grading_schema import AnswerChunkItem
@@ -12,6 +13,7 @@ __all__ = [
     "grading_schema",
     "GradingRequest",
     "GradingResponse",
+    "GradingDetailItem",
     "RefGradingRequest",
     "RefGradingResponse",
     "AnswerChunkItem",

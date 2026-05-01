@@ -3,14 +3,15 @@ from uuid import uuid4
 
 from integrations.integrations_dependencies import get_vdb_client
 from integrations.vector_db import VectorDBInterface
-from models.vdb_payload_model import VDBChunkPayload
 from schemas import GradingRequest, GradingResponse, RefGradingRequest, RefGradingResponse
 from services import ChunkEmbeddingService, get_chunk_embedding_service
 from services.grading import (
 	AnswerChunkingService,
 	ScoringService,
+	StudentAnswerChunkingService,
 	get_answer_chunking_service,
 	get_scoring_service,
+	get_student_answer_chunking_service,
 )
 
 class GradingOrchestrator:
@@ -20,11 +21,13 @@ class GradingOrchestrator:
 	def __init__(
 		self,
 		chunking_service: AnswerChunkingService,
+		student_chunking_service: StudentAnswerChunkingService,
 		embedding_service: ChunkEmbeddingService,
 		vdb_client: VectorDBInterface,
 		scoring_service: ScoringService,
 	):
 		self.chunking_service = chunking_service
+		self.student_chunking_service = student_chunking_service
 		self.embedding_service = embedding_service
 		self.vdb_client = vdb_client
 		self.scoring_service = scoring_service
@@ -60,41 +63,46 @@ class GradingOrchestrator:
 		reference_chunks = self.chunking_service.get_reference_chunks(
 			question_id=payload.question_id,
 			collection_name=self._VDB_COLLECTION_NAME,
+			include_vectors=False,
 		)
-  
-		student_payloads = [
-			VDBChunkPayload(
-				text=payload.answer,
-				metadata={"question_id": payload.question_id},
+
+		student_chunks = self.student_chunking_service.chunk_and_extract(
+			student_answer=payload.answer,
+		)
+
+		if not student_chunks:
+			scoring_result = self.scoring_service.calculate_weighted_score(
+				reference_chunks=reference_chunks,
+				student_chunks=[],
 			)
-		]
-  
-		_, vectors, _, _ = await self.embedding_service.embed_chunks(
-			payloads=student_payloads,
-			id_factory=lambda _: str(uuid4()),
-		)
-  
-		student_vector = vectors[0]
-		
-  
+			return GradingResponse(
+				final_score=scoring_result["final_score"],
+				coverage=scoring_result["coverage"],
+				details=scoring_result["details"],
+			)
+
 		scoring_result = self.scoring_service.calculate_weighted_score(
 			reference_chunks=reference_chunks,
-			student_vector=student_vector,
+			student_chunks=student_chunks,
 		)
 
-		
-
-		return GradingResponse(score=scoring_result)
+		return GradingResponse(
+			final_score=scoring_result["final_score"],
+			coverage=scoring_result["coverage"],
+			details=scoring_result["details"],
+		)
 
 
 def get_grading_orchestrator(
 	chunking_service: AnswerChunkingService = Depends(get_answer_chunking_service),
+	student_chunking_service: StudentAnswerChunkingService = Depends(get_student_answer_chunking_service),
 	embedding_service: ChunkEmbeddingService = Depends(get_chunk_embedding_service),
 	vdb_client: VectorDBInterface = Depends(get_vdb_client),
 	scoring_service: ScoringService = Depends(get_scoring_service),
 ) -> GradingOrchestrator:
 	return GradingOrchestrator(
 		chunking_service=chunking_service,
+		student_chunking_service=student_chunking_service,
 		embedding_service=embedding_service,
 		vdb_client=vdb_client,
 		scoring_service=scoring_service,

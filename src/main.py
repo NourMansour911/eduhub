@@ -8,6 +8,7 @@ from helpers.logger import get_logger
 from routers import grading_router, home_router, vectordb_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
+from services.grading import ScoringService
 import os
 
 settings = get_settings()
@@ -44,6 +45,13 @@ async def lifespan(app: FastAPI):
   ## LangChain client
   app.state.langchain_client = LCOpenAI(api_key=OPENAI_API_KEYS[3],api_url=settings.OPENAI_API_URL)
   logger.info("LangChain client loaded successfully")
+
+  # Scoring service (CrossEncoder) loaded once at startup
+  app.state.scoring_service = ScoringService(
+      model_id=settings.CROSS_ENCODER_MODEL_ID,
+      device=settings.CROSS_ENCODER_DEVICE,
+  )
+  logger.info("Scoring service loaded successfully")
   
   
   yield
