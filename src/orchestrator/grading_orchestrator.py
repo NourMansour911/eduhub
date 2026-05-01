@@ -76,6 +76,7 @@ class GradingOrchestrator:
   
 		student_vector = vectors[0]
 		
+  
 		scoring_result = self.scoring_service.calculate_weighted_score(
 			reference_chunks=reference_chunks,
 			student_vector=student_vector,

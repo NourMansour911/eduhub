@@ -8,7 +8,6 @@ class ScoringService:
         reference_chunks: List[Dict[str, Any]],
         student_vector: Sequence[float],
         default_weight: float = 1.0,
-        decimals: Optional[int] = 1,
     ) -> Dict[str, Any]:
 
         weighted_map = self._build_weighted_similarity_map(
@@ -17,45 +16,16 @@ class ScoringService:
             default_weight=default_weight,
         )
 
+
         total_weighted = sum(
             item.get("weighted_score", 0.0)
             for item in weighted_map
         )
 
-        final_score = self._compute_final_score(
-            score=total_weighted,
-            decimals=decimals,
-        )
-
         return {
             "weighted_map": weighted_map,
-            "raw_weighted_total": total_weighted,
-            "final_score": final_score,
+            "final_score": round(total_weighted, 4),
         }
-
-    def _compute_final_score(
-        self,
-        score: float,
-        decimals: Optional[int] = 1,
-        input_min: float = 0.55,  
-        input_max: float = 0.7,   
-        output_min: float = 0.0,
-        output_max: float = 1.0,
-        clamp: bool = True,
-    ) -> float:
-
-        if input_max == input_min:
-            raise ValueError("input_min and input_max must be different")
-
-
-        normalized = (score - input_min) / (input_max - input_min)
-
-        if clamp:
-            normalized = max(0.0, min(1.0, normalized))
-
-        scaled = output_min + normalized * (output_max - output_min)
-
-        return round(scaled, decimals) if decimals is not None else scaled
 
     def _build_weighted_similarity_map(
         self,
