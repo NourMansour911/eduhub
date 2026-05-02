@@ -48,7 +48,7 @@ class ScoringService:
                 "details": details,
             }
 
-        score_matrix, calibrated_matrix = self._predict_score_matrices(
+        score_matrix = self._calculate_score_matrix(
             teacher_chunks=prepared_teacher_chunks,
             student_texts=student_texts,
         )
@@ -56,7 +56,7 @@ class ScoringService:
         total_weighted_score = 0.0
         details: List[Dict[str, Any]] = []
         for teacher_index, teacher_chunk in enumerate(prepared_teacher_chunks):
-            row = calibrated_matrix[teacher_index]
+            row = score_matrix[teacher_index]
             best_student_index = int(np.argmax(row))
             semantic_score = self._clamp(float(row[best_student_index]))
             best_student_chunk = student_texts[best_student_index]
@@ -67,7 +67,7 @@ class ScoringService:
                 {
                     "teacher_chunk": teacher_chunk["text"],
                     "best_student_chunk": best_student_chunk,
-                    "similarity": round(float(score_matrix[teacher_index][best_student_index]), 4),
+                    "similarity": round(semantic_score, 4),
                     "score": round(semantic_score, 4),
                 }
             )
@@ -79,11 +79,11 @@ class ScoringService:
             "details": details,
         }
 
-    def _predict_score_matrices(
+    def _calculate_score_matrix(
         self,
         teacher_chunks: List[Dict[str, Any]],
         student_texts: List[str],
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray:
         teacher_texts = [chunk["text"] for chunk in teacher_chunks]
         teacher_count = len(teacher_texts)
         student_count = len(student_texts)
@@ -93,32 +93,13 @@ class ScoringService:
             for student_text in student_texts:
                 pairs.append((teacher_text, student_text))
 
-        main_scores = self.cross_encoder.predict(
+        scores = self.cross_encoder.predict(
             pairs,
             batch_size=32,
             show_progress_bar=False,
         )
-        main_matrix = self._normalize_reranker_scores(main_scores).reshape(teacher_count, student_count)
-
-        upper_anchor_scores = self.cross_encoder.predict(
-            [(teacher_text, teacher_text) for teacher_text in teacher_texts],
-            batch_size=32,
-            show_progress_bar=False,
-        )
-        lower_anchor_scores = self.cross_encoder.predict(
-            [(teacher_text, "") for teacher_text in teacher_texts],
-            batch_size=32,
-            show_progress_bar=False,
-        )
-
-        upper = self._normalize_reranker_scores(upper_anchor_scores).reshape(teacher_count, 1)
-        lower = self._normalize_reranker_scores(lower_anchor_scores).reshape(teacher_count, 1)
-        denom = np.maximum(upper - lower, self._EPSILON)
-
-        calibrated = (main_matrix - lower) / denom
-        calibrated = np.clip(calibrated, 0.0, 1.0)
-
-        return main_matrix, calibrated
+        normalized = self._normalize_scores(scores).reshape(teacher_count, student_count)
+        return normalized
 
     def _prepare_teacher_chunks(
         self,
@@ -173,10 +154,11 @@ class ScoringService:
 
         return values
 
-    def _normalize_reranker_scores(self, scores: Sequence[float]) -> np.ndarray:
+    def _normalize_scores(self, scores: Sequence[float]) -> np.ndarray:
         values = np.asarray(scores, dtype=np.float32).reshape(-1)
         clipped = np.clip(values, -30.0, 30.0)
-        return 1.0 / (1.0 + np.exp(-clipped))
+        sigmoid = 1.0 / (1.0 + np.exp(-clipped))
+        return np.clip(sigmoid, 0.0, 1.0)
 
     def _resolve_device(self, preferred_device: str) -> str:
         normalized = (preferred_device or "cuda").strip().lower()
