@@ -25,8 +25,7 @@ class GradingDetailItem(BaseModel):
 
 
 class GradingResponse(BaseModel):
-    final_score: float = Field(..., ge=0, le=1, description="Final weighted score after coverage penalty.")
-    coverage: float = Field(..., ge=0, le=1, description="Coverage ratio of matched teacher chunks.")
+    final_score: float = Field(..., ge=0, le=1, description="Final weighted score.")
     details: list[GradingDetailItem] = Field(default_factory=list)
 
 class AnswerChunkItem(BaseModel):

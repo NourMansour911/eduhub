@@ -77,7 +77,6 @@ class GradingOrchestrator:
 			)
 			return GradingResponse(
 				final_score=scoring_result["final_score"],
-				coverage=scoring_result["coverage"],
 				details=scoring_result["details"],
 			)
 
@@ -88,7 +87,6 @@ class GradingOrchestrator:
 
 		return GradingResponse(
 			final_score=scoring_result["final_score"],
-			coverage=scoring_result["coverage"],
 			details=scoring_result["details"],
 		)
 

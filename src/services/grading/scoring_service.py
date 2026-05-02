@@ -29,7 +29,6 @@ class ScoringService:
         if not prepared_teacher_chunks:
             return {
                 "final_score": 0.0,
-                "coverage": 0.0,
                 "details": [],
             }
 
@@ -46,7 +45,6 @@ class ScoringService:
             ]
             return {
                 "final_score": 0.0,
-                "coverage": 0.0,
                 "details": details,
             }
 
@@ -78,7 +76,6 @@ class ScoringService:
 
         return {
             "final_score": round(final_score, 4),
-            "coverage": 1.0,
             "details": details,
         }
 
