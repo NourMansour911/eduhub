@@ -9,9 +9,9 @@ from .vdb_orchestrator import get_vdb_orchestrator
 
 __all__ = [
     "grading_orchestrator",
-    "GradingOrchestrator",
-    "get_grading_orchestrator",
     "vdb_orchestrator",
+    "GradingOrchestrator",
     "VDBOrchestrator",
+    "get_grading_orchestrator",
     "get_vdb_orchestrator",
 ]

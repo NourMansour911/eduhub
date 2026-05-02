@@ -66,23 +66,11 @@ class GradingOrchestrator:
 			include_vectors=False,
 		)
 
-		student_chunks = self.student_chunking_service.chunk_and_extract(
-			student_answer=payload.answer,
-		)
 
-		if not student_chunks:
-			scoring_result = self.scoring_service.calculate_weighted_score(
-				reference_chunks=reference_chunks,
-				student_chunks=[],
-			)
-			return GradingResponse(
-				final_score=scoring_result["final_score"],
-				details=scoring_result["details"],
-			)
-
+		# Pass the raw student answer string to the scorer (no chunking)
 		scoring_result = self.scoring_service.calculate_weighted_score(
 			reference_chunks=reference_chunks,
-			student_chunks=student_chunks,
+			student_answer=payload.answer,
 		)
 
 		return GradingResponse(

@@ -14,10 +14,10 @@ __all__ = [
     "grading_router",
     "home_router",
     "vectordb_router",
-    "grade_answer",
-    "home",
-    "set_reference_answer",
     "delete_collection",
     "get_collection_chunks",
     "get_collection_info",
+    "grade_answer",
+    "home",
+    "set_reference_answer",
 ]

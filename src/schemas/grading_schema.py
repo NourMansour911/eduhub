@@ -16,16 +16,14 @@ class GradingRequest(BaseModel):
     answer: str = Field(..., description="The student's answer to be graded.")
     
     
-class GradingDetailItem(BaseModel):
-    teacher_chunk: str = Field(..., description="Reference chunk text.")
-    best_student_chunk: str = Field(..., description="Best matching student chunk text.")
-    similarity: float = Field(..., ge=0, le=1, description="Best semantic similarity value.")
-    score: float = Field(..., ge=0, le=1, description="Final score for this teacher chunk.")
 
 
 class GradingResponse(BaseModel):
     final_score: float = Field(..., ge=0, le=1, description="Final weighted score.")
-    details: list[GradingDetailItem] = Field(default_factory=list)
+    details: list[dict] = Field(
+        ...,
+        description="Detailed scoring information for each reference chunk.",
+    )
 
 class AnswerChunkItem(BaseModel):
     text: str = Field(..., description="Chunk text content.")

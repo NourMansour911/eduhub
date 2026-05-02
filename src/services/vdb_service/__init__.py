@@ -11,7 +11,7 @@ __all__ = [
     "vdb_exceptions",
     "vectordb_service",
     "VDBService",
-    "get_vdb_service",
     "VectorDBException",
     "VectorizationError",
+    "get_vdb_service",
 ]

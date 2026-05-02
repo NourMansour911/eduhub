@@ -1,15 +1,11 @@
-import re
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Tuple
 
 from fastapi import Request
-import numpy as np
 import torch
 from sentence_transformers import CrossEncoder
 
 
 class ScoringService:
-    _SPACE_PATTERN = re.compile(r"\s+")
-    _EPSILON = 1e-6
 
     def __init__(self, model_id: str, device: str):
         self.model_id = model_id
@@ -19,93 +15,62 @@ class ScoringService:
     def calculate_weighted_score(
         self,
         reference_chunks: List[Dict[str, Any]],
-        student_chunks: List[Dict[str, Any]],
+        student_answer: str,
         default_weight: float = 1.0,
     ) -> Dict[str, Any]:
-        prepared_teacher_chunks = self._prepare_teacher_chunks(
-            reference_chunks=reference_chunks,
-            default_weight=default_weight,
-        )
-        if not prepared_teacher_chunks:
+
+        teacher_list = self._prepare_teacher_chunks(reference_chunks, default_weight)
+
+        if not teacher_list or not student_answer:
             return {
                 "final_score": 0.0,
-                "details": [],
+                "details": []
             }
 
-        student_texts = self._extract_student_texts(student_chunks)
-        if not student_texts:
-            details = [
-                {
-                    "teacher_chunk": chunk["text"],
-                    "best_student_chunk": "",
-                    "similarity": 0.0,
-                    "score": 0.0,
-                }
-                for chunk in prepared_teacher_chunks
-            ]
-            return {
-                "final_score": 0.0,
-                "details": details,
-            }
+        pairs: List[Tuple[str, str]] = [
+            (t["text"], student_answer) for t in teacher_list
+        ]
 
-        score_matrix = self._calculate_score_matrix(
-            teacher_chunks=prepared_teacher_chunks,
-            student_texts=student_texts,
+        raw_scores = self.cross_encoder.predict(
+            pairs,
+            batch_size=32,
+            show_progress_bar=False
         )
 
-        total_weighted_score = 0.0
+        weighted_sum = 0.0
+        max_possible = 0.0
         details: List[Dict[str, Any]] = []
-        for teacher_index, teacher_chunk in enumerate(prepared_teacher_chunks):
-            row = score_matrix[teacher_index]
-            best_student_index = int(np.argmax(row))
-            semantic_score = self._clamp(float(row[best_student_index]))
-            best_student_chunk = student_texts[best_student_index]
 
-            total_weighted_score += teacher_chunk["weight"] * semantic_score
+        for teacher_chunk, raw in zip(teacher_list, raw_scores):
+            score = self._clamp(float(raw))
+            weight = teacher_chunk.get("weight", default_weight)
 
-            details.append(
-                {
-                    "teacher_chunk": teacher_chunk["text"],
-                    "best_student_chunk": best_student_chunk,
-                    "similarity": round(semantic_score, 4),
-                    "score": round(semantic_score, 4),
-                }
-            )
+            weighted_sum += score * weight
+            max_possible += weight
 
-        final_score = self._clamp(total_weighted_score)
+            details.append({
+                "teacher_chunk": teacher_chunk["text"],
+                "similarity": round(score, 4),
+                "weight": round(weight, 4),
+                "final_score": round(score * weight, 4),
+            })
+
+        final_score = (
+            weighted_sum / max_possible
+            if max_possible > 0 else 0.0
+        )
 
         return {
             "final_score": round(final_score, 4),
             "details": details,
         }
 
-    def _calculate_score_matrix(
-        self,
-        teacher_chunks: List[Dict[str, Any]],
-        student_texts: List[str],
-    ) -> np.ndarray:
-        teacher_texts = [chunk["text"] for chunk in teacher_chunks]
-        teacher_count = len(teacher_texts)
-        student_count = len(student_texts)
-
-        pairs: List[Tuple[str, str]] = []
-        for teacher_text in teacher_texts:
-            for student_text in student_texts:
-                pairs.append((teacher_text, student_text))
-
-        scores = self.cross_encoder.predict(
-            pairs,
-            batch_size=32,
-            show_progress_bar=False,
-        )
-        normalized = self._normalize_scores(scores).reshape(teacher_count, student_count)
-        return normalized
-
     def _prepare_teacher_chunks(
         self,
         reference_chunks: List[Dict[str, Any]],
-        default_weight: float,
+        default_weight: float
     ) -> List[Dict[str, Any]]:
+
         prepared: List[Dict[str, Any]] = []
 
         for chunk in reference_chunks:
@@ -114,51 +79,29 @@ class ScoringService:
                 continue
 
             metadata = chunk.get("metadata") or {}
-            weight = metadata.get("weight", default_weight)
             try:
-                weight = float(weight)
-            except (TypeError, ValueError):
+                weight = float(metadata.get("weight", default_weight))
+            except Exception:
                 weight = default_weight
 
-            prepared.append(
-                {
-                    "text": text,
-                    "weight": max(0.0, weight),
-                }
-            )
+            prepared.append({
+                "text": text,
+                "weight": max(0.0, weight)
+            })
 
         if not prepared:
             return []
 
-        total_weight = sum(item["weight"] for item in prepared)
-        if total_weight <= 0:
-            normalized_weight = 1.0 / len(prepared)
-            for item in prepared:
-                item["weight"] = normalized_weight
+        total = sum(c["weight"] for c in prepared)
+
+        if total <= 0:
+            for c in prepared:
+                c["weight"] = 1.0 / len(prepared)
         else:
-            for item in prepared:
-                item["weight"] = item["weight"] / total_weight
+            for c in prepared:
+                c["weight"] /= total
 
         return prepared
-
-    def _extract_student_texts(self, student_chunks: List[Dict[str, Any]]) -> List[str]:
-        if not student_chunks:
-            return []
-
-        values = []
-        for chunk in student_chunks:
-            text = str(chunk.get("text") or "")
-            normalized = self._SPACE_PATTERN.sub(" ", text).strip()
-            if normalized:
-                values.append(normalized)
-
-        return values
-
-    def _normalize_scores(self, scores: Sequence[float]) -> np.ndarray:
-        values = np.asarray(scores, dtype=np.float32).reshape(-1)
-        clipped = np.clip(values, -30.0, 30.0)
-        sigmoid = 1.0 / (1.0 + np.exp(-clipped))
-        return np.clip(sigmoid, 0.0, 1.0)
 
     def _resolve_device(self, preferred_device: str) -> str:
         normalized = (preferred_device or "cuda").strip().lower()
