@@ -2,7 +2,7 @@ import csv
 import requests
 
 ENDPOINT = "http://localhost:5000/essay/grade"
-QUESTION_ID = "9664568b-fef3-4ae6-8ae3-eb872df4ebdf"
+ANSWER_IID = "9664568b-fef3-4ae6-8ae3-eb872df4ebdf"
 INPUT_CSV = "underfitting_noisy_answers_v2_normalized_sorted.csv"
 
 results = []
@@ -15,7 +15,7 @@ with open(INPUT_CSV, 'r', encoding='utf-8') as f:
         expected_score = float(row['expected_score'])
 
         payload = {
-            "question_id": QUESTION_ID,
+            "question_id": ANSWER_IID,
             "answer": answer
         }
 

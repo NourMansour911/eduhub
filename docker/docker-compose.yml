@@ -12,6 +12,20 @@ services:
       - "6334:6334"
     restart: always
 
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mongodb
+    volumes:
+      - eduhub_mongodata:/data/db
+    networks:
+      - backend
+    restart: always
+    ports:
+      - "27017:27017"
+    env_file:
+      - ./env/.env.mongodb
+    command: ["mongod", "--auth"]
+
 
 
 networks:
@@ -20,3 +34,4 @@ networks:
 
 volumes:
   eduhub_qdrant_data:
+  eduhub_mongodata:

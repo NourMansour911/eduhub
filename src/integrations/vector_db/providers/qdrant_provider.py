@@ -443,7 +443,7 @@ class QdrantDBProvider(VectorDBInterface):
             for p in points:
                 payload = p.payload or {}
                 text = payload.get("text", "")
-                if text_limit and len(text) > text_limit:
+                if text_limit and (len(text) > text_limit):
                     text = text[:text_limit]
                 chunk_item = {
                     "id": str(p.id),

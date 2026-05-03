@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     # Database
     QDRANT_URL: str
     REDIS_URL: str
+    MONGODB_URL: str
+    MONGO_DB_NAME: str 
 
 
     TO_BYTES: int

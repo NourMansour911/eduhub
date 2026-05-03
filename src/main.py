@@ -5,10 +5,11 @@ from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
+from repositories import AnswerRepo
+from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, vectordb_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
-from services.grading import ScoringService
 import os
 
 settings = get_settings()
@@ -46,16 +47,20 @@ async def lifespan(app: FastAPI):
   app.state.langchain_client = LCOpenAI(api_key=OPENAI_API_KEYS[3],api_url=settings.OPENAI_API_URL)
   logger.info("LangChain client loaded successfully")
 
-  # Scoring service (CrossEncoder) loaded once at startup
-  app.state.scoring_service = ScoringService(
-      model_id=settings.CROSS_ENCODER_MODEL_ID,
-      device=settings.CROSS_ENCODER_DEVICE,
+  # Mongo client
+  app.state.mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
+  app.state.mongo_db = app.state.mongo_client[settings.MONGO_DB_NAME]
+  mongo_repos = await init_mongo_resources(
+    app.state.mongo_db,
+    [AnswerRepo],
   )
-  logger.info("Scoring service loaded successfully")
-  
-  
+  app.state.answer_repo = mongo_repos["AnswerRepo"]
+  logger.info("Mongo repositories loaded successfully")
+
+
   yield
   app.state.vdb_client.disconnect()
+  app.state.mongo_client.close()
   
   
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from helpers import get_logger
-from orchestrator import GradingOrchestrator, get_grading_orchestrator
 from schemas import GradingRequest, GradingResponse, RefGradingRequest, RefGradingResponse
+from services.grading import SetReferenceService, get_set_reference_service
 
 logger = get_logger(__name__)
 
@@ -13,29 +13,18 @@ grading_route = APIRouter(
 
 
 @grading_route.post(
-    "/reference",
+    "/set-reference",
     summary="Set reference answer",
     description="Accepts the reference answer for later grading.",
     response_model=RefGradingResponse,
 )
 async def set_reference_answer(
     payload: RefGradingRequest,
-    orchestrator: GradingOrchestrator = Depends(get_grading_orchestrator),
+    store_ref_service: SetReferenceService = Depends(get_set_reference_service),
 ) -> RefGradingResponse:
-    return await orchestrator.set_reference_answer(payload)
+    return await store_ref_service.store_reference(payload)
 
 
-@grading_route.post(
-    "/grade",
-    summary="Grade student answer",
-    description="Grades a student answer against the stored reference answer.",
-    response_model=GradingResponse,
-)
-async def grade_answer(
-    payload: GradingRequest,
-    orchestrator: GradingOrchestrator = Depends(get_grading_orchestrator),
-) -> GradingResponse:
-    return await orchestrator.grade_answer(payload)
 
 
 

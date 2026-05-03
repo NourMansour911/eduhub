@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path
 
 from helpers import get_logger
-from orchestrator import VDBOrchestrator, get_vdb_orchestrator
+from services.vdb_service import VDBService, get_vdb_service
 from schemas.vectordb_schema import CollectionChunksResponse, ChunksQuerySchema, DeleteCollectionResponse
 
 logger = get_logger(__name__)
@@ -20,9 +20,9 @@ vectordb_route = APIRouter(
 )
 async def get_collection_info(
     collection_name: str = Path(..., description="Vector collection name."),
-    orchestrator: VDBOrchestrator = Depends(get_vdb_orchestrator),
+    vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return orchestrator.get_collection_info(collection_name=collection_name)
+    return vdb_service.get_collection_info(collection_name=collection_name)
 
 
 @vectordb_route.get(
@@ -35,9 +35,9 @@ async def get_collection_info(
 async def get_collection_chunks(
     collection_name: str = Path(..., description="Vector collection name."),
     query: ChunksQuerySchema = Depends(),
-    orchestrator: VDBOrchestrator = Depends(get_vdb_orchestrator),
+    vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return orchestrator.get_chunks(
+    return vdb_service.get_chunks(
         collection_name=collection_name,
         page=query.page,
         limit=query.limit,
@@ -54,6 +54,6 @@ async def get_collection_chunks(
 )
 async def delete_collection(
     collection_name: str = Path(..., description="Vector collection name."),
-    orchestrator: VDBOrchestrator = Depends(get_vdb_orchestrator),
+    vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return orchestrator.delete_collection(collection_name=collection_name)
+    return vdb_service.delete_collection(collection_name=collection_name)

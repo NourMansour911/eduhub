@@ -1,5 +1,6 @@
 azure-ai-documentintelligence==1.0.2
 PyMuPDF==1.26.0
+motor==3.7.1
 numpy==2.2.6
 scikit-learn==1.6.1
 spacy==3.8.6

@@ -5,7 +5,7 @@ from fastapi import Depends
 
 from helpers import get_logger
 from integrations.llm import LLMInterface
-from integrations.integrations_dependencies import get_embedding_client
+from core.request_dependencies import get_embedding_client
 from models.vdb_payload_model import VDBChunkPayload
 
 logger = get_logger(__name__)

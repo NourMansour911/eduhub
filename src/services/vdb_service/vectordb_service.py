@@ -1,9 +1,9 @@
 from fastapi import Depends
 from helpers.logger import get_logger
-from integrations.integrations_dependencies import get_vdb_client
 from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
 from typing import Optional
+from core.request_dependencies import get_vdb_client
 import json
 
 
@@ -60,9 +60,9 @@ class VDBService:
     def get_chunks(
         self,
         collection_name: str,
-        page: int = 1,
-        limit: int = 10,
-        text_limit: Optional[int] = 100,
+        text_limit: int,
+        page: int ,
+        limit: int ,
     ) -> CollectionChunksResponse:
 
         try:
