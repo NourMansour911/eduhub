@@ -1,26 +1,22 @@
 answer,expected_score
-"overfitting and underfitting same thing i think ,",0.1
-maybe need more dropout to fix underfitting,0.15
-not sure but model doesnt work good.,0.2
-"it happens when dataset too big for model so it gets confused ,",0.25
-data not enough leads to underfitting;;,0.3
-it not learning anything useful maybe data bad or training not enough idk -,0.45
-bad performance everywhere maybe due to preprocessing wrong;;,0.5
-low train + low test = underfitting cause simple model fix bigger model;;,0.55
-"model weak and lazy not fitting data well, try change algo ,",0.6
-it memorize less so predictions general but wrong mostly:,0.6
-algorithm is weak choose better one like tree or NN -,0.6
-both train and test accuracy low because model simple ..,0.65
-"training loss high and stays high, maybe learning rate issue or few epochs ,",0.65
-"underfitting is when model too simple cant learn patterns so both train and test bad, fix maybe add layers or features;;",0.7
-model fails even on training set which means it didnt capture relationships maybe need more epochs or better architecture ..,0.75
-"model cant capture mapping input->output so errors high, fix by more capacity;;",0.75
-"too much regularization kills learning so model underfits,",0.8
-increase epochs and complexity to reduce underfitting also better features help:,0.8
-"underfitting means high bias not enough flexibility, address by increasing parameters and reducing constraints -",0.85
-"simple linear model used for complex nonlinear data causes underfitting, use nonlinear model -",0.85
-"insufficient features, poor representation, high bias → underfitting; address via feature engineering ..",0.85
-"Model shows low accuracy on training and testing; likely high bias. Increase complexity, reduce regularization, add features.:",0.9
-Underfitting is opposite of overfitting; the model is too constrained and performs poorly everywhere. Increase capacity and improve features. -,0.9
-underfitting occurs when hypothesis space is limited; fix by expanding it and engineering features -,0.9
-"Underfitting occurs due to insufficient capacity or poor features leading to high error across datasets. Solutions include richer features, longer training, and larger models. ,",0.95
+"Underfitting is when machine learning always gives correct answers.",0.0
+"Model underfitting means no problem in data just evaluation issue.",0.1
+"It happens when model is too advanced and overcomplicated.",0.1
+"Underfitting is same as overfitting but less severe.",0.2
+"Underfitting is when model performs well on test but bad on training only.",0.2
+"The model underfits when it does not memorize training data well.",0.3
+"Underfitting is when accuracy is low because data is noisy.",0.4
+"Underfitting is when training data is small so model cannot learn properly.",0.4
+"It happens when model cannot capture data patterns because it is weak.",0.5
+"Underfitting means the model is not learning enough from data so results are bad.",0.5
+"The model underfits when it is not complex and cannot fit data correctly.",0.5
+"It is when a model is not good enough for the data and gives wrong predictions.",0.6
+"Underfitting is related to when the model is not trained properly or lacks features.",0.6
+"When the model is too simple it may not learn patterns well and gives poor performance.",0.6
+"The model underfits when it is simple and does not generalize well.",0.7
+"Underfitting happens when the model cannot learn well from data, so accuracy is low on training and test sets.",0.7
+"Underfitting happens when the model is not complex enough and the features are weak, leading to bad performance on both training and test data.",0.9
+"It occurs when the algorithm is too weak or simple so it cannot understand data patterns well, and we can fix it by increasing model complexity or training more.",0.9
+"Underfitting is when a machine learning model cannot capture the patterns in data because it has low complexity, so it performs badly on training and testing data.",1.0
+"The model is underfitting when it is too simple or not trained enough, so it cannot learn relationships in the dataset and gives poor results on train and test.",1.0
+"It happens when the model is too simple to learn patterns in data and performs poorly on both training and test sets.",1.0
