@@ -2,6 +2,7 @@
 
 from . import grading_router
 from .grading_router import set_reference_answer
+from .grading_router import grade
 from . import home_router
 from .home_router import home
 from . import vectordb_router
@@ -17,5 +18,6 @@ __all__ = [
     "get_collection_chunks",
     "get_collection_info",
     "home",
+    "grade",
     "set_reference_answer",
 ]

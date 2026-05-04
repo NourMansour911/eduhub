@@ -9,6 +9,9 @@ from .grading_exceptions import ReferenceAnswerNotFoundError
 from . import set_reference
 from .set_reference import SetReferenceService
 from .set_reference import get_set_reference_service
+from . import set_score
+from .set_score import SetScoreService
+from .set_score import get_set_score_service
 
 __all__ = [
     "grading_exceptions",
@@ -20,4 +23,7 @@ __all__ = [
     "ReferenceAnswerNotFoundError",
     "SetReferenceService",
     "get_set_reference_service",
+    "set_score",
+    "SetScoreService",
+    "get_set_score_service",
 ]
