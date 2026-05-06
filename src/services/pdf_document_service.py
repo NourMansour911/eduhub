@@ -6,8 +6,15 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 from azure.core.credentials import AzureKeyCredential
 
-from core import AppException, Settings
+from core import Settings
 from helpers import get_logger
+from services.pdf_document_exceptions import (
+    AzureDocAnalysisFailedError,
+    FitzNotInstalledError,
+    FitzPdfParseFailedError,
+    InvalidPdfUrlError,
+    PdfDocumentException,
+)
 
 logger = get_logger(__name__)
 
@@ -47,16 +54,11 @@ class PdfDocumentService:
                 "azure_document_intelligence": azure_output,
                 "fitz": fitz_output,
             }
-        except AppException:
+        except PdfDocumentException:
             raise
         except Exception as exc:
             logger.error("Azure Document Intelligence call failed", exc_info=True)
-            raise AppException(
-                message="Failed to analyze PDF with Azure Document Intelligence",
-                status_code=502,
-                error_code="AZURE_DOC_ANALYSIS_FAILED",
-                details={"error": str(exc), "pdf_url": pdf_url},
-            )
+            raise AzureDocAnalysisFailedError(details={"error": str(exc), "pdf_url": pdf_url})
 
     def analyze_pdf_url_with_fitz(self, pdf_url: str) -> dict:
         self._validate_pdf_url(pdf_url)
@@ -68,14 +70,11 @@ class PdfDocumentService:
                 try:
                     import pymupdf as fitz
                 except ImportError as exc:
-                    raise AppException(
-                        message="PyMuPDF is not installed",
-                        status_code=500,
-                        error_code="FITZ_NOT_INSTALLED",
+                    raise FitzNotInstalledError(
                         details={
                             "error": str(exc),
                             "hint": "Install with: pip install PyMuPDF",
-                        },
+                        }
                     )
 
             request = Request(
@@ -109,16 +108,11 @@ class PdfDocumentService:
                 "metadata": self._json_safe(metadata),
                 "pages": self._json_safe(pages),
             }
-        except AppException:
+        except PdfDocumentException:
             raise
         except Exception as exc:
             logger.error("Fitz PDF extraction failed", exc_info=True)
-            raise AppException(
-                message="Failed to parse PDF with Fitz",
-                status_code=502,
-                error_code="FITZ_PDF_PARSE_FAILED",
-                details={"error": str(exc), "pdf_url": pdf_url},
-            )
+            raise FitzPdfParseFailedError(details={"error": str(exc), "pdf_url": pdf_url})
 
     def compare_azure_and_fitz(self, pdf_url: str) -> dict:
         self._validate_pdf_url(pdf_url)
@@ -140,12 +134,7 @@ class PdfDocumentService:
             }
         except Exception as exc:
             logger.error("Azure Document Intelligence call failed", exc_info=True)
-            raise AppException(
-                message="Failed to analyze PDF with Azure Document Intelligence",
-                status_code=502,
-                error_code="AZURE_DOC_ANALYSIS_FAILED",
-                details={"error": str(exc), "pdf_url": pdf_url},
-            )
+            raise AzureDocAnalysisFailedError(details={"error": str(exc), "pdf_url": pdf_url})
 
         fitz_output = self.analyze_pdf_url_with_fitz(pdf_url=pdf_url)
 
@@ -171,9 +160,4 @@ class PdfDocumentService:
     def _validate_pdf_url(self, pdf_url: str) -> None:
         parsed = urlparse(pdf_url)
         if parsed.scheme not in {"http", "https"}:
-            raise AppException(
-                message="Invalid PDF URL",
-                status_code=400,
-                error_code="INVALID_PDF_URL",
-                details={"pdf_url": pdf_url},
-            )
+            raise InvalidPdfUrlError(details={"pdf_url": pdf_url})

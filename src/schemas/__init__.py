@@ -12,6 +12,7 @@ from .lecture_schema import DeleteLectureResponse
 from .lecture_schema import LectureCreateRequest
 from .lecture_schema import LectureListResponse
 from .lecture_schema import LectureResponse
+from .lecture_schema import LectureDeleteRequest
 from . import vectordb_schema
 from .vectordb_schema import ChunkResponse
 from .vectordb_schema import ChunksQuerySchema
@@ -30,6 +31,7 @@ __all__ = [
     "CollectionChunksResponse",
     "DeleteCollectionResponse",
     "DeleteLectureResponse",
+        "LectureDeleteRequest",
     "GradingRequest",
     "GradingResponse",
     "LectureCreateRequest",

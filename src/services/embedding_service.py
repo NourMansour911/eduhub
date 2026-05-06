@@ -7,6 +7,7 @@ from helpers import get_logger
 from integrations.llm import LLMInterface
 from core.request_dependencies import get_embedding_client
 from models.vdb_payload_model import VDBChunkPayload
+from services.embedding_exceptions import EmbeddingGenerationError, EmptyChunkTextError
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,7 @@ class ChunkEmbeddingService:
             text = str(payload.text).strip()
             if not text:
                 logger.error("Chunk text is empty", extra={"chunk_index": index})
-                raise ValueError("Chunk text is empty")
+                raise EmptyChunkTextError(details={"chunk_index": index})
 
             try:
                 if document_type is None:
@@ -48,7 +49,9 @@ class ChunkEmbeddingService:
                         vector = await self.embedding_client.embed_text(text)
             except Exception as exc:
                 logger.error("Embedding failed", exc_info=True, extra={"chunk_index": index})
-                raise RuntimeError("Embedding failed") from exc
+                raise EmbeddingGenerationError(
+                    details={"chunk_index": index, "error": str(exc)}
+                ) from exc
 
             texts.append(text)
             vectors.append(vector)

@@ -1,7 +1,7 @@
 from typing import Any
 
-from bson import ObjectId
 from fastapi import Depends
+from pymongo.errors import DuplicateKeyError
 
 from core.request_dependencies import get_lecture_repo
 from models import LectureModel
@@ -9,10 +9,15 @@ from repositories import LectureRepo
 from schemas import (
     DeleteLectureResponse,
     LectureCreateRequest,
+    LectureDeleteRequest,
     LectureListResponse,
     LectureResponse,
 )
-from services.service_exceptions import NotFoundError, ValidationError
+from services.lecture_exceptions import (
+    LectureConflictError,
+    LectureNotFoundError,
+    LectureServiceException,
+)
 
 
 def _serialize_content(content: Any) -> Any:
@@ -26,25 +31,25 @@ class LectureService:
         self.lecture_repo = lecture_repo
 
     async def create_lecture(self, payload: LectureCreateRequest) -> LectureResponse:
-        if not payload.lecture_id.strip():
-            raise ValidationError(details={"field": "lecture_id", "message": "lecture_id is required"})
-        if not payload.subject_id.strip():
-            raise ValidationError(details={"field": "subject_id", "message": "subject_id is required"})
-        if not payload.subject_name.strip():
-            raise ValidationError(details={"field": "subject_name", "message": "subject_name is required"})
-
         lecture = LectureModel(
-            lecture_id=payload.lecture_id.strip(),
-            subject_id=payload.subject_id.strip(),
-            subject_name=payload.subject_name.strip(),
+            lecture_id=payload.lecture_id,
+            lecture_name=payload.lecture_name,
+            subject_id=payload.subject_id,
+            subject_name=payload.subject_name,
             content=payload.content,
             order=payload.order,
         )
-        inserted_id = await self.lecture_repo.add_lecture(lecture)
+        try:
+            inserted_id = await self.lecture_repo.add_lecture(lecture)
+        except DuplicateKeyError as exc:
+            raise LectureConflictError(details={"lecture_id": lecture.lecture_id, "error": str(exc)})
+        except Exception as exc:
+            raise LectureServiceException(details={"operation": "create_lecture", "error": str(exc)})
 
         return LectureResponse(
             _id=str(inserted_id),
             lecture_id=lecture.lecture_id,
+            lecture_name=lecture.lecture_name,
             subject_id=lecture.subject_id,
             subject_name=lecture.subject_name,
             content=_serialize_content(lecture.content),
@@ -52,13 +57,17 @@ class LectureService:
         )
 
     async def get_lecture(self, lecture_id: str) -> LectureResponse:
-        lecture = await self.lecture_repo.get_lecture_by_lecture_id(lecture_id)
+        try:
+            lecture = await self.lecture_repo.get_lecture_by_lecture_id(lecture_id)
+        except Exception as exc:
+            raise LectureServiceException(details={"operation": "get_lecture", "error": str(exc)})
         if not lecture:
-            raise NotFoundError(details={"lecture_id": lecture_id})
+            raise LectureNotFoundError(details={"lecture_id": lecture_id})
 
         return LectureResponse(
             _id=str(lecture.iid) if lecture.iid else None,
             lecture_id=lecture.lecture_id,
+            lecture_name=lecture.lecture_name,
             subject_id=lecture.subject_id,
             subject_name=lecture.subject_name,
             content=_serialize_content(lecture.content),
@@ -66,11 +75,15 @@ class LectureService:
         )
 
     async def get_lectures_by_subject(self, subject_id: str) -> LectureListResponse:
-        lectures = await self.lecture_repo.get_lectures_by_subject(subject_id)
+        try:
+            lectures = await self.lecture_repo.get_lectures_by_subject(subject_id)
+        except Exception as exc:
+            raise LectureServiceException(details={"operation": "get_lectures_by_subject", "error": str(exc)})
         items = [
             LectureResponse(
                 _id=str(lecture.iid) if lecture.iid else None,
                 lecture_id=lecture.lecture_id,
+                lecture_name=lecture.lecture_name,
                 subject_id=lecture.subject_id,
                 subject_name=lecture.subject_name,
                 content=_serialize_content(lecture.content),
@@ -80,17 +93,23 @@ class LectureService:
         ]
         return LectureListResponse(items=items)
 
-    async def delete_lecture(self, lecture_id: str) -> DeleteLectureResponse:
-        deleted_count = await self.lecture_repo.delete_by_lecture_id(lecture_id)
+    async def delete_lecture(self, payload: LectureDeleteRequest) -> DeleteLectureResponse:
+        try:
+            deleted_count = await self.lecture_repo.delete_by_lecture_id(payload.lecture_id)
+        except Exception as exc:
+            raise LectureServiceException(details={"operation": "delete_lecture", "error": str(exc)})
         if deleted_count == 0:
-            raise NotFoundError(details={"lecture_id": lecture_id})
-        return DeleteLectureResponse(lecture_id=lecture_id, deleted_count=deleted_count)
+            raise LectureNotFoundError(details={"lecture_id": payload.lecture_id})
+        return DeleteLectureResponse(lecture_id=payload.lecture_id, deleted_count=deleted_count)
 
-    async def delete_lectures_by_subject(self, subject_id: str) -> DeleteLectureResponse:
-        deleted_count = await self.lecture_repo.delete_by_subject_id(subject_id)
+    async def delete_lectures_by_subject(self, payload: LectureDeleteRequest) -> DeleteLectureResponse:
+        try:
+            deleted_count = await self.lecture_repo.delete_by_subject_id(payload.subject_id)
+        except Exception as exc:
+            raise LectureServiceException(details={"operation": "delete_lectures_by_subject", "error": str(exc)})
         if deleted_count == 0:
-            raise NotFoundError(details={"subject_id": subject_id})
-        return DeleteLectureResponse(subject_id=subject_id, deleted_count=deleted_count)
+            raise LectureNotFoundError(details={"subject_id": payload.subject_id})
+        return DeleteLectureResponse(subject_id=payload.subject_id, deleted_count=deleted_count)
 
 
 def get_lecture_service(

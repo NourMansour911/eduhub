@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from helpers import get_logger
-from schemas import DeleteLectureResponse, LectureCreateRequest, LectureListResponse, LectureResponse
+from schemas import DeleteLectureResponse, LectureCreateRequest, LectureDeleteRequest, LectureListResponse, LectureResponse
 from services import lecture_service
 
 logger = get_logger(__name__)
@@ -61,7 +61,7 @@ async def delete_lecture(
     lecture_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lecture(lecture_id)
+    return await service.delete_lecture(LectureDeleteRequest(lecture_id=lecture_id))
 
 
 @lecture_route.delete(
@@ -74,4 +74,4 @@ async def delete_lectures_by_subject(
     subject_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lectures_by_subject(subject_id)
+    return await service.delete_lectures_by_subject(LectureDeleteRequest(subject_id=subject_id))
