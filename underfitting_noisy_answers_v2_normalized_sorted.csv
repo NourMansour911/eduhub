@@ -1,7 +1,6 @@
 answer,expected_score
 "Underfitting is when machine learning always gives correct answers.",0.0
 "Model underfitting means no problem in data just evaluation issue.",0.1
-"It happens when model is too advanced and overcomplicated.",0.1
 "Underfitting is same as overfitting but less severe.",0.2
 "Underfitting is when model performs well on test but bad on training only.",0.2
 "The model underfits when it does not memorize training data well.",0.3
@@ -9,8 +8,6 @@ answer,expected_score
 "Underfitting is when training data is small so model cannot learn properly.",0.4
 "It happens when model cannot capture data patterns because it is weak.",0.5
 "Underfitting means the model is not learning enough from data so results are bad.",0.5
-"The model underfits when it is not complex and cannot fit data correctly.",0.5
-"It is when a model is not good enough for the data and gives wrong predictions.",0.6
 "Underfitting is related to when the model is not trained properly or lacks features.",0.6
 "When the model is too simple it may not learn patterns well and gives poor performance.",0.6
 "The model underfits when it is simple and does not generalize well.",0.7

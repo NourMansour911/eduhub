@@ -1,29 +1,22 @@
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+import logging
+from typing import Dict, Any, List
 
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnableLambda, Runnable
+from langchain_core.output_parsers import PydanticOutputParser
+
+
+from pydantic import BaseModel, Field
+from langchain_openai import ChatOpenAI
 
 class GradingOutput(BaseModel):
-    correctness: int = Field(
-        ..., ge=0, le=25,
-        description="factual accuracy and alignment with the reference. penalize incorrect facts and contradictions heavily."
-    )
-    coverage: int = Field(
-        ..., ge=0, le=25,
-        description="whether all required key points from the reference are present in the student answer (regardless of depth)."
-    )
-    completeness: int = Field(
-        ..., ge=0, le=25,
-        description="depth and quality of explanation for the included points. measures how well each point is developed."
-    )
-    precision: int = Field(
-        ..., ge=0, le=25,
-        description="clarity, structure, and conciseness. penalize irrelevant or unnecessary information."
+    score: int = Field(
+        ..., ge=0, le=100,
+        description="Final grading score from 0 to 100."
     )
     feedback: str = Field(
         ...,
-        description="clear and actionable feedback explaining strengths, weaknesses, and how to improve the answer."
+        description="Clear and actionable feedback explaining strengths, weaknesses, and how to improve the answer."
     )
 
 
@@ -34,71 +27,52 @@ GRADING_PROMPT = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-you are a strict, deterministic, and fair grading system.
+You are a strict and consistent academic grader.
 
-your task is to evaluate a student answer against a reference answer for a given question.
+Your goal is to evaluate the student answer against the reference answer using an explicit scoring rubric.
 
-core principles:
-- the question defines the required intent
-- the reference answer is the ground truth
-- evaluation must consider BOTH the question and the reference
-- similarity to the reference is important, but relevance to the question is mandatory
-- do not reward correct information that does not answer the question
-- do not assume missing information is correct
+### Step 1: Understand the Question
+- Identify exactly what is being asked.
 
-evaluation process (internal reasoning steps):
-1. identify key points required to answer the question
-2. extract key points from the reference answer
-3. check whether each key point is present in the student answer
-4. evaluate how well each included point is explained
-5. evaluate relevance of the student answer to the question
+### Step 2: Extract Key Points from Reference
+- Break the reference answer into clear atomic key points.
+- Each key point should represent one idea or requirement.
 
-scoring criteria (0–25 each):
+### Step 3: Compare Student Answer
+For EACH key point:
+- Mark it as:
+  - FULLY CORRECT
+  - PARTIALLY CORRECT
+  - MISSING / INCORRECT
 
-correctness:
-- factual alignment with the reference
-- penalize hallucinations and contradictions heavily
-- any factual contradiction should significantly reduce correctness (<=10)
+### Step 4: Scoring Rules (STRICT)
+- FULLY CORRECT → full weight
+- PARTIAL → half weight
+- MISSING → zero
 
-coverage:
-- whether ALL key points are present (focus on presence, not depth)
-- missing key points must reduce the score significantly
-- if more than 30 percent of key points are missing, coverage must be 10 or lower
-- if the answer is mostly irrelevant to the question, coverage must be 5 or lower
+- Final score = (earned points / total points) * 100
 
-completeness:
-- depth and quality of explanation for included points
-- measures how well each point is developed
-- partial explanations should receive partial credit
-- if key points are missing, completeness must also be reduced
+### Step 5: Quality Adjustments
+Apply small adjustments (+/- up to 10):
+- + for clarity, structure, good explanation
+- - for vague, disorganized, or misleading content
 
-precision:
-- clarity, structure, and conciseness
-- penalize irrelevant, redundant, or off-topic information
-- correct but irrelevant information must reduce precision
+### Important Rules:
+- Grade based on MEANING, not wording
+- Accept paraphrasing and synonyms
+- Do NOT hallucinate missing content
+- Do NOT reward unrelated correct facts
+- Be consistent and deterministic
 
-handling simple questions:
-- if the question expects a short factual answer (e.g., definition, name, number):
-  - a concise correct answer can receive full correctness, coverage, and precision
-  - do NOT penalize for lack of verbosity
-  - completeness should remain high if no important detail is missing
-
-strict rules:
-- be consistent across similar inputs
-- avoid score fluctuation for equivalent answers
-- do not give scores above 22 out of 25 unless:
-  - no key points are missing
-  - no incorrect information is present
-  - the answer fully aligns with the question
-- if incorrect extra information exists, reduce both correctness and precision
-- if the answer is correct but shorter than the reference, do NOT reduce correctness
-
-output instructions:
-- you MUST follow the format instructions exactly
-- return ONLY valid JSON
-- do not include markdown, explanations, or extra text
-- feedback must be concise (1–3 sentences)
-- feedback must explicitly mention missing or incorrect parts relative to the reference
+### Output Rules:
+- Return ONLY valid JSON
+- Score must be integer (0–100)
+- Feedback must:
+  - Be concise (2–4 sentences)
+  - Mention:
+    - what was correct
+    - what is missing or incorrect
+    - how to improve
 
 {format_instructions}
             """,
@@ -122,3 +96,22 @@ STUDENT ANSWER:
 
 parser = PydanticOutputParser(pydantic_object=GradingOutput)
 
+def build_requery_chain(llm: ChatOpenAI) -> Runnable:
+
+    def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "question": inputs["question"],
+            "reference_answer": inputs["reference_answer"],
+            "student_answer": inputs["student_answer"],
+            "format_instructions": parser.get_format_instructions()
+        }
+
+    chain = (
+        RunnableLambda(prepare_input)
+        | GRADING_PROMPT
+        | llm
+        | parser
+        | RunnableLambda(lambda x: x)
+    )
+
+    return chain

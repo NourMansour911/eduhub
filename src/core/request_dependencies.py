@@ -23,3 +23,5 @@ def get_embedding_client(request: Request):
     return request.app.state.embedding_client
 
 
+
+

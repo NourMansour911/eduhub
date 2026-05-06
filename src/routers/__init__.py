@@ -1,8 +1,8 @@
 # Auto-generated __init__.py
 
 from . import grading_router
+from .grading_router import grade_batch
 from .grading_router import set_reference_answer
-from .grading_router import grade
 from . import home_router
 from .home_router import home
 from . import vectordb_router
@@ -17,7 +17,7 @@ __all__ = [
     "delete_collection",
     "get_collection_chunks",
     "get_collection_info",
+    "grade_batch",
     "home",
-    "grade",
     "set_reference_answer",
 ]

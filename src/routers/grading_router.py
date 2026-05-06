@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from helpers import get_logger
-from schemas import GradingRequest, GradingResponse, RefGradingRequest, RefGradingResponse
+from schemas import RefGradingRequest, RefGradingResponse, BatchGradingRequest, BatchGradingResponse
 from services.grading import (
     SetReferenceService,
     SetScoreService,
@@ -30,17 +30,18 @@ async def set_reference_answer(
     return await store_ref_service.store_reference(payload)
 
 
+
 @grading_route.post(
-    "/grade",
-    summary="Grade student answer",
-    description="Grades the student answer against the stored reference answer.",
-    response_model=GradingResponse,
+    "/grade-batch",
+    summary="Grade multiple student answers",
+    description="Grades multiple student answers against stored reference answers.",
+    response_model=BatchGradingResponse,
 )
-async def grade(
-    payload: GradingRequest,
+async def grade_batch(
+    payload: BatchGradingRequest,
     grading_service: SetScoreService = Depends(get_set_score_service),
-) -> GradingResponse:
-    return await grading_service.set_score(payload)
+) -> BatchGradingResponse:
+    return await grading_service.batch_grade(payload)
 
 
 

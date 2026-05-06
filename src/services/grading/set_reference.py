@@ -14,8 +14,11 @@ class SetReferenceService:
     async def store_reference(self, payload: RefGradingRequest) -> RefGradingResponse:
         if not payload.answer or not payload.answer.strip():
             raise InvalidReferenceAnswerError()
+        if not payload.question_text or not payload.question_text.strip():
+            raise InvalidReferenceAnswerError()
 
         answer_model = AnswerModel(
+            question=payload.question_text.strip(),
             text=payload.answer.strip(),
             word_count=len(payload.answer.split()),
         )

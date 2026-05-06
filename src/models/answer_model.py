@@ -6,9 +6,9 @@ from datetime import datetime
 
 class AnswerModel(BaseModel):
     iid: Optional[ObjectId] = Field(None, alias="_id")
+    question: str = Field(..., description="The question text")
     text: str = Field(..., description="Text of the answer")
     created_at: datetime = Field(default_factory=datetime.now)
-    word_count: int = Field(..., description="Word count in chunk")
 
     
     

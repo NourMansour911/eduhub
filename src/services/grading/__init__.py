@@ -1,5 +1,8 @@
 # Auto-generated __init__.py
 
+from . import grading_chain
+from .grading_chain import GradingOutput
+from .grading_chain import build_requery_chain
 from . import grading_exceptions
 from .grading_exceptions import GradingException
 from .grading_exceptions import GradingProcessingError
@@ -14,16 +17,19 @@ from .set_score import SetScoreService
 from .set_score import get_set_score_service
 
 __all__ = [
+    "grading_chain",
     "grading_exceptions",
     "set_reference",
+    "set_score",
     "GradingException",
+    "GradingOutput",
     "GradingProcessingError",
     "InvalidReferenceAnswerError",
     "InvalidStudentAnswerError",
     "ReferenceAnswerNotFoundError",
     "SetReferenceService",
-    "get_set_reference_service",
-    "set_score",
     "SetScoreService",
+    "build_requery_chain",
+    "get_set_reference_service",
     "get_set_score_service",
 ]

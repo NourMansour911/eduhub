@@ -1,6 +1,8 @@
 # Auto-generated __init__.py
 
 from . import grading_schema
+from .grading_schema import BatchGradingRequest
+from .grading_schema import BatchGradingResponse
 from .grading_schema import GradingRequest
 from .grading_schema import GradingResponse
 from .grading_schema import RefGradingRequest
@@ -15,6 +17,8 @@ from .vectordb_schema import SearchRequest
 __all__ = [
     "grading_schema",
     "vectordb_schema",
+    "BatchGradingRequest",
+    "BatchGradingResponse",
     "ChunkResponse",
     "ChunksQuerySchema",
     "CollectionChunksResponse",
