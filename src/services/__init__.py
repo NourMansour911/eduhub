@@ -4,6 +4,7 @@ from . import embedding_service
 from .embedding_service import ChunkEmbeddingService
 from .embedding_service import get_chunk_embedding_service
 from . import grading
+from . import lecture_service
 from . import pdf_document_service
 from .pdf_document_service import PdfDocumentService
 from . import service_exceptions
@@ -17,6 +18,7 @@ from . import vdb_service
 __all__ = [
     "embedding_service",
     "grading",
+    "lecture_service",
     "pdf_document_service",
     "service_exceptions",
     "vdb_service",

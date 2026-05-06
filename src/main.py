@@ -5,14 +5,12 @@ from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
-from repositories import AnswerRepo
+from repositories import AnswerRepo, LectureRepo
 from repositories.mongo_bootstrap import init_mongo_resources
-from routers import grading_router, home_router, vectordb_router
+from routers import grading_router, home_router, lecture_router, vectordb_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
 import os
-
-from src.repositories.lecture_repo import LectureRepo
 
 settings = get_settings()
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -73,4 +71,5 @@ app = FastAPI(lifespan=lifespan)
 app.add_exception_handler(AppException, app_exception_handler)
 app.include_router(home_router.home_route)
 app.include_router(grading_router.grading_route)
+app.include_router(lecture_router.lecture_route)
 app.include_router(vectordb_router.vectordb_route)
