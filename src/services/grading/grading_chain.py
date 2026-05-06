@@ -12,74 +12,61 @@ from langchain_openai import ChatOpenAI
 class GradingOutput(BaseModel):
     score: int = Field(
         ..., ge=0, le=100,
-        description="Final grading score from 0 to 100."
+        description="Final grading score from 0 to 100 (multiples of 10 preferred)."
     )
     feedback: str = Field(
         ...,
-        description="Clear and actionable feedback explaining strengths, weaknesses, and how to improve the answer."
+        description="Short feedback (1–2 sentences, max 25 words) mentioning the main missing or incorrect points only."
     )
 
 
-
-
 GRADING_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
-You are a strict and consistent academic grader.
+[
+(
+"system",
+"""
+You are a strict grader.
 
-Your goal is to evaluate the student answer against the reference answer using an explicit scoring rubric.
+Evaluate ONLY how much the student answer matches the reference answer in meaning.
 
-### Step 1: Understand the Question
-- Identify exactly what is being asked.
+Rules:
+- Do NOT add information
+- Do NOT assume missing parts are correct
+- Accept correct paraphrasing
+- Penalize only missing or incorrect ideas
 
-### Step 2: Extract Key Points from Reference
-- Break the reference answer into clear atomic key points.
-- Each key point should represent one idea or requirement.
+Scoring:
 
-### Step 3: Compare Student Answer
-For EACH key point:
-- Mark it as:
-  - FULLY CORRECT
-  - PARTIALLY CORRECT
-  - MISSING / INCORRECT
+1) Hard gates (apply FIRST):
+- If answer is irrelevant or contradicts the reference → score = 0
+- If most key ideas are missing → score ≤ 30
 
-### Step 4: Scoring Rules (STRICT)
-- FULLY CORRECT → full weight
-- PARTIAL → half weight
-- MISSING → zero
+2) Otherwise:
+- Start from 100
+- Subtract:
+  - major missing/incorrect idea → -40
+  - minor missing detail → -15
 
-- Final score = (earned points / total points) * 100
+3) Clamp between 0 and 100
+4) Prefer multiples of 10
 
-### Step 5: Quality Adjustments
-Apply small adjustments (+/- up to 10):
-- + for clarity, structure, good explanation
-- - for vague, disorganized, or misleading content
+Critical:
+- Determine the score FIRST
+- Be conservative: if unsure, choose the LOWER score
+- Do NOT change score after writing feedback
 
-### Important Rules:
-- Grade based on MEANING, not wording
-- Accept paraphrasing and synonyms
-- Do NOT hallucinate missing content
-- Do NOT reward unrelated correct facts
-- Be consistent and deterministic
+Feedback rules:
+- 1–2 short sentences (max 25 words)
+- Mention only the main missing or incorrect parts
 
-### Output Rules:
+Output rules:
 - Return ONLY valid JSON
-- Score must be integer (0–100)
-- Feedback must:
-  - Be concise (2–4 sentences)
-  - Mention:
-    - what was correct
-    - what is missing or incorrect
-    - how to improve
-
 {format_instructions}
-            """,
-        ),
-        (
-            "human",
-            """
+"""
+),
+(
+"human",
+"""
 QUESTION:
 {question}
 
@@ -88,11 +75,10 @@ REFERENCE ANSWER:
 
 STUDENT ANSWER:
 {student_answer}
-            """,
-        ),
-    ]
+"""
+),
+]
 )
-
 
 parser = PydanticOutputParser(pydantic_object=GradingOutput)
 
