@@ -12,6 +12,8 @@ from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
 import os
 
+from src.repositories.lecture_repo import LectureRepo
+
 settings = get_settings()
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
@@ -52,9 +54,10 @@ async def lifespan(app: FastAPI):
   app.state.mongo_db = app.state.mongo_client[settings.MONGO_DB_NAME]
   mongo_repos = await init_mongo_resources(
     app.state.mongo_db,
-    [AnswerRepo],
+    [AnswerRepo, LectureRepo],
   )
   app.state.answer_repo = mongo_repos["AnswerRepo"]
+  app.state.lecture_repo = mongo_repos["LectureRepo"]
   logger.info("Mongo repositories loaded successfully")
 
 
