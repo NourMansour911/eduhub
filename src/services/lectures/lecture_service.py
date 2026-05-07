@@ -1,9 +1,11 @@
+import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends
 from pymongo.errors import DuplicateKeyError
 from azure.ai.documentintelligence import DocumentIntelligenceClient
-from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat
+from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat,AnalyzeResult
 
 from core.request_dependencies import get_lecture_repo, get_doc_intelligence_client
 from models import LectureModel
@@ -39,12 +41,23 @@ class LectureService:
     async def prepare_lecture_content(self, pdf_url: str):
 
         try:
-            poller = self.doc_intelligence_client.begin_analyze_document(
+            """ poller = self.doc_intelligence_client.begin_analyze_document(
                 model_id="prebuilt-layout",
                 body=AnalyzeDocumentRequest(url_source=pdf_url),
                 content_type=DocumentContentFormat.MARKDOWN,
             )
             analyze_result = poller.result()
+            return analyze_result """
+            
+            # Load from eduhub_demos folder
+            projects_root = Path(__file__).parents[3]  # Navigate to d:\training\AI\projects
+            json_file = projects_root / "eduhub_demos" / "azure_md.json"
+            
+            with open(json_file, "r", encoding="utf-8") as f:
+                result_data = json.load(f)
+
+            analyze_result = AnalyzeResult(result_data)  
+            
             return analyze_result
         except Exception as exc:
             raise LectureServiceException(
