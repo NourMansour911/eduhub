@@ -3,13 +3,15 @@ from uuid import uuid4
 
 from fastapi import Depends
 
+from core.request_dependencies import get_embedding_client
 from helpers import get_logger
 from integrations.llm import LLMInterface
-from core.request_dependencies import get_embedding_client
 from models.vdb_payload_model import VDBChunkPayload
-from services.embedding_exceptions import EmbeddingGenerationError, EmptyChunkTextError
+
+from .embedding_exceptions import EmbeddingGenerationError, EmptyChunkTextError
 
 logger = get_logger(__name__)
+
 
 class ChunkEmbeddingService:
     def __init__(self, embedding_client: LLMInterface):
@@ -27,6 +29,7 @@ class ChunkEmbeddingService:
         metas: List[dict] = []
 
         if id_factory is None:
+
             def id_factory(_: int) -> str:
                 return str(uuid4())
 

@@ -20,7 +20,7 @@ from core import Settings, get_langchain_client, get_settings
 class SetScoreService:
     def __init__(self, answer_repo: AnswerRepo, settings: Settings, lc_openai_client: LCOpenAI) -> None:
         self.answer_repo: AnswerRepo = answer_repo
-        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.0)
+        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, top_p=0.1,temperature=0.0)
 
 
     async def batch_grade(self, payload: BatchGradingRequest) -> BatchGradingResponse:

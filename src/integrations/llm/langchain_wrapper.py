@@ -13,6 +13,8 @@ class LCOpenAI:
         model: str,
         temperature: float = 0.2,
         max_tokens: int = None,
+        top_p: float = None,
+        
     ) -> ChatOpenAI:
 
         return ChatOpenAI(
@@ -21,4 +23,5 @@ class LCOpenAI:
             base_url=self.api_url,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=top_p,
         )

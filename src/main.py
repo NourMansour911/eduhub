@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
   app.state.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID, embedding_size=settings.EMBEDDING_MODEL_SIZE)
   logger.info("Embedding client loaded successfully")
   ## LangChain client
-  app.state.langchain_client = LCOpenAI(api_key=OPENAI_API_KEYS[3],api_url=settings.OPENAI_API_URL)
+  app.state.langchain_client = LCOpenAI(api_key=OPENAI_API_KEYS[0],api_url=settings.OPENAI_API_URL)
   logger.info("LangChain client loaded successfully")
 
   # Mongo client

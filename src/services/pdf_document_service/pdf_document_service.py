@@ -8,7 +8,8 @@ from azure.core.credentials import AzureKeyCredential
 
 from core import Settings
 from helpers import get_logger
-from services.pdf_document_exceptions import (
+
+from .pdf_document_exceptions import (
     AzureDocAnalysisFailedError,
     FitzNotInstalledError,
     FitzPdfParseFailedError,

@@ -1,4 +1,4 @@
-from services.service_exceptions import ServiceException
+from ..service_exceptions import ServiceException
 
 
 class LectureServiceException(ServiceException):

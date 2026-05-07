@@ -13,7 +13,8 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
-from services.lecture_exceptions import (
+
+from .lecture_exceptions import (
     LectureConflictError,
     LectureNotFoundError,
     LectureServiceException,
