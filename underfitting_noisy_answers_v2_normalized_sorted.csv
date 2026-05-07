@@ -1,19 +1,19 @@
 answer,expected_score
-"Underfitting is when machine learning always gives correct answers.",0.0
-"Model underfitting means no problem in data just evaluation issue.",0.1
-"Underfitting is same as overfitting but less severe.",0.2
-"Underfitting is when model performs well on test but bad on training only.",0.2
-"The model underfits when it does not memorize training data well.",0.3
-"Underfitting is when accuracy is low because data is noisy.",0.4
-"Underfitting is when training data is small so model cannot learn properly.",0.4
-"It happens when model cannot capture data patterns because it is weak.",0.5
-"Underfitting means the model is not learning enough from data so results are bad.",0.5
-"Underfitting is related to when the model is not trained properly or lacks features.",0.6
-"When the model is too simple it may not learn patterns well and gives poor performance.",0.6
-"The model underfits when it is simple and does not generalize well.",0.7
-"Underfitting happens when the model cannot learn well from data, so accuracy is low on training and test sets.",0.7
-"Underfitting happens when the model is not complex enough and the features are weak, leading to bad performance on both training and test data.",0.9
-"It occurs when the algorithm is too weak or simple so it cannot understand data patterns well, and we can fix it by increasing model complexity or training more.",0.9
-"Underfitting is when a machine learning model cannot capture the patterns in data because it has low complexity, so it performs badly on training and testing data.",1.0
-"The model is underfitting when it is too simple or not trained enough, so it cannot learn relationships in the dataset and gives poor results on train and test.",1.0
-"It happens when the model is too simple to learn patterns in data and performs poorly on both training and test sets.",1.0
+"Supervised and unsupervised learning are exactly the same thing.",0.0
+"Supervised learning works without labels and unsupervised uses labels.",0.0
+"Both types are only used for image processing tasks.",0.0
+"Supervised learning means the computer supervises humans.",0.0
+"Unsupervised learning predicts outputs while supervised only groups data.",0.1
+"Supervised learning is faster but there is no real difference between them.",0.1
+"Supervised learning uses training data while unsupervised learning does not use data.",0.2
+"Unsupervised learning is mainly for making predictions with labeled outputs.",0.2
+"Supervised learning uses labeled data but unsupervised learning is harder.",0.3
+"Supervised learning predicts values from labeled data while unsupervised learning finds patterns.",0.5
+"Supervised learning uses labeled datasets and unsupervised learning uses unlabeled datasets.",0.6
+"An example of supervised learning is spam detection while clustering is an example of unsupervised learning.",0.6
+"Supervised learning learns from labeled data to make predictions, while unsupervised learning discovers hidden patterns in unlabeled data.",0.7
+"Supervised learning uses labeled data for tasks like classification and prediction, while unsupervised learning finds groups and relationships in unlabeled data.",0.8
+"An example of supervised learning is email spam detection, while customer segmentation is an example of unsupervised learning.",0.8
+"Supervised learning trains models using labeled input and output data, while unsupervised learning works on unlabeled data to discover structures or clusters.",0.9
+"The main difference is that supervised learning depends on labeled data and known outputs, while unsupervised learning analyzes unlabeled data to discover hidden patterns or groups.",0.9
+"Supervised learning uses labeled data to predict outputs, such as spam detection, while unsupervised learning uses unlabeled data to find patterns, such as customer segmentation.",1.0

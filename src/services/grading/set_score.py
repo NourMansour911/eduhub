@@ -67,6 +67,8 @@ class SetScoreService:
             for item, output in zip(payload.items, grading_outputs):
                 ref: AnswerModel = references[item.question_id]
                 total_score: float = output.score / 100.0
+                if total_score < payload.threshold:
+                    total_score = 0.0
                 
                 results.append(GradingResponse(
                     question_id=item.question_id,

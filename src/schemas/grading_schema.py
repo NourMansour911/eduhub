@@ -18,15 +18,16 @@ class GradingRequest(BaseModel):
 
 
 class GradingResponse(BaseModel):
-    question_id: Optional[str] = Field(None, description="The question identifier.")
     score: float = Field(..., ge=0, le=1, description="Final weighted score.")
     feedback: Optional[str] = Field(None, description="Optional feedback for the student.")
-    reference_answer: Optional[str] = Field(None, description="The reference answer used for grading.")
     student_answer: Optional[str] = Field(None, description="The student's answer that was graded.")
+    question_id: Optional[str] = Field(None, description="The question identifier.")
+    reference_answer: Optional[str] = Field(None, description="The reference answer used for grading.")
 
 
 class BatchGradingRequest(BaseModel):
     items: List[GradingRequest] = Field(..., description="List of answers to grade.")
+    threshold: float = Field(0.3, ge=0, le=1, description="Scores below this value are rounded down to zero.")
 
 
 class BatchGradingResponse(BaseModel):
