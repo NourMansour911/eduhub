@@ -6,7 +6,7 @@ from .grading_router import set_reference_answer
 from . import home_router
 from .home_router import home
 from . import lecture_router
-from .lecture_router import create_lecture
+from .lecture_router import store_lecture
 from .lecture_router import delete_lecture
 from .lecture_router import delete_lectures_by_subject
 from .lecture_router import get_lecture
@@ -21,7 +21,7 @@ __all__ = [
     "home_router",
     "lecture_router",
     "vectordb_router",
-    "create_lecture",
+    "store_lecture",
     "delete_collection",
     "delete_lecture",
     "delete_lectures_by_subject",

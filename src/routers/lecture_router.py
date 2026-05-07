@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends
 
 from helpers import get_logger
-from schemas import DeleteLectureResponse, LectureCreateRequest, LectureDeleteRequest, LectureListResponse, LectureResponse
+from schemas import (
+    DeleteLectureResponse,
+    LectureStoreRequest,
+    LectureDeleteByIdRequest,
+    LectureDeleteBySubjectRequest,
+    LectureListResponse,
+    LectureResponse,
+)
 from services import lecture_service
 
 logger = get_logger(__name__)
@@ -18,11 +25,11 @@ lecture_route = APIRouter(
     description="Stores a lecture document with AnalyzeResult content.",
     response_model=LectureResponse,
 )
-async def create_lecture(
-    payload: LectureCreateRequest,
+async def store_lecture(
+    payload: LectureStoreRequest,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> LectureResponse:
-    return await service.create_lecture(payload)
+    return await service.store_lecture(payload)
 
 
 @lecture_route.get(
@@ -61,7 +68,7 @@ async def delete_lecture(
     lecture_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lecture(LectureDeleteRequest(lecture_id=lecture_id))
+    return await service.delete_lecture(LectureDeleteByIdRequest(lecture_id=lecture_id))
 
 
 @lecture_route.delete(
@@ -74,4 +81,4 @@ async def delete_lectures_by_subject(
     subject_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lectures_by_subject(LectureDeleteRequest(subject_id=subject_id))
+    return await service.delete_lectures_by_subject(LectureDeleteBySubjectRequest(subject_id=subject_id))
