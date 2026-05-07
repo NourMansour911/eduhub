@@ -1,6 +1,7 @@
 
 
 from fastapi import Request
+from azure.ai.documentintelligence import DocumentIntelligenceClient
 
 from repositories import AnswerRepo, LectureRepo
 
@@ -26,6 +27,10 @@ def get_vdb_client(request: Request):
 
 def get_embedding_client(request: Request):
     return request.app.state.embedding_client
+
+
+def get_doc_intelligence_client(request: Request) -> DocumentIntelligenceClient:
+    return request.app.state.doc_intelligence_client
 
 
 

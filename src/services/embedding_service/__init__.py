@@ -1,3 +1,5 @@
+# Auto-generated __init__.py
+
 from . import embedding_exceptions
 from .embedding_exceptions import EmbeddingGenerationError
 from .embedding_exceptions import EmbeddingServiceException

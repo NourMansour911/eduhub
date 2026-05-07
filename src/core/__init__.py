@@ -8,6 +8,7 @@ from . import request_dependencies
 from .request_dependencies import get_answer_repo
 from .request_dependencies import get_embedding_client
 from .request_dependencies import get_langchain_client
+from .request_dependencies import get_lecture_repo
 from .request_dependencies import get_vdb_client
 from . import settings
 from .settings import Settings
@@ -24,6 +25,7 @@ __all__ = [
     "get_answer_repo",
     "get_embedding_client",
     "get_langchain_client",
+    "get_lecture_repo",
     "get_settings",
     "get_vdb_client",
 ]

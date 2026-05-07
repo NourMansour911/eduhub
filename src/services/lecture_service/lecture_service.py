@@ -2,8 +2,10 @@ from typing import Any
 
 from fastapi import Depends
 from pymongo.errors import DuplicateKeyError
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat
 
-from core.request_dependencies import get_lecture_repo
+from core.request_dependencies import get_lecture_repo, get_doc_intelligence_client
 from models import LectureModel
 from repositories import LectureRepo
 from schemas import (
@@ -23,22 +25,42 @@ from .lecture_exceptions import (
 
 
 def _serialize_content(content: Any) -> Any:
+
     if hasattr(content, "as_dict"):
         return content.as_dict()
     return content
 
 
 class LectureService:
-    def __init__(self, lecture_repo: LectureRepo):
+    def __init__(self, lecture_repo: LectureRepo, doc_intelligence_client: DocumentIntelligenceClient):
         self.lecture_repo = lecture_repo
+        self.doc_intelligence_client = doc_intelligence_client
+
+    async def prepare_lecture_content(self, pdf_url: str):
+
+        try:
+            poller = self.doc_intelligence_client.begin_analyze_document(
+                model_id="prebuilt-layout",
+                body=AnalyzeDocumentRequest(url_source=pdf_url),
+                content_type=DocumentContentFormat.MARKDOWN,
+            )
+            analyze_result = poller.result()
+            return analyze_result
+        except Exception as exc:
+            raise LectureServiceException(
+                details={"operation": "prepare_lecture_content", "error": str(exc), "pdf_url": pdf_url}
+            )
 
     async def store_lecture(self, payload: LectureStoreRequest) -> LectureResponse:
+  
+        prepared_content = await self.prepare_lecture_content(payload.url)
+
         lecture = LectureModel(
             lecture_id=payload.lecture_id,
             lecture_name=payload.lecture_name,
             subject_id=payload.subject_id,
             subject_name=payload.subject_name,
-            content=payload.content,
+            content=prepared_content,
             order=payload.order,
         )
         try:
@@ -116,5 +138,9 @@ class LectureService:
 
 def get_lecture_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
+    doc_intelligence_client: DocumentIntelligenceClient = Depends(get_doc_intelligence_client),
 ) -> LectureService:
-    return LectureService(lecture_repo=lecture_repo)
+    return LectureService(
+        lecture_repo=lecture_repo,
+        doc_intelligence_client=doc_intelligence_client,
+    )

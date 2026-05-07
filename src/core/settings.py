@@ -11,8 +11,6 @@ class Settings(BaseSettings):
 
     AZURE_DOC_ENDPOINT:str
     AZURE_DOC_KEY: str
-    AZURE_DOC_DEPLOYMENT: str
-    AZURE_DOC_REGION: str
 
     # Database
     QDRANT_URL: str

@@ -1,6 +1,8 @@
 
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.core.credentials import AzureKeyCredential
 from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
@@ -57,6 +59,13 @@ async def lifespan(app: FastAPI):
   app.state.answer_repo = mongo_repos["AnswerRepo"]
   app.state.lecture_repo = mongo_repos["LectureRepo"]
   logger.info("Mongo repositories loaded successfully")
+
+  # Azure Document Intelligence client
+  app.state.doc_intelligence_client = DocumentIntelligenceClient(
+    endpoint=settings.AZURE_DOC_ENDPOINT,
+    credential=AzureKeyCredential(settings.AZURE_DOC_KEY),
+  )
+  logger.info("Azure Document Intelligence client loaded successfully")
 
 
   yield

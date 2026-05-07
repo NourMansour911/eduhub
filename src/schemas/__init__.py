@@ -9,11 +9,11 @@ from .grading_schema import RefGradingRequest
 from .grading_schema import RefGradingResponse
 from . import lecture_schema
 from .lecture_schema import DeleteLectureResponse
-from .lecture_schema import LectureStoreRequest
 from .lecture_schema import LectureDeleteByIdRequest
 from .lecture_schema import LectureDeleteBySubjectRequest
 from .lecture_schema import LectureListResponse
 from .lecture_schema import LectureResponse
+from .lecture_schema import LectureStoreRequest
 from . import vectordb_schema
 from .vectordb_schema import ChunkResponse
 from .vectordb_schema import ChunksQuerySchema
@@ -32,13 +32,13 @@ __all__ = [
     "CollectionChunksResponse",
     "DeleteCollectionResponse",
     "DeleteLectureResponse",
-    "LectureDeleteByIdRequest",
-    "LectureDeleteBySubjectRequest",
     "GradingRequest",
     "GradingResponse",
-    "LectureStoreRequest",
+    "LectureDeleteByIdRequest",
+    "LectureDeleteBySubjectRequest",
     "LectureListResponse",
     "LectureResponse",
+    "LectureStoreRequest",
     "RefGradingRequest",
     "RefGradingResponse",
     "SearchRequest",

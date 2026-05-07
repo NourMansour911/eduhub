@@ -1,3 +1,5 @@
+# Auto-generated __init__.py
+
 from . import lecture_exceptions
 from .lecture_exceptions import LectureConflictError
 from .lecture_exceptions import LectureNotFoundError
