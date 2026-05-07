@@ -6,6 +6,7 @@ from . import handler
 from .handler import app_exception_handler
 from . import request_dependencies
 from .request_dependencies import get_answer_repo
+from .request_dependencies import get_doc_intelligence_client
 from .request_dependencies import get_embedding_client
 from .request_dependencies import get_langchain_client
 from .request_dependencies import get_lecture_repo
@@ -23,6 +24,7 @@ __all__ = [
     "Settings",
     "app_exception_handler",
     "get_answer_repo",
+    "get_doc_intelligence_client",
     "get_embedding_client",
     "get_langchain_client",
     "get_lecture_repo",

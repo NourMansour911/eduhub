@@ -9,7 +9,7 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
-from services import lecture_service
+from services.lectures import  lecture_service
 
 logger = get_logger(__name__)
 
@@ -21,8 +21,8 @@ lecture_route = APIRouter(
 
 @lecture_route.post(
     "",
-    summary="Create lecture",
-    description="Stores a lecture document with AnalyzeResult content.",
+    summary="Store lecture",
+    description="Stores a lecture document with Azure Document Intelligence AnalyzeResult content.",
     response_model=LectureResponse,
 )
 async def store_lecture(
