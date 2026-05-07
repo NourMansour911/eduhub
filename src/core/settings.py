@@ -37,8 +37,6 @@ class Settings(BaseSettings):
     EMBEDDING_BACKEND: str
     EMBEDDING_MODEL_ID: str
     EMBEDDING_MODEL_SIZE: int
-    CROSS_ENCODER_MODEL_ID: str = "BAAI/bge-reranker-base"
-    CROSS_ENCODER_DEVICE: str = "cuda"
 
     TOP_K_DOCS: int
 
