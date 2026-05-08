@@ -13,7 +13,6 @@ class LectureStoreRequest(BaseModel):
 
 
 class LectureResponse(BaseModel):
-    status: str = Field("success", description="Response status")
     lecture_id: str = Field(..., description="Unique identifier for the lecture.")
 
 
@@ -22,7 +21,6 @@ class LectureListResponse(BaseModel):
 
 
 class DeleteLectureResponse(BaseModel):
-    status: str = Field("success", description="Response status")
     deleted_count: int = Field(..., description="Number of deleted documents.")
 
 
