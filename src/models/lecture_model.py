@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Any, Dict
 from bson import ObjectId
 from datetime import datetime
@@ -14,8 +14,17 @@ class LectureModel(BaseModel):
     subject_name: str = Field(..., description="The subject/material name this lecture belongs to")
     content: AnalyzeResult = Field(..., description="Azure Document Intelligence AnalyzeResult for the lecture content")
     order: Optional[int] = Field(None, description="Optional lecture order within the subject")
-    summaries: Dict[int, str] = Field(default_factory=dict, description="Cached summaries by level (0, 1, 2)")
+    summaries: Dict[str, str] = Field(default_factory=dict, description="Cached summaries by level ('0', '1', '2')")
     created_at: datetime = Field(default_factory=datetime.now)
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def parse_content(cls, value: Any) -> AnalyzeResult:
+        if isinstance(value, AnalyzeResult):
+            return value
+        if isinstance(value, dict):
+            return AnalyzeResult(value)
+        return value
 
     model_config = {
         "arbitrary_types_allowed": True,

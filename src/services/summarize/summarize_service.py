@@ -26,8 +26,8 @@ class SummarizeService:
         self.lecture_repo = lecture_repo
         self.chain = build_summarize_chain(summary_llm)
 
-    async def generate_all_summaries(self, lecture: LectureModel) -> Dict[int, str]:
-        content = serialize_content(lecture.content)
+    async def generate_all_summaries(self, lecture_content) -> Dict[str, str]:
+        content = serialize_content(lecture_content)
 
         # Prefer the markdown/text content field when available.
         if isinstance(content, dict) and isinstance(content.get("content"), str):
@@ -43,7 +43,8 @@ class SummarizeService:
         ]
 
         results = await asyncio.gather(*tasks)
-        return {0: results[0], 1: results[1], 2: results[2]}
+        # MongoDB documents require string keys.
+        return {"0": results[0], "1": results[1], "2": results[2]}
 
             
     async def get_summary(self, lecture_id: str, level: int) -> str:
@@ -75,7 +76,7 @@ class SummarizeService:
         try:
 
             summary: str = await self.chain.ainvoke({"lecture_text": content_text, "level": level})
-            return summary.strip()
+            return summary
         except Exception as e:
             logger.error(
                 f"Failed to generate summary",

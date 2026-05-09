@@ -4,11 +4,12 @@ from helpers import get_logger
 from schemas import (
     DeleteLectureResponse,
     LectureStoreRequest,
-    LectureDeleteByIdRequest,
-    LectureDeleteBySubjectRequest,
+    DeleteLectureByIdRequest,
+    DeleteLectureBySubjectIdRequest,
     LectureListResponse,
-    LectureResponse,
+    LectureStoreResponse,
 )
+from models import LectureModel
 from services.lectures import lecture_service
 from orchestrators import LectureOrchestrator, get_lecture_orchestrator
 
@@ -24,12 +25,11 @@ lecture_route = APIRouter(
     "",
     summary="Store lecture",
     description="Stores a lecture document with Azure Document Intelligence AnalyzeResult content and generates summaries.",
-    response_model=LectureResponse,
 )
 async def store_lecture(
     payload: LectureStoreRequest,
     orchestrator: LectureOrchestrator = Depends(get_lecture_orchestrator),
-) -> LectureResponse:
+) -> LectureStoreResponse:
     return await orchestrator.store_lecture_with_summaries(payload)
 
 
@@ -37,12 +37,12 @@ async def store_lecture(
     "/{lecture_id}",
     summary="Get lecture by lecture_id",
     description="Returns a lecture document using lecture_id.",
-    response_model=LectureResponse,
+    response_model=LectureModel,
 )
 async def get_lecture(
     lecture_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
-) -> LectureResponse:
+) -> LectureModel:
     return await service.get_lecture(lecture_id)
 
 
@@ -69,7 +69,7 @@ async def delete_lecture(
     lecture_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lecture(LectureDeleteByIdRequest(lecture_id=lecture_id))
+    return await service.delete_lecture(DeleteLectureByIdRequest(lecture_id=lecture_id))
 
 
 @lecture_route.delete(
@@ -82,4 +82,4 @@ async def delete_lectures_by_subject(
     subject_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lectures_by_subject(LectureDeleteBySubjectRequest(subject_id=subject_id))
+    return await service.delete_lectures_by_subject(DeleteLectureBySubjectIdRequest(subject_id=subject_id))

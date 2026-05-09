@@ -6,6 +6,7 @@ from . import integrations
 from . import main
 from .main import lifespan
 from . import models
+from . import orchestrators
 from . import repositories
 from . import routers
 from . import schemas
@@ -18,6 +19,7 @@ __all__ = [
     "integrations",
     "main",
     "models",
+    "orchestrators",
     "repositories",
     "routers",
     "schemas",

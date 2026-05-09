@@ -1,6 +1,8 @@
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
+
+from models import LectureModel
 
 
 class LectureStoreRequest(BaseModel):
@@ -12,21 +14,24 @@ class LectureStoreRequest(BaseModel):
     order: Optional[int] = Field(None, description="Optional lecture order within the subject.")
 
 
-class LectureResponse(BaseModel):
-    lecture_id: str = Field(..., description="Unique identifier for the lecture.")
+class LectureStoreResponse(BaseModel):
+    status: str = Field(..., description="Operation status.")
+    lecture_id: str = Field(..., description="Stored lecture identifier.")
+
+
 
 
 class LectureListResponse(BaseModel):
-    items: list[LectureResponse] = Field(..., description="List of lectures.")
+    items: list[LectureModel] = Field(..., description="List of lectures.")
 
 
 class DeleteLectureResponse(BaseModel):
     deleted_count: int = Field(..., description="Number of deleted documents.")
 
 
-class LectureDeleteByIdRequest(BaseModel):
+class DeleteLectureByIdRequest(BaseModel):
     lecture_id: str = Field(..., description="Delete a single lecture by lecture_id.")
 
 
-class LectureDeleteBySubjectRequest(BaseModel):
+class DeleteLectureBySubjectIdRequest(BaseModel):
     subject_id: str = Field(..., description="Delete all lectures for a subject_id.")
