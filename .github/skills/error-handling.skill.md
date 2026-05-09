@@ -48,7 +48,26 @@ Use this skill when:
 
 ### 6) Validation Boundaries
 - Do NOT duplicate validation already handled by Pydantic schemas.
-- Service methods SHOULD only validate business rules not expressible in schema constraints.
+- When a parameter is explicitly typed (e.g. `lecture_id: str` not `Optional[str]`) in the schema, Pydantic enforces it.
+- Do NOT re-validate emptiness, type correctness, or required fields in service layer.
+- Service methods SHOULD only validate business rules:
+  - Data existence in database (e.g. "Does this lecture exist in Mongo?")
+  - Business logic constraints (e.g. "Is summary level between 0-2?")
+  - External dependency results (e.g. "Did the LLM call succeed?")
+- Skip service-level empty/type checks for fields already constrained in schema.
+- Example to AVOID:
+  ```python
+  # BAD: lecture_id: str is already required in Pydantic schema
+  if not lecture_id:
+      raise SummarizeValidationError(...)
+  ```
+- Example to DO:
+  ```python
+  # GOOD: Check business rule, not basic presence
+  lecture = await repo.get_lecture_by_lecture_id(lecture_id)
+  if not lecture:  # Data existence is a business rule
+      raise SummarizeNotFoundError(...)
+  ```
 
 ### 7) Forbidden Patterns
 - MUST NOT raise raw ValueError, RuntimeError, or generic Exception as API-facing errors.
@@ -66,8 +85,10 @@ Use this skill when:
 
 - Base service exception:
   <Domain>ServiceException
-- Validation:
+- Validation (business rules only, NOT schema-level):
   <Domain>ValidationError
+  *Use ONLY for business rule violations (e.g., invalid level range, business constraint failures).*
+  *Do NOT use for empty/type checks—Pydantic handles those.*
 - Not found:
   <Domain>NotFoundError
 - Conflict:
@@ -143,15 +164,29 @@ class LectureNotFoundError(LectureServiceException):
 
 ### Service Raise Pattern Template
 ```python
-from services.lecture_exceptions import LectureNotFoundError, LectureValidationError
+from services.summarize.summarize_exceptions import (
+    SummarizeNotFoundError,
+    SummarizeProcessingError,
+)
 
-async def get_lecture(lecture_id: str):
-    if not lecture_id:
-        raise LectureValidationError(details={"field": "lecture_id"})
-    lecture = await repo.get_by_lecture_id(lecture_id)
-    if not lecture:
-        raise LectureNotFoundError(details={"lecture_id": lecture_id})
-    return lecture
+async def summarize(self, lecture_id: str, level: int) -> str:
+    # lecture_id and level are already validated by Pydantic schema
+    # DO NOT check: if not lecture_id, if level < 0, etc.
+    
+    # DO validate: Business rules and data layer results
+    lecture = await self.lecture_repo.get_lecture_by_lecture_id(lecture_id)
+    if lecture is None:  # Data existence is a business rule
+        raise SummarizeNotFoundError(details={"lecture_id": lecture_id})
+    
+    try:
+        summary = await self._generate_summary(lecture.content, level)
+        return summary
+    except Exception as e:
+        # External dependency failure (LLM chain)
+        raise SummarizeProcessingError(
+            message="Failed to generate summary",
+            details={"error": str(e)}
+        )
 ```
 
 ## Migration Checklist

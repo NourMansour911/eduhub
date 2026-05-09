@@ -95,8 +95,8 @@ Output rules:
 def build_summarize_chain(llm: ChatOpenAI) -> Runnable:
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
-        if "lecture_content" not in inputs:
-            raise ValueError("lecture_content is required")
+        if "lecture_text" not in inputs:
+            raise ValueError("lecture_text is required")
 
         level = int(inputs.get("level", 1))
 
@@ -106,7 +106,7 @@ def build_summarize_chain(llm: ChatOpenAI) -> Runnable:
         )
 
         return {
-            "lecture_content": inputs["lecture_content"],
+            "lecture_content": inputs["lecture_text"],
             "level_instruction": level_instruction,
         }
 

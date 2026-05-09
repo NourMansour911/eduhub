@@ -18,13 +18,16 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
-from src.helpers.utils import serialize_content
+from utils import serialize_content
+from helpers import get_logger
 
 from .lecture_exceptions import (
     LectureConflictError,
     LectureNotFoundError,
     LectureServiceException,
 )
+
+logger = get_logger(__name__)
 
 
 class LectureService:
@@ -61,7 +64,6 @@ class LectureService:
             )
 
     async def store_lecture(self, payload: LectureStoreRequest) -> LectureResponse:
-  
         prepared_content = await self.prepare_lecture_content(payload.url)
 
         lecture = LectureModel(
@@ -72,6 +74,7 @@ class LectureService:
             content=prepared_content,
             order=payload.order,
         )
+        
         try:
             inserted_id = await self.lecture_repo.add_lecture(lecture)
         except DuplicateKeyError as exc:
@@ -148,8 +151,12 @@ class LectureService:
 def get_lecture_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
     doc_intelligence_client: DocumentIntelligenceClient = Depends(get_doc_intelligence_client),
+    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
+    settings: Settings = Depends(get_settings),
 ) -> LectureService:
     return LectureService(
         lecture_repo=lecture_repo,
         doc_intelligence_client=doc_intelligence_client,
+        lc_openai_client=lc_openai_client,
+        settings=settings,
     )

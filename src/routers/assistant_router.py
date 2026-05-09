@@ -22,5 +22,5 @@ async def summarize(
 	payload: SummarizeRequest,
 	service: SummarizeService = Depends(get_summarize_service),
 ) -> SummarizeResponse:
-	output_text = await service.summarize(payload.lecture_id, payload.length)
+	output_text = await service.get_summary(payload.lecture_id, payload.length)
 	return SummarizeResponse(summary=output_text)

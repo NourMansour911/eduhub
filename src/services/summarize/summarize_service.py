@@ -1,7 +1,8 @@
 from fastapi import Depends
-from typing import Optional
+from typing import Optional, Dict
 from langchain_openai import ChatOpenAI
 import re
+import asyncio
 from core.request_dependencies import get_lecture_repo, get_langchain_client
 from core import Settings, get_settings
 from repositories import LectureRepo
@@ -9,50 +10,80 @@ from services.summarize.summarize_chain import build_summarize_chain
 from services.summarize.summarize_exceptions import (
     SummarizeNotFoundError,
     SummarizeProcessingError,
-    SummarizeValidationError,
 )
 from integrations.llm import LCOpenAI
 from helpers import get_logger
-from helpers.utils import serialize_content
-from src.models.lecture_model import LectureModel
+from models import LectureModel
 
 logger = get_logger(__name__)
 
 
+
+
 class SummarizeService:
-    def __init__(self, lecture_repo: LectureRepo, settings: Settings, lc_openai_client: LCOpenAI) -> None:
+    def __init__(self, lecture_repo: LectureRepo,summary_llm: ChatOpenAI) :
         self.lecture_repo = lecture_repo
-        self.settings = settings
+        self.chain = build_summarize_chain(summary_llm)
 
-        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1, top_p=0.85)
+    async def generate_all_summaries(
+        self,
+        content_text: str,
+        llm: ChatOpenAI,
+    ) -> Dict[int, str]:
 
-    async def summarize(self, lecture_id: str, level: int) -> str:
-        if not lecture_id:
-            raise SummarizeValidationError(details={"field": "lecture_id"})
+        
+        self.llm = llm
+        content_text = self.clean_markdown(content_text)
+        
+        tasks = [
+            self._generate_summary(content_text, level)
+            for level in [0, 1, 2]
+        ]
+        
+        results = await asyncio.gather(*tasks)
+        return {
+            0: results[0],
+            1: results[1],
+            2: results[2],
+        }
+
+            
+    async def get_summary(self, lecture_id: str, level: int) -> str:
 
         lecture = await self.lecture_repo.get_lecture_by_lecture_id(lecture_id)
         if lecture is None:
             raise SummarizeNotFoundError(details={"lecture_id": lecture_id})
+
+
+        if lecture.summaries and str(level) in lecture.summaries:
+            cached = lecture.summaries[str(level)]
         
-        lecture_content = serialize_content(lecture.content.content)
-        
-        lecture_content = self.clean_markdown(lecture_content)
+        if cached:
+            logger.info(f"Returning cached summary for lecture {lecture_id}, level {level}")
+            return cached
+        else:
+            raise SummarizeNotFoundError(
+                details={"lecture_id": lecture_id, "level": level, "message": "Summary not generated during lecture creation"}
+            )
+
+
+
+    async def _generate_summary(self, content_text: str, level: int) -> str:
 
         try:
-            chain = build_summarize_chain(self.llm)
-            output_text: str = await chain.ainvoke({"lecture_text": lecture_content, "level": level})
-            return output_text
+
+            summary: str = await self.chain.ainvoke({"lecture_text": content_text, "level": level})
+            return summary.strip()
         except Exception as e:
             logger.error(
-                f"Failed to generate summary for lecture {lecture_id}",
-                extra={"error": str(e), "lecture_id": lecture_id},
+                f"Failed to generate summary",
+                extra={"error": str(e), "level": level},
             )
             raise SummarizeProcessingError(
                 message="Failed to generate summary",
-                details={"lecture_id": lecture_id, "error": str(e)},
+                details={"level": level, "error": str(e)},
             )
-            
-            
+
     def clean_markdown(self, md: str) -> str:
         # Remove page markers
         md = re.sub(r"<!--\s*PageBreak\s*-->", "\n", md)
@@ -88,7 +119,5 @@ class SummarizeService:
 
 def get_summarize_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
-    settings: Settings = Depends(get_settings),
-    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
 ) -> SummarizeService:
-    return SummarizeService(lecture_repo=lecture_repo, settings=settings, lc_openai_client=lc_openai_client)
+    return SummarizeService(lecture_repo=lecture_repo,)

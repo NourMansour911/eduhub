@@ -9,7 +9,8 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
-from services.lectures import  lecture_service
+from services.lectures import lecture_service
+from orchestrators import LectureOrchestrator, get_lecture_orchestrator
 
 logger = get_logger(__name__)
 
@@ -22,14 +23,14 @@ lecture_route = APIRouter(
 @lecture_route.post(
     "",
     summary="Store lecture",
-    description="Stores a lecture document with Azure Document Intelligence AnalyzeResult content.",
+    description="Stores a lecture document with Azure Document Intelligence AnalyzeResult content and generates summaries.",
     response_model=LectureResponse,
 )
 async def store_lecture(
     payload: LectureStoreRequest,
-    service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
+    orchestrator: LectureOrchestrator = Depends(get_lecture_orchestrator),
 ) -> LectureResponse:
-    return await service.store_lecture(payload)
+    return await orchestrator.store_lecture_with_summaries(payload)
 
 
 @lecture_route.get(
