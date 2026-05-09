@@ -1,5 +1,5 @@
 from fastapi import Depends
-from typing import Optional, Dict
+from typing import Dict
 from langchain_openai import ChatOpenAI
 import re
 import asyncio
@@ -7,6 +7,7 @@ from core.request_dependencies import get_lecture_repo, get_langchain_client
 from core import Settings, get_settings
 from repositories import LectureRepo
 from services.summarize.summarize_chain import build_summarize_chain
+from helpers.utils import serialize_content
 from services.summarize.summarize_exceptions import (
     SummarizeNotFoundError,
     SummarizeProcessingError,
@@ -25,27 +26,24 @@ class SummarizeService:
         self.lecture_repo = lecture_repo
         self.chain = build_summarize_chain(summary_llm)
 
-    async def generate_all_summaries(
-        self,
-        content_text: str,
-        llm: ChatOpenAI,
-    ) -> Dict[int, str]:
+    async def generate_all_summaries(self, lecture: LectureModel) -> Dict[int, str]:
+        content = serialize_content(lecture.content)
 
-        
-        self.llm = llm
+        # Prefer the markdown/text content field when available.
+        if isinstance(content, dict) and isinstance(content.get("content"), str):
+            content_text = content["content"]
+        else:
+            content_text = str(content)
+
         content_text = self.clean_markdown(content_text)
-        
+
         tasks = [
             self._generate_summary(content_text, level)
             for level in [0, 1, 2]
         ]
-        
+
         results = await asyncio.gather(*tasks)
-        return {
-            0: results[0],
-            1: results[1],
-            2: results[2],
-        }
+        return {0: results[0], 1: results[1], 2: results[2]}
 
             
     async def get_summary(self, lecture_id: str, level: int) -> str:
@@ -55,9 +53,13 @@ class SummarizeService:
             raise SummarizeNotFoundError(details={"lecture_id": lecture_id})
 
 
-        if lecture.summaries and str(level) in lecture.summaries:
-            cached = lecture.summaries[str(level)]
-        
+        cached = None
+        if lecture.summaries:
+            if level in lecture.summaries:
+                cached = lecture.summaries[level]
+            elif str(level) in lecture.summaries: 
+                cached = lecture.summaries[str(level)]
+
         if cached:
             logger.info(f"Returning cached summary for lecture {lecture_id}, level {level}")
             return cached
@@ -119,5 +121,13 @@ class SummarizeService:
 
 def get_summarize_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
+    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
+    settings: Settings = Depends(get_settings),
 ) -> SummarizeService:
-    return SummarizeService(lecture_repo=lecture_repo,)
+    summary_llm = lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID,
+        temperature=0.1,
+        top_p=0.85,
+    )
+
+    return SummarizeService(lecture_repo=lecture_repo, summary_llm=summary_llm)

@@ -4,8 +4,7 @@ from .summarize_exceptions import (
     SummarizeNotFoundError,
     SummarizeProcessingError,
 )
-from .summarize_service import SummarizeService, generate_all_summaries
-from .summarize_service import get_summarize_service
+from .summarize_service import SummarizeService, get_summarize_service
 
 __all__ = [
     "summarize_chain",
@@ -14,7 +13,6 @@ __all__ = [
     "SummarizeNotFoundError",
     "SummarizeProcessingError",
     "SummarizeService",
-    "generate_all_summaries",
     "get_summarize_service",
 ]
 

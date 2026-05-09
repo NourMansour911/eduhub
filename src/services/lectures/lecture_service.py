@@ -3,11 +3,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends
+from langchain_openai import ChatOpenAI
 from pymongo.errors import DuplicateKeyError
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat,AnalyzeResult
-
-from core.request_dependencies import get_lecture_repo, get_doc_intelligence_client
+from integrations.llm import LCOpenAI
+from core.request_dependencies import get_lecture_repo, get_doc_intelligence_client, get_langchain_client
+from core import Settings, get_settings
 from models import LectureModel
 from repositories import LectureRepo
 from schemas import (
@@ -18,7 +20,7 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
-from utils import serialize_content
+from helpers.utils import serialize_content
 from helpers import get_logger
 
 from .lecture_exceptions import (
@@ -31,9 +33,10 @@ logger = get_logger(__name__)
 
 
 class LectureService:
-    def __init__(self, lecture_repo: LectureRepo, doc_intelligence_client: DocumentIntelligenceClient):
+    def __init__(self, lecture_repo: LectureRepo, doc_intelligence_client: DocumentIntelligenceClient, summary_llm: ChatOpenAI):
         self.lecture_repo = lecture_repo
         self.doc_intelligence_client = doc_intelligence_client
+        self.summary_llm = summary_llm
 
     async def prepare_lecture_content(self, pdf_url: str):
 
@@ -154,9 +157,16 @@ def get_lecture_service(
     lc_openai_client: LCOpenAI = Depends(get_langchain_client),
     settings: Settings = Depends(get_settings),
 ) -> LectureService:
+    
+
+    summary_llm = lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID,
+        temperature=0.1,
+        top_p=0.85,
+    )
+
     return LectureService(
         lecture_repo=lecture_repo,
         doc_intelligence_client=doc_intelligence_client,
-        lc_openai_client=lc_openai_client,
-        settings=settings,
+        summary_llm=summary_llm,
     )
