@@ -18,19 +18,13 @@ from schemas import (
     LectureListResponse,
     LectureResponse,
 )
+from src.helpers.utils import serialize_content
 
 from .lecture_exceptions import (
     LectureConflictError,
     LectureNotFoundError,
     LectureServiceException,
 )
-
-
-def _serialize_content(content: Any) -> Any:
-
-    if hasattr(content, "as_dict"):
-        return content.as_dict()
-    return content
 
 
 class LectureService:
@@ -91,7 +85,7 @@ class LectureService:
             lecture_name=lecture.lecture_name,
             subject_id=lecture.subject_id,
             subject_name=lecture.subject_name,
-            content=_serialize_content(lecture.content),
+            content=serialize_content(lecture.content),
             order=lecture.order,
         )
 
@@ -109,7 +103,7 @@ class LectureService:
             lecture_name=lecture.lecture_name,
             subject_id=lecture.subject_id,
             subject_name=lecture.subject_name,
-            content=_serialize_content(lecture.content),
+            content=serialize_content(lecture.content),
             order=lecture.order,
         )
 
@@ -125,7 +119,7 @@ class LectureService:
                 lecture_name=lecture.lecture_name,
                 subject_id=lecture.subject_id,
                 subject_name=lecture.subject_name,
-                content=_serialize_content(lecture.content),
+                content=serialize_content(lecture.content),
                 order=lecture.order,
             )
             for lecture in lectures

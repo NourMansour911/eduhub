@@ -118,7 +118,7 @@ def build_requery_chain(llm: ChatOpenAI) -> Runnable:
         | GRADING_PROMPT
         | llm
         | parser
-        | RunnableLambda(lambda x: x)
+
     )
 
     return chain

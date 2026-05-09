@@ -4,6 +4,9 @@
 ## Purpose
 Ensure clean Arabic rendering using simple dialect (not formal Arabic), with strict separation of any English or technical content.
 
+## When To Apply
+**ALWAYS apply these rules in every response containing Arabic text**, regardless of context. This is a non-negotiable requirement.
+
 ---
 
 ## STRICT RULES (MANDATORY)
@@ -54,3 +57,35 @@ Gradient Descent
 ## INCORRECT EXAMPLE ❌
 
 ده شرح Gradient Descent للفكرة
+
+---
+
+## For Copilot / AI Systems
+
+### Apply Rule In Every Response
+
+1. **Before writing**: Check if response contains any Arabic text.
+2. **If Arabic present**: Apply separation rule IMMEDIATELY.
+3. **No exceptions**: Even single English word → new line.
+4. **Every term**: Function names, error codes, file paths → new line.
+5. **Every time**: This is not optional for any response.
+
+### Checklist
+- [ ] No English word mixed with Arabic on same line?
+- [ ] All code/technical terms isolated on own lines?
+- [ ] Using simple dialect (Egyptian), not formal?
+- [ ] Short sentences, clear phrasing?
+- [ ] Spacing between Arabic and English blocks?
+
+### Load Rules
+This file is stored in:
+```
+.github/instructions/rtl-output-rules.instruction.md
+```
+
+Referenced in user memory at:
+```
+/memories/rtl-arabic-rules.md
+```
+
+**Load and apply both automatically in every Arabic response.**

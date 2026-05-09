@@ -20,6 +20,8 @@ from .vectordb_schema import ChunksQuerySchema
 from .vectordb_schema import CollectionChunksResponse
 from .vectordb_schema import DeleteCollectionResponse
 from .vectordb_schema import SearchRequest
+from .assistant_schema import SummarizeRequest
+from .assistant_schema import SummarizeResponse
 
 __all__ = [
     "grading_schema",
@@ -42,4 +44,6 @@ __all__ = [
     "RefGradingRequest",
     "RefGradingResponse",
     "SearchRequest",
+    "SummarizeRequest",
+    "SummarizeResponse",
 ]
