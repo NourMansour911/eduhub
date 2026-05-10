@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: eduhub
+  REGISTRY: docker.io
+
+jobs:
+  test_and_lint:
+    if: ${{ github.event_name == 'push' && (github.ref_type == 'tag' || !contains(github.event.head_commit.message, '[no ci]') ) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      - name: Lint (Ruff)
+        run: ruff check src tests --select E9,F63,F7,F82 --output-format=github
+
+      - name: Run tests
+        run: pytest -v
+
+  build_and_push_image:
+    needs: test_and_lint
+    if: ${{ github.event_name == 'push' && (github.ref_type == 'tag' || !contains(github.event.head_commit.message, '[no build]') ) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Generate image tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+          TAGS="${IMAGE}:${GITHUB_SHA}"
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            TAGS+=$'\n'"${IMAGE}:latest"
+          fi
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAGS+=$'\n'"${IMAGE}:${GITHUB_REF_NAME}"
+          fi
+
+          {
+            echo "image=${IMAGE}"
+            echo "tags<<EOF"
+            printf "%s\n" "${TAGS}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build Docker image (local)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          push: false
+          load: true
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test container
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${GITHUB_SHA}"
+          CONTAINER_NAME="eduhub-smoke-test"
+
+          cleanup() {
+            docker rm -f "${CONTAINER_NAME}" > /dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          cleanup
+
+          docker run -d --name "${CONTAINER_NAME}" -p 8000:8000 \
+            -e APP_NAME=test_eduhub \
+            -e APP_VERSION=test_0.0.0 \
+            -e STORAGE_PATH=/tmp/storage \
+            -e MONGODB_URL=mongodb://localhost:27017 \
+            -e MONGO_DB_NAME=test_eduhub \
+            -e QDRANT_URL=http://localhost:6333 \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            -e REDIS_PASSWORD=test-redis-pass \
+            -e CHUNK_OVERLAP=200 \
+            -e CHUNK_MIN_SIZE=200 \
+            -e CHUNK_MAX_SIZE=1000 \
+            -e CHUNKS_SIMILARITY_THRESHOLD=0.75 \
+            -e LANGSMITH_API_KEY=test-langsmith-key \
+            -e OPENAI_API_URL=https://api.openai.com/v1 \
+            -e OPENAI_API_KEY=test-openai-key \
+            -e GENERATION_BACKEND=OPENAI \
+            -e GENERATION_MODEL_ID=gpt-4-turbo \
+            -e EMBEDDING_BACKEND=HF \
+            -e EMBEDDING_MODEL_ID=all-MiniLM-L6-v2 \
+            -e EMBEDDING_MODEL_SIZE=384 \
+            -e TOP_K_DOCS=5 \
+            -e VECTOR_DB_BACKEND=QDRANT \
+            -e VECTOR_DB_DISTANCE_METHOD=Cosine \
+            -e AZURE_DOC_ENDPOINT=https://test.cognitiveservices.azure.com/ \
+            -e AZURE_DOC_KEY=test-azure-key \
+            "${IMAGE}" \
+            uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --lifespan off
+
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/ > /dev/null; then
+              echo "Smoke test passed"
+              exit 0
+            fi
+            echo "Waiting for service startup (${attempt}/20)"
+            sleep 2
+          done
+
+          echo "Smoke test failed; container logs:" >&2
+          docker logs "${CONTAINER_NAME}" >&2 || true
+          exit 1
+
+      - name: Push Docker image tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            if [[ -n "${tag}" ]]; then
+              echo "Pushing ${tag}"
+              docker push "${tag}"
+            fi
+          done <<< "${{ steps.tags.outputs.tags }}"

@@ -13,6 +13,10 @@ LOG_FILE = os.path.join(LOG_DIR, "logs.log")
 def get_logger(name: str, level: str="error"):
 
     logger = logging.getLogger(name)
+    
+    # Prevent propagation to avoid duplicate logs from parent loggers
+    logger.propagate = False
+    
     try:
         match level.lower():
             case "debug":
@@ -30,22 +34,24 @@ def get_logger(name: str, level: str="error"):
     except Exception:
         logger.setLevel(logging.ERROR)
 
-    if not logger.hasHandlers():
-        # Console handler
-        ch = logging.StreamHandler()
-        ch.setFormatter(logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        ))
+    # Clear existing handlers to prevent duplicates
+    logger.handlers.clear()
+    
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    ))
 
-        # File handler with rotation
-        fh = RotatingFileHandler(
-            LOG_FILE, maxBytes=5_000_000, backupCount=5
-        )
-        fh.setFormatter(logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        ))
+    # File handler with rotation
+    fh = RotatingFileHandler(
+        LOG_FILE, maxBytes=5_000_000, backupCount=5
+    )
+    fh.setFormatter(logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    ))
 
-        logger.addHandler(ch)
-        logger.addHandler(fh)
+    logger.addHandler(ch)
+    logger.addHandler(fh)
 
     return logger

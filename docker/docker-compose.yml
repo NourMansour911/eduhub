@@ -16,6 +16,7 @@ services:
     depends_on:
       - mongodb
       - qdrant
+      - redis
 
 
   nginx:
