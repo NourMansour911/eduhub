@@ -24,7 +24,11 @@ env:
 
 jobs:
   test_and_lint:
-    if: ${{ github.event_name == 'push' && (github.ref_type == 'tag' || !contains(github.event.head_commit.message, '[no ci]') ) }}
+    if: ${{ github.event_name == 'push' && (
+        contains(github.event.head_commit.message, '[ci]') ||
+        contains(github.event.head_commit.message, '[build]') ||
+        github.ref_type == 'tag'
+      ) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -51,7 +55,10 @@ jobs:
 
   build_and_push_image:
     needs: test_and_lint
-    if: ${{ github.event_name == 'push' && (github.ref_type == 'tag' || !contains(github.event.head_commit.message, '[no build]') ) }}
+    if: ${{ github.event_name == 'push' && (
+        contains(github.event.head_commit.message, '[build]') ||
+        github.ref_type == 'tag'
+      ) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
