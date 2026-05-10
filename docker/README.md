@@ -1,20 +1,58 @@
 # Docker Setup for EduHub
 
-This directory contains the Docker setup for the EduHub project, including the API, reverse proxy, and data stores used in development.
+This directory contains the Docker setup for the EduHub project with a pre-built image and all required services (API, MongoDB, Qdrant, Redis, Nginx).
 
-## Services Overview
+---
 
-- API (FastAPI): main backend running with Uvicorn (built from `docker/api/Dockerfile`).
-- Nginx: reverse proxy in front of the API (`docker/nginx/default.conf`).
-- MongoDB: primary document database.
-- Qdrant: vector database for embeddings and semantic search.
-- Redis: cache/session store.
+## Quick Start: Using the Pre-built Image
 
-> Note: The compose file is at `docker/docker-compose.yml` and uses named volumes for persistence.
+The easiest way to get started is with the pre-built Docker image (`nourmansour41/eduhub:latest`) and the included `docker-compose.example.yml`:
 
-## Environment files
+```bash
+# 1. Copy the example compose file
+cp docker-compose.example.yml docker-compose.yml
 
-Before starting services, create required env files from the examples. Run these from the project root:
+# 2. Create environment files
+cd env
+cp .env.example.app .env.app
+cp .env.example.mongodb .env.mongodb
+cp .env.example.redis .env.redis
+cd ..
+
+# 3. Start all services
+docker compose up -d
+```
+
+That's it! All services will start automatically.
+
+## What You Get
+
+The `docker-compose.example.yml` sets up these services:
+
+| Service | Image | Purpose | Port |
+|---------|-------|---------|------|
+| **API** | `nourmansour41/eduhub:latest` | FastAPI backend with Uvicorn | 8000 |
+| **Nginx** | `nginx:latest` | Reverse proxy & load balancer | 80 |
+| **MongoDB** | `mongo:7.0` | Document database | 27017 |
+| **Qdrant** | `qdrant/qdrant:latest` | Vector database for embeddings | 6333 |
+| **Redis** | `redis:7-alpine` | Cache & session store | 6379 |
+
+All services run on the `eduhub-network` bridge network and persist data using named volumes.
+
+## Accessing Services
+
+Once running, access your services here:
+
+- **API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Nginx (Root)**: http://localhost
+- **Qdrant Dashboard**: http://localhost:6333/dashboard
+- **MongoDB**: `mongodb://localhost:27017` (credentials from `.env.mongodb`)
+- **Redis**: `redis://localhost:6379` (password from `.env.redis`)
+
+## Environment Files
+
+Create environment files in the `docker/env/` folder. The compose file reads these automatically:
 
 ```bash
 cd docker/env
@@ -23,16 +61,57 @@ cp .env.example.mongodb .env.mongodb
 cp .env.example.redis .env.redis
 ```
 
-There is also an optional project-level `.env` if you prefer. Example:
+**Keep secrets out of version control!** The example envs are for local testing only.
+
+---
+
+## Building Your Own Image
+
+If you want to build the API image locally instead of using the pre-built one, follow this section.
+
+### How the Image is Built
+
+The image is created using a **multi-stage Dockerfile** (`docker/api/Dockerfile`) that optimizes for size and speed:
+
+1. **Builder Stage**: Installs build tools and compiles Python dependencies (heavy compilation happens here)
+2. **Runtime Stage**: Copies only the compiled wheels and source code (no build tools included)
+
+This keeps the final image small and fast.
+
+### Build Details
+
+- **Constraints file**: `constraints-docker.txt` pins dependency versions for reproducible builds
+- **spaCy model**: Downloads `en_core_web_sm` during build (requires internet, takes time)
+- **PyTorch CPU**: Uses CPU wheel index to avoid CUDA bloat
+- **Build time**: ~5-10 minutes depending on internet and system
+
+### Building Locally
+
+From the project root:
 
 ```bash
-cd docker
-cp .env.example .env
+# Build the API image
+docker build -f docker/api/Dockerfile -t eduhub-api:local ..
+
+# Or use compose to build and start
+docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-Important env keys are referenced by the compose file and API container. Keep secrets out of version control.
+Then update `docker-compose.yml` to use your local image:
 
-## Build & Run
+```yaml
+services:
+  api:
+    image: eduhub-api:local  # Instead of nourmansour41/eduhub:latest
+```
+
+---
+
+## Advanced Usage
+
+### Build & Run
+
+### Build & Run
 
 From the project root run (recommended):
 
@@ -68,35 +147,33 @@ sleep 20
 docker compose -f docker/docker-compose.yml up -d --build api nginx
 ```
 
-## Notes about the API image build
+### Development Workflow
 
-- The API Dockerfile is multi-stage (`docker/api/Dockerfile`) to keep the runtime image smaller. Build tools and heavy wheel compilation happen in the builder stage and are not copied to runtime.
-- `constraints-docker.txt` is referenced during the build to pin versions; if not present a placeholder file is used so the build doesn't fail on COPY.
-- A CPU wheel index is used for some packages (e.g., PyTorch CPU wheels) to avoid CUDA dependencies in the image.
-- The Dockerfile performs a `python -m spacy download en_core_web_sm` during build; the build requires internet access and may take time.
+The API container is built with source copied into the image at build time. After code changes, rebuild the image:
 
-## Accessing services
+```bash
+# Rebuild API only
+docker compose -f docker/docker-compose.yml up -d --build api
 
-- API: http://localhost:8000
-- API docs (FastAPI): http://localhost:8000/docs
-- Nginx proxy (root host): http://localhost
-- Qdrant dashboard: http://localhost:6333/dashboard (if Qdrant dashboard enabled)
-- MongoDB: mongodb://localhost:27017 (client tools) — credentials come from `docker/env/.env.mongodb`
-- Redis: redis://localhost:6379 (password is in `docker/env/.env.redis`)
+# Or build locally
+docker build -f docker/api/Dockerfile -t eduhub-api:local ..
+```
 
-## Volumes and data management
+---
 
-The compose uses named volumes. Useful commands:
+## Volumes and Data Management
+
+The compose uses named volumes for data persistence. Useful commands:
 
 ```bash
 # List volumes
 docker volume ls
 
 # Inspect a specific volume
-docker volume inspect eduhub_mongodata
+docker volume inspect eduhub_mongo_data
 
 # Remove a single volume
-docker volume rm eduhub_api_data
+docker volume rm eduhub_mongo_data
 
 # Prune unused volumes (destructive)
 docker volume prune
@@ -105,8 +182,10 @@ docker volume prune
 To backup a named volume to a tar file:
 
 ```bash
-docker run --rm -v eduhub_mongodata:/volume -v $(pwd):/backup alpine sh -c "cd /volume && tar cvf /backup/mongo_backup.tar ."
+docker run --rm -v eduhub_mongo_data:/volume -v $(pwd):/backup alpine sh -c "cd /volume && tar cvf /backup/mongo_backup.tar ."
 ```
+
+---
 
 ## Troubleshooting
 
@@ -120,32 +199,24 @@ docker compose -f docker/docker-compose.yml logs --tail=200 qdrant
 docker compose -f docker/docker-compose.yml logs --tail=200 redis
 ```
 
-- If the API fails to connect to a DB, verify the env file values and container names used in `docker-compose.yml` (e.g. `mongodb`, `qdrant`, `chat-redis`).
-- If `spacy` or `torch` install fails during build, re-run build with more build-time resources or pin versions that have wheel distribution available.
+- **API won't connect to DB**: Verify `.env` files have correct values and service names match `docker-compose.yml`
+- **spaCy or torch fails during build**: Re-run with more resources or pin versions that have pre-built wheels
+- **Services won't start**: Check container logs; database startup may need time before API connects
 
-## Development workflow
+---
 
-The API container is built with source copied into the image at build time. After code changes, rebuild the image:
+## Security & Cleanup
 
-```bash
-# Rebuild API only
-docker compose -f docker/docker-compose.yml up -d --build api
-
-# Or build locally
-docker build -f docker/api/Dockerfile -t eduhub-api:local ..
-```
-
-## Security & cleanup
-
-- The provided example envs include secrets for local testing only—rotate or remove secrets before sharing code.
+- The provided example envs are for **local testing only**—rotate or remove secrets before sharing code
 - To remove all containers and named volumes for a clean start:
 
 ```bash
 docker compose -f docker/docker-compose.yml down -v --remove-orphans
 ```
 
-
 ---
+
+## Notes
 
 If you want, I can:
 

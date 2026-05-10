@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  api:
+    image: nourmansour41/eduhub:latest
+    env_file:
+      - ./env/api.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+      - qdrant
+      - redis
+    networks:
+      - eduhub-network
+
+  mongo:
+    image: mongo:7.0
+    env_file:
+      - ./env/mongo.env
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - eduhub-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    env_file:
+      - ./env/qdrant.env
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - eduhub-network
+
+  redis:
+    image: redis:7-alpine
+    env_file:
+      - ./env/redis.env
+    ports:
+      - "6379:6379"
+    networks:
+      - eduhub-network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    networks:
+      - eduhub-network
+
+volumes:
+  mongo_data:
+  qdrant_data:
+
+networks:
+  eduhub-network:
+    driver: bridge
+
+# Notes:
+# - Place your environment files under the `docker/env/` folder (api.env, mongo.env, qdrant.env, redis.env).
+# - Services use `env_file: ./env/<name>.env` so images read env vars from that folder.
+# - Use this file as an example; adjust paths/ports as needed for your setup.
