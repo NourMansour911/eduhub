@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from helpers.logger import get_logger
 from repositories import AnswerRepo, LectureRepo
 from repositories.mongo_bootstrap import init_mongo_resources
-from routers import grading_router, home_router, lecture_router, vectordb_router
+from routers import grading_router, home_router, lecture_router, vectordb_router,assistant_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
 import os
@@ -81,3 +81,4 @@ app.include_router(home_router.home_route)
 app.include_router(grading_router.grading_route)
 app.include_router(lecture_router.lecture_route)
 app.include_router(vectordb_router.vectordb_route)
+app.include_router(assistant_router.assistant_route)

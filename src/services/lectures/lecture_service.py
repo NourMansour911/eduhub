@@ -38,16 +38,16 @@ class LectureService:
     async def prepare_lecture_content(self, pdf_url: str):
 
         try:
-            """             
+            
             poller = self.doc_intelligence_client.begin_analyze_document(
                 model_id="prebuilt-layout",
                 body=AnalyzeDocumentRequest(url_source=pdf_url),
                 output_content_format=DocumentContentFormat.MARKDOWN,
             )
             analyze_result = poller.result()
-            return analyze_result """
+
             
-            # Load from eduhub_demos folder
+            """ # Load from eduhub_demos folder
             
             projects_root = Path(__file__).parents[4]  # Navigate to d:\training\AI\projects
             json_file = projects_root / "demos" /"eduhub_demos" / "data_mining_azure.json"
@@ -55,7 +55,7 @@ class LectureService:
             with open(json_file, "r", encoding="utf-8") as f:
                 result_data = json.load(f)
 
-            analyze_result = AnalyzeResult(result_data)  
+            analyze_result = AnalyzeResult(result_data) """  
             
             return analyze_result
         except Exception as exc:

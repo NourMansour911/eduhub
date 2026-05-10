@@ -6,7 +6,6 @@ from core import Settings, get_settings
 logger = get_logger(__name__)
 
 home_route = APIRouter(
-    prefix="",
     tags=["Welcome"],
 )
 

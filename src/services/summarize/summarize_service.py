@@ -14,7 +14,7 @@ from services.summarize.summarize_exceptions import (
 )
 from integrations.llm import LCOpenAI
 from helpers import get_logger
-from models import LectureModel
+
 
 logger = get_logger(__name__)
 
@@ -26,10 +26,15 @@ class SummarizeService:
         self.lecture_repo = lecture_repo
         self.chain = build_summarize_chain(summary_llm)
 
-    async def generate_all_summaries(self, lecture_content) -> Dict[str, str]:
+    async def generate_all_summaries(
+        self,
+        lecture_content,
+        lecture_id: str,
+        subject_id: str,
+    ) -> Dict[str, str]:
         content = serialize_content(lecture_content)
 
-        # Prefer the markdown/text content field when available.
+
         if isinstance(content, dict) and isinstance(content.get("content"), str):
             content_text = content["content"]
         else:
@@ -38,12 +43,12 @@ class SummarizeService:
         content_text = self.clean_markdown(content_text)
 
         tasks = [
-            self._generate_summary(content_text, level)
+            self._generate_summary(content_text, level, lecture_id, subject_id)
             for level in [0, 1, 2]
         ]
 
         results = await asyncio.gather(*tasks)
-        # MongoDB documents require string keys.
+
         return {"0": results[0], "1": results[1], "2": results[2]}
 
             
@@ -71,11 +76,27 @@ class SummarizeService:
 
 
 
-    async def _generate_summary(self, content_text: str, level: int) -> str:
+    async def _generate_summary(
+        self,
+        content_text: str,
+        level: int,
+        lecture_id: str,
+        subject_id: str,
+    ) -> str:
 
         try:
 
-            summary: str = await self.chain.ainvoke({"lecture_text": content_text, "level": level})
+            summary: str = await self.chain.ainvoke(
+                {"lecture_text": content_text, "level": level},
+                config={
+                    "run_name": "summary_run",
+                    "metadata": {
+                        "lecture_id": lecture_id,
+                        "subject_id": subject_id,
+                        "level": level,
+                    },
+                },
+            )
             return summary
         except Exception as e:
             logger.error(

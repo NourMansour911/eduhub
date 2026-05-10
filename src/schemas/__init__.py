@@ -1,6 +1,7 @@
 # Auto-generated __init__.py
 
 from . import assistant_schema
+from .assistant_schema import ChatRequest
 from .assistant_schema import SummarizeRequest
 from .assistant_schema import SummarizeResponse
 from . import grading_schema
@@ -31,6 +32,7 @@ __all__ = [
     "vectordb_schema",
     "BatchGradingRequest",
     "BatchGradingResponse",
+    "ChatRequest",
     "ChunkResponse",
     "ChunksQuerySchema",
     "CollectionChunksResponse",

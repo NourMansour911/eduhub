@@ -26,7 +26,11 @@ class LectureOrchestrator:
         
         
 
-        summaries = await self.summarize_service.generate_all_summaries(prepared_content)
+        summaries = await self.summarize_service.generate_all_summaries(
+            prepared_content,
+            lecture_id=payload.lecture_id,
+            subject_id=payload.subject_id,
+        )
         lecture = LectureModel(
             lecture_id=payload.lecture_id,
             lecture_name=payload.lecture_name,
