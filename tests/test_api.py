@@ -1,9 +1,18 @@
 from pathlib import Path
 import pytest
+import sys
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from unittest.mock import AsyncMock, MagicMock
+
+# Setup path before imports
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from core import get_settings
 from routers.home_router import home_route
@@ -16,9 +25,6 @@ from services.lectures import lecture_service
 from services.summarize import get_summarize_service
 from services.grading import get_set_reference_service, get_set_score_service
 from services.vdb_service import get_vdb_service
-
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
 
 TEST_SUBJECT_ID = "test_subject"
 TEST_LECTURE_ID = "test_lecture"
