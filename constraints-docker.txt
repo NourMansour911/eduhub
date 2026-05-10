@@ -1,0 +1,3 @@
+# Docker-only dependency constraints to keep image size under control.
+# sentence-transformers pulls torch transitively. Pinning CPU wheel avoids CUDA packages.
+torch==2.5.1+cpu; platform_system == "Linux"

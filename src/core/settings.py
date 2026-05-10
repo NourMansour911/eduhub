@@ -19,9 +19,6 @@ class Settings(BaseSettings):
     MONGO_DB_NAME: str 
 
 
-    TO_BYTES: int
-
-
     # APIs
     COHERE_API_KEY: str
     LANGSMITH_API_KEY: str
