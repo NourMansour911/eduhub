@@ -126,29 +126,24 @@ jobs:
           cleanup
 
           docker run -d --name "${CONTAINER_NAME}" -p 8000:8000 \
-            -e APP_NAME=test_eduhub \
-            -e APP_VERSION=test_0.0.0 \
+            -e APP_NAME=eduhub \
+            -e APP_VERSION=0.1 \
             -e STORAGE_PATH=/tmp/storage \
             -e MONGODB_URL=mongodb://localhost:27017 \
-            -e MONGO_DB_NAME=test_eduhub \
+            -e MONGO_DB_NAME=eduhub \
             -e QDRANT_URL=http://localhost:6333 \
-            -e REDIS_URL=redis://localhost:6379/0 \
-            -e REDIS_PASSWORD=test-redis-pass \
-            -e CHUNK_OVERLAP=200 \
-            -e CHUNK_MIN_SIZE=200 \
-            -e CHUNK_MAX_SIZE=1000 \
-            -e CHUNKS_SIMILARITY_THRESHOLD=0.75 \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e COHERE_API_KEY=test-cohere-key \
             -e LANGSMITH_API_KEY=test-langsmith-key \
             -e OPENAI_API_URL=https://api.openai.com/v1 \
             -e OPENAI_API_KEY=test-openai-key \
             -e GENERATION_BACKEND=OPENAI \
-            -e GENERATION_MODEL_ID=gpt-4-turbo \
+            -e GENERATION_MODEL_ID=deepseek-v4-flash \
             -e EMBEDDING_BACKEND=HF \
-            -e EMBEDDING_MODEL_ID=all-MiniLM-L6-v2 \
-            -e EMBEDDING_MODEL_SIZE=384 \
-            -e TOP_K_DOCS=5 \
+            -e EMBEDDING_MODEL_ID=BAAI/bge-base-en-v1.5 \
+            -e EMBEDDING_MODEL_SIZE=768 \
             -e VECTOR_DB_BACKEND=QDRANT \
-            -e VECTOR_DB_DISTANCE_METHOD=Cosine \
+            -e VECTOR_DB_DISTANCE_METHOD=cosine \
             -e AZURE_DOC_ENDPOINT=https://test.cognitiveservices.azure.com/ \
             -e AZURE_DOC_KEY=test-azure-key \
             "${IMAGE}" \
