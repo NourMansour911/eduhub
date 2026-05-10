@@ -66,27 +66,26 @@ def mock_lecture_service():
     mock.get_lecture = AsyncMock(
         return_value={
             "lecture_id": TEST_LECTURE_ID,
+            "lecture_name": "Test Lecture",
             "subject_id": TEST_SUBJECT_ID,
-            "title": "Test Lecture",
+            "subject_name": "Test Subject",
+            "content": {"pages": []},
+            "summaries": {},
         }
     )
     mock.get_lectures_by_subject = AsyncMock(
         return_value={
-            "subject_id": TEST_SUBJECT_ID,
-            "lectures": [],
-            "count": 0,
+            "items": [],
         }
     )
     mock.delete_lecture = AsyncMock(
         return_value={
             "deleted_count": 1,
-            "status": "success",
         }
     )
     mock.delete_lectures_by_subject = AsyncMock(
         return_value={
             "deleted_count": 0,
-            "status": "success",
         }
     )
     return mock
@@ -106,8 +105,7 @@ def mock_set_reference_service():
     mock = AsyncMock()
     mock.store_reference = AsyncMock(
         return_value={
-            "status": "success",
-            "message": "Reference answer stored",
+            "question_id": "q_1",
         }
     )
     return mock
@@ -119,9 +117,7 @@ def mock_set_score_service():
     mock = AsyncMock()
     mock.batch_grade = AsyncMock(
         return_value={
-            "status": "success",
-            "graded_count": 0,
-            "grades": [],
+            "results": [],
         }
     )
     return mock
@@ -144,13 +140,15 @@ def mock_vdb_service():
             "page": 1,
             "limit": 10,
             "total_chunks": 0,
+            "total_pages": 0,
+            "returned_chunks": 0,
             "chunks": [],
         }
     )
     mock.delete_collection = MagicMock(
         return_value={
             "collection_name": TEST_COLLECTION_NAME,
-            "status": "deleted",
+            "deleted": True,
         }
     )
     return mock
@@ -217,8 +215,11 @@ class TestLectureEndpoints:
     def test_post_store_lecture_returns_200(self, client):
         """Test that store lecture endpoint returns 200 status."""
         payload = {
+            "url": "https://example.com/lecture.pdf",
+            "lecture_id": TEST_LECTURE_ID,
+            "lecture_name": "Test Lecture",
             "subject_id": TEST_SUBJECT_ID,
-            "lecture_content": {"content": "test content"},
+            "subject_name": "Test Subject",
         }
         response = client.post("/lectures", json=payload)
         assert response.status_code == 200
@@ -226,15 +227,18 @@ class TestLectureEndpoints:
     def test_post_store_lecture_response_has_required_fields(self, client):
         """Test that store lecture response has required fields."""
         payload = {
+            "url": "https://example.com/lecture.pdf",
+            "lecture_id": TEST_LECTURE_ID,
+            "lecture_name": "Test Lecture",
             "subject_id": TEST_SUBJECT_ID,
-            "lecture_content": {"content": "test content"},
+            "subject_name": "Test Subject",
         }
         response = client.post("/lectures", json=payload)
         data = response.json()
         
+        assert "status" in data
         assert "lecture_id" in data
-        assert "subject_id" in data
-        assert data["subject_id"] == TEST_SUBJECT_ID
+        assert data["lecture_id"] == TEST_LECTURE_ID
 
     def test_get_lecture_by_id_returns_200(self, client):
         """Test that get lecture by ID endpoint returns 200 status."""
@@ -248,6 +252,9 @@ class TestLectureEndpoints:
         
         assert data["lecture_id"] == TEST_LECTURE_ID
         assert data["subject_id"] == TEST_SUBJECT_ID
+        assert "lecture_name" in data
+        assert "subject_name" in data
+        assert "content" in data
 
     def test_get_lectures_by_subject_returns_200(self, client):
         """Test that get lectures by subject endpoint returns 200 status."""
@@ -259,9 +266,8 @@ class TestLectureEndpoints:
         response = client.get(f"/lectures/subject/{TEST_SUBJECT_ID}")
         data = response.json()
         
-        assert "subject_id" in data
-        assert "lectures" in data
-        assert isinstance(data["lectures"], list)
+        assert "items" in data
+        assert isinstance(data["items"], list)
 
     def test_delete_lecture_by_id_returns_200(self, client):
         """Test that delete lecture endpoint returns 200 status."""
@@ -274,7 +280,6 @@ class TestLectureEndpoints:
         data = response.json()
         
         assert "deleted_count" in data
-        assert "status" in data
 
     def test_delete_lectures_by_subject_returns_200(self, client):
         """Test that delete lectures by subject endpoint returns 200 status."""
@@ -287,7 +292,6 @@ class TestLectureEndpoints:
         data = response.json()
         
         assert "deleted_count" in data
-        assert "status" in data
 
 
 class TestAssistantEndpoints:
@@ -341,8 +345,8 @@ class TestGradingEndpoints:
     def test_post_set_reference_returns_200(self, client):
         """Test that set reference endpoint returns 200 status."""
         payload = {
-            "essay_id": "essay_1",
-            "reference_answer": "This is a reference answer",
+            "question_text": "What is the capital of France?",
+            "answer": "The capital of France is Paris.",
         }
         response = client.post("/essay/set-reference", json=payload)
         assert response.status_code == 200
@@ -350,22 +354,21 @@ class TestGradingEndpoints:
     def test_post_set_reference_returns_status(self, client):
         """Test that set reference endpoint returns success status."""
         payload = {
-            "essay_id": "essay_1",
-            "reference_answer": "This is a reference answer",
+            "question_text": "What is the capital of France?",
+            "answer": "The capital of France is Paris.",
         }
         response = client.post("/essay/set-reference", json=payload)
         data = response.json()
         
-        assert "status" in data
-        assert data["status"] == "success"
+        assert "question_id" in data
 
     def test_post_grade_batch_returns_200(self, client):
         """Test that grade batch endpoint returns 200 status."""
         payload = {
-            "essays": [
+            "items": [
                 {
-                    "essay_id": "essay_1",
-                    "student_answer": "Student answer text",
+                    "question_id": "q_1",
+                    "answer": "Student answer text",
                 }
             ]
         }
@@ -375,19 +378,18 @@ class TestGradingEndpoints:
     def test_post_grade_batch_returns_grades(self, client):
         """Test that grade batch endpoint returns grades."""
         payload = {
-            "essays": [
+            "items": [
                 {
-                    "essay_id": "essay_1",
-                    "student_answer": "Student answer text",
+                    "question_id": "q_1",
+                    "answer": "Student answer text",
                 }
             ]
         }
         response = client.post("/essay/grade-batch", json=payload)
         data = response.json()
         
-        assert "status" in data
-        assert "graded_count" in data
-        assert "grades" in data
+        assert "results" in data
+        assert isinstance(data["results"], list)
 
 
 class TestVectorDBEndpoints:
@@ -420,7 +422,8 @@ class TestVectorDBEndpoints:
         assert "chunks" in data
         assert isinstance(data["chunks"], list)
         assert "page" in data
-        assert "limit" in data
+        assert "total_pages" in data
+        assert "returned_chunks" in data
 
     def test_delete_collection_returns_200(self, client):
         """Test that delete collection endpoint returns 200 status."""
@@ -433,4 +436,4 @@ class TestVectorDBEndpoints:
         data = response.json()
         
         assert "collection_name" in data
-        assert "status" in data
+        assert "deleted" in data
