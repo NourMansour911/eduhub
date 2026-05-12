@@ -45,8 +45,6 @@ class VDBService:
         query: str,
         rewritten_queries: Optional[List[str]] = None,
         limit: int = 10,
-        rerank_top_k: Optional[int] = None,
-        use_rerank: bool = True,
         filters: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
 
@@ -56,9 +54,9 @@ class VDBService:
         rewritten_queries = rewritten_queries or []
         all_queries = [query] + [q for q in rewritten_queries if q and q.strip()]
 
-        # Over-fetch candidates to give reranker enough room.
-        candidate_k = max(1, int((rerank_top_k or limit or 10)))
-        candidate_k = min(max(candidate_k * 4, candidate_k), 50)
+
+        base_k = max(1, limit)
+        candidate_k = min((base_k * 4), 50)
 
         try:
             retrieval = Retrieval(embedding_client=self.embedding_client, vdb_client=self.vdb_client)
@@ -84,8 +82,6 @@ class VDBService:
             return []
 
         final_top_k = max(1, int(limit or 10))
-        if not use_rerank:
-            return candidates[:final_top_k]
 
         cohere_key = self.settings.COHERE_API_KEY
         if not cohere_key:
@@ -96,7 +92,7 @@ class VDBService:
             reranked = await reranker.rerank(
                 query=query,
                 documents=candidates,
-                top_k=rerank_top_k or final_top_k,
+                top_k=final_top_k,
             )
             return reranked[:final_top_k]
         except ServiceException:
@@ -124,8 +120,6 @@ class VDBService:
                 query=body.query,
                 rewritten_queries=body.rewritten_queries,
                 limit=body.limit,
-                rerank_top_k=body.rerank_top_k,
-                use_rerank=body.use_rerank,
                 filters=body.filters,
             )
 
@@ -191,12 +185,11 @@ class VDBService:
             if page < 1:
                 page = 1
 
-
             raw_data = self.vdb_client.get_collection_chunks(
                 collection_name=collection_name,
                 page=page,
                 limit=limit,
-                text_limit=text_limit
+                text_limit=text_limit,
             )
 
             chunks = []
@@ -204,7 +197,7 @@ class VDBService:
                 chunk = ChunkResponse(
                     id=chunk_dict["id"],
                     text=chunk_dict["text"],
-                    metadata=chunk_dict["metadata"]
+                    metadata=chunk_dict["metadata"],
                 )
                 chunks.append(chunk)
 
@@ -214,7 +207,7 @@ class VDBService:
                 page=raw_data["page"],
                 total_pages=raw_data["total_pages"],
                 returned_chunks=raw_data["returned_chunks"],
-                chunks=chunks
+                chunks=chunks,
             )
 
             return response

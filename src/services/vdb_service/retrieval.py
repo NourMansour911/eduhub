@@ -3,7 +3,8 @@ from integrations.llm import LLMInterface
 from integrations.vector_db import VectorDBInterface
 import asyncio
 from typing import List, Dict, Any, Optional
-
+import hashlib
+from typing import List, Dict, Any
 logger = get_logger(__name__, level="error")
 
 from .vdb_exceptions import VectorizationError
@@ -39,7 +40,7 @@ class Retrieval:
 
         all_results = await asyncio.gather(*tasks)
 
-        # Second-stage fusion across query result lists for a global ordering.
+
         return self._reciprocal_rank_fusion_across_lists(all_results, top_k=top_k)
     
     async def _process_single_query(
@@ -57,7 +58,7 @@ class Retrieval:
         semantic_task = asyncio.to_thread(
             self.vdb_client.search_by_vector,
             collection_name,
-            emb,
+            emb[0],
             top_k,
             filters,
         )
@@ -70,6 +71,9 @@ class Retrieval:
         )
 
         semantic_results, keyword_results = await asyncio.gather(semantic_task, keyword_task)
+        semantic_results = self._deduplicate_by_text(semantic_results)
+        keyword_results = self._deduplicate_by_text(keyword_results)
+
         logger.info(f"Retrieved {len(semantic_results)} semantic results and {len(keyword_results)} keyword results for query: {query}")
         fused = self._reciprocal_rank_fusion([
             semantic_results,
@@ -126,3 +130,28 @@ class Retrieval:
 
         ordered_ids = sorted(fused_scores.keys(), key=lambda i: fused_scores[i], reverse=True)
         return [docs_by_id[i] for i in ordered_ids[:top_k]]
+    
+
+
+    def _deduplicate_by_text(
+        self,
+        results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+
+        seen = set()
+        cleaned = []
+
+        for item in results or []:
+            text = (item.get("text") or "").strip()
+            if not text:
+                continue
+
+            text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
+
+            if text_hash in seen:
+                continue
+
+            seen.add(text_hash)
+            cleaned.append(item)
+
+        return cleaned

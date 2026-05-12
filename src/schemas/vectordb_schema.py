@@ -13,8 +13,6 @@ class VDBSearchRequest(BaseModel):
         description="Optional rewritten/expanded queries",
     )
     limit: int = Field(default=10, ge=1, le=100)
-    rerank_top_k: Optional[int] = Field(default=None, ge=1, le=200)
-    use_rerank: bool = Field(default=True)
     filters: Optional[Any] = Field(
         default=None,
         description="Optional VDB filter list or native filter",
