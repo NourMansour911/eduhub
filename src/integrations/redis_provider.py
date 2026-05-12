@@ -19,25 +19,16 @@ class RedisProvider:
 
 
     async def connect(self) -> None:
-        try:
-            self.client = redis.Redis.from_url(
-                url=self.url,
-                decode_responses=True
-            )
-            logger.info("[REDIS CONNECT SUCCESS]")
-        except Exception as e:
-            logger.error(f"[REDIS ERROR] {e}")
-            raise
+        self.client = redis.Redis.from_url(
+            url=self.url,
+            decode_responses=True,
+        )
+        logger.info("[REDIS CONNECT SUCCESS]")
 
     async def disconnect(self) -> None:
         if self.client:
             await self.client.close()
-            self.client = None
-        logger.info("[REDIS DISCONNECT]")
-
-
-    async def ping(self) -> bool:
-        return await self.client.ping()
+        self.client = None
 
 
 

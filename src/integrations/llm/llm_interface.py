@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List, Optional
 
 class LLMInterface(ABC):
 
@@ -16,7 +17,7 @@ class LLMInterface(ABC):
         pass
 
     @abstractmethod
-    async def embed_text(self, text: str, document_type: str = None):
+    async def embed_text(self, text: List[str], document_type: Optional[str] = None) -> List[List[float]]:
         pass
 
 

@@ -12,6 +12,8 @@ from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, vectordb_router,assistant_router
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
+from services.chunking.chunking_service import ChunkingService
+from services.embedding.embedding_service import ChunkEmbeddingService
 import os
 
 settings = get_settings()
@@ -44,6 +46,7 @@ async def lifespan(app: FastAPI):
   app.state.embedding_client = llm_provider_factory.create(api_key="hf",provider=settings.EMBEDDING_BACKEND)
   app.state.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID, embedding_size=settings.EMBEDDING_MODEL_SIZE)
   logger.info("Embedding client loaded successfully")
+  
   ## LangChain client
   app.state.langchain_client = LCOpenAI(api_key=settings.OPENAI_API_KEY,api_url=settings.OPENAI_API_URL)
   logger.info("LangChain client loaded successfully")

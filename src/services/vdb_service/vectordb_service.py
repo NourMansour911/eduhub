@@ -2,7 +2,7 @@ from fastapi import Depends
 from helpers.logger import get_logger
 from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
-from typing import Optional
+from typing import Optional, List, Dict, Type
 from core.request_dependencies import get_vdb_client
 import json
 
@@ -131,6 +131,46 @@ class VDBService:
                 },
             }
             logger.error("Failed to delete collection", extra=details)
+            raise VectorDBException(details=details)
+
+    async def store_batch(
+        self,
+        collection_name: str,
+        batch_size: int,
+        texts: List[str],
+        vectors: List[List[float]],
+        record_ids: List[str],
+        metadatas: List[dict],
+        use_bm25: bool = True,
+        fields_for_indexing: Optional[List[Dict[str, Type]]] = None,
+        tenant_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ) -> bool:
+        try:
+            return await self.vdb_client.store_batch(
+                collection_name=collection_name,
+                batch_size=batch_size,
+                texts=texts,
+                vectors=vectors,
+                record_ids=record_ids,
+                metadatas=metadatas,
+                use_bm25=use_bm25,
+                fields_for_indexing=fields_for_indexing,
+            )
+        except Exception as e:
+            details = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "context": {
+                    "tenant_id": tenant_id,
+                    "project_id": project_id,
+                    "collection_name": collection_name,
+                    "batch_size": batch_size,
+                    "texts_count": len(texts) if texts is not None else None,
+                    "vectors_count": len(vectors) if vectors is not None else None,
+                },
+            }
+            logger.error("Failed to store batch", extra=details)
             raise VectorDBException(details=details)
 
 

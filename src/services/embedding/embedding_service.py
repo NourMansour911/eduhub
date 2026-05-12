@@ -1,5 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from uuid import uuid4
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import Depends
 
@@ -8,7 +7,7 @@ from helpers import get_logger
 from integrations.llm import LLMInterface
 from models.vdb_payload_model import VDBChunkPayload
 
-from .embedding_exceptions import EmbeddingGenerationError, EmptyChunkTextError
+from .embedding_exceptions import EmbeddingGenerationError
 
 logger = get_logger(__name__)
 
@@ -20,46 +19,18 @@ class ChunkEmbeddingService:
     async def embed_chunks(
         self,
         payloads: List[VDBChunkPayload],
-        id_factory: Optional[Callable[[int], str]] = None,
         document_type: Optional[str] = None,
     ) -> Tuple[List[str], List[List[float]], List[str], List[Dict[str, Any]]]:
-        texts: List[str] = []
-        vectors: List[List[float]] = []
-        ids: List[str] = []
-        metas: List[dict] = []
+        texts: List[str] = [str(payload.text) for payload in payloads]
+        ids: List[str] = [payload.metadata["chunk_id"] for payload in payloads]
+        metas: List[Dict[str, Any]] = [payload.metadata for payload in payloads]
 
-        if id_factory is None:
-
-            def id_factory(_: int) -> str:
-                return str(uuid4())
-
-        for index, payload in enumerate(payloads):
-            text = str(payload.text).strip()
-            if not text:
-                logger.error("Chunk text is empty", extra={"chunk_index": index})
-                raise EmptyChunkTextError(details={"chunk_index": index})
-
-            try:
-                if document_type is None:
-                    vector = await self.embedding_client.embed_text(text)
-                else:
-                    try:
-                        vector = await self.embedding_client.embed_text(
-                            text,
-                            document_type=document_type,
-                        )
-                    except TypeError:
-                        vector = await self.embedding_client.embed_text(text)
-            except Exception as exc:
-                logger.error("Embedding failed", exc_info=True, extra={"chunk_index": index})
-                raise EmbeddingGenerationError(
-                    details={"chunk_index": index, "error": str(exc)}
-                ) from exc
-
-            texts.append(text)
-            vectors.append(vector)
-            ids.append(id_factory(index))
-            metas.append(payload.metadata)
+        try:
+            
+            vectors = await self.embedding_client.embed_text(texts, document_type=document_type)
+        except Exception as exc:
+            logger.error("Embedding failed", exc_info=True)
+            raise EmbeddingGenerationError(details={"error": str(exc)}) from exc
 
         return texts, vectors, ids, metas
 
