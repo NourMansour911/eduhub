@@ -69,7 +69,7 @@ class ChunkingService:
                     subject_name=subject_name,
                     chunk_index=chunk_count + 1,
                     lecture_order=lecture_order,
-                    pages_number=sorted(list(page_numbers)),
+                    pages_numbers=sorted(list(page_numbers)),
                 )
                 
                 
