@@ -44,6 +44,14 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
+    def delete_by_filter(
+        self,
+        collection_name: str,
+        filters: Optional[Any] = None,
+    ) -> Any:
+        pass
+
+    @abstractmethod
     def get_collection_info(self, collection_name: str) -> dict:
         pass
 

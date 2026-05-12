@@ -208,6 +208,28 @@ class QdrantDBProvider(VectorDBInterface):
         self.client.delete_collection(collection_name=collection_name)
         return
 
+    def delete_by_filter(
+        self,
+        collection_name: str,
+        filters: Optional[Any] = None,
+    ) -> Any:
+        if not self.is_collection_existed(collection_name):
+            logger.warning(
+                "[DELETE BY FILTER] Collection does not exist",
+                extra={"collection_name": collection_name},
+            )
+            return {"deleted": False, "reason": "collection_not_found"}
+
+        resolved_filter = self._resolve_filters(filters)
+        if resolved_filter is None:
+            raise ValueError("delete_by_filter requires non-empty filters")
+
+        result = self.client.delete(
+            collection_name=collection_name,
+            points_selector=models.FilterSelector(filter=resolved_filter),
+        )
+        return result
+
     def get_collection_info(self, collection_name: str) -> dict:
         return self.client.get_collection(collection_name=collection_name)
 

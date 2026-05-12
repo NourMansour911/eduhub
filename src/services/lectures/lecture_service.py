@@ -8,7 +8,13 @@ from pymongo.errors import DuplicateKeyError
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat,AnalyzeResult
 from integrations.llm import LCOpenAI
-from core.request_dependencies import get_lecture_repo, get_doc_intelligence_client, get_langchain_client
+from integrations.vector_db import VectorDBInterface
+from core.request_dependencies import (
+    get_lecture_repo,
+    get_doc_intelligence_client,
+    get_langchain_client,
+    get_vdb_client,
+)
 from core import Settings, get_settings
 from models import LectureModel
 from repositories import LectureRepo
@@ -30,10 +36,17 @@ logger = get_logger(__name__)
 
 
 class LectureService:
-    def __init__(self, lecture_repo: LectureRepo, doc_intelligence_client: DocumentIntelligenceClient, summary_llm: ChatOpenAI):
+    def __init__(
+        self,
+        lecture_repo: LectureRepo,
+        doc_intelligence_client: DocumentIntelligenceClient,
+        summary_llm: ChatOpenAI,
+        vdb_client: VectorDBInterface,
+    ):
         self.lecture_repo = lecture_repo
         self.doc_intelligence_client = doc_intelligence_client
         self.summary_llm = summary_llm
+        self.vdb_client = vdb_client
 
     async def prepare_lecture_content(self, pdf_url: str):
 
@@ -96,6 +109,17 @@ class LectureService:
             raise LectureServiceException(details={"operation": "delete_lecture", "error": str(exc)})
         if deleted_count == 0:
             raise LectureNotFoundError(details={"lecture_id": payload.lecture_id})
+
+        try:
+            self.vdb_client.delete_by_filter(
+                collection_name="lectures",
+                filters=[{"field": "lecture_id", "value": payload.lecture_id, "op": "eq"}],
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to delete lecture vectors",
+                extra={"lecture_id": payload.lecture_id, "error": str(exc)},
+            )
         return DeleteLectureResponse( deleted_count=deleted_count)
 
     async def delete_lectures_by_subject(self, payload: DeleteLectureBySubjectIdRequest) -> DeleteLectureResponse:
@@ -105,6 +129,17 @@ class LectureService:
             raise LectureServiceException(details={"operation": "delete_lectures_by_subject", "error": str(exc)})
         if deleted_count == 0:
             raise LectureNotFoundError(details={"subject_id": payload.subject_id})
+
+        try:
+            self.vdb_client.delete_by_filter(
+                collection_name="lectures",
+                filters=[{"field": "subject_id", "value": payload.subject_id, "op": "eq"}],
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to delete subject vectors",
+                extra={"subject_id": payload.subject_id, "error": str(exc)},
+            )
         return DeleteLectureResponse(deleted_count=deleted_count)
 
 
@@ -112,6 +147,7 @@ def get_lecture_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
     doc_intelligence_client: DocumentIntelligenceClient = Depends(get_doc_intelligence_client),
     lc_openai_client: LCOpenAI = Depends(get_langchain_client),
+    vdb_client: VectorDBInterface = Depends(get_vdb_client),
     settings: Settings = Depends(get_settings),
 ) -> LectureService:
     
@@ -126,4 +162,5 @@ def get_lecture_service(
         lecture_repo=lecture_repo,
         doc_intelligence_client=doc_intelligence_client,
         summary_llm=summary_llm,
+        vdb_client=vdb_client,
     )

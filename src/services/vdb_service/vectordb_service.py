@@ -133,6 +133,37 @@ class VDBService:
             logger.error("Failed to delete collection", extra=details)
             raise VectorDBException(details=details)
 
+    def delete_by_filter(
+        self,
+        collection_name: str,
+        filters: Optional[object] = None,
+        tenant_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+    ) -> dict:
+        try:
+            result = self.vdb_client.delete_by_filter(
+                collection_name=collection_name,
+                filters=filters,
+            )
+            return {
+                "collection_name": collection_name,
+                "deleted": True,
+                "result": json.loads(json.dumps(result, default=lambda x: x.__dict__)),
+            }
+        except Exception as e:
+            details = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "context": {
+                    "tenant_id": tenant_id,
+                    "project_id": project_id,
+                    "collection_name": collection_name,
+                    "filters": filters,
+                },
+            }
+            logger.error("Failed to delete by filter", extra=details)
+            raise VectorDBException(details=details)
+
     async def store_batch(
         self,
         collection_name: str,
