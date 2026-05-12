@@ -2,6 +2,7 @@
 
 from . import assistant_schema
 from .assistant_schema import ChatRequest
+from .assistant_schema import ChatResponse
 from .assistant_schema import SummarizeRequest
 from .assistant_schema import SummarizeResponse
 from . import grading_schema
@@ -33,6 +34,7 @@ __all__ = [
     "BatchGradingRequest",
     "BatchGradingResponse",
     "ChatRequest",
+    "ChatResponse",
     "ChunkResponse",
     "ChunksQuerySchema",
     "CollectionChunksResponse",

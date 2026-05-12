@@ -28,19 +28,13 @@ class SummarizeService:
 
     async def generate_all_summaries(
         self,
-        lecture_content,
+        lecture_content: str,
         lecture_id: str,
         subject_id: str,
     ) -> Dict[str, str]:
-        content = serialize_content(lecture_content)
 
 
-        if isinstance(content, dict) and isinstance(content.get("content"), str):
-            content_text = content["content"]
-        else:
-            content_text = str(content)
-
-        content_text = self.clean_markdown(content_text)
+        content_text = self.clean_markdown(lecture_content)
 
         tasks = [
             self._generate_summary(content_text, level, lecture_id, subject_id)

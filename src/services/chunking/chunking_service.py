@@ -1,9 +1,10 @@
+import re
+
 from helpers.logger import get_logger
 from models.chunk_model import ChunkMetadata
 from models.vdb_payload_model import VDBChunkPayload
 from .chunking_exceptions import ChunkProcessingError
-from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Set, Tuple
 from uuid import uuid4
 from azure.ai.documentintelligence.models import AnalyzeResult
 
@@ -43,34 +44,43 @@ class ChunkingService:
             for section in sections:
                 
                 elements = self._get(section, "elements", [])
-                
-                for element_id in elements:
 
-                    chunk_text = await self._extract_element_text(
+                section_parts: List[str] = []
+                page_numbers: Set[int] = set()
+                for element_id in elements:
+                    element_text, element_page = await self._extract_element_text(
                         prepared_content, element_id, full_content
                     )
+                    element_text = (element_text or "").strip()
+                    if element_text:
+                        section_parts.append(element_text)
+                    if element_page is not None:
+                        page_numbers.add(element_page)
 
-                    chunk_text = (chunk_text or "").strip()
-                    if not chunk_text:
-                        continue
+                section_text = "\n".join(section_parts).strip()
+                if not section_text:
+                    continue
 
-                    metadata = ChunkMetadata(
-                        chunk_id=str(uuid4()),
-                        lecture_id=lecture_id,
-                        lecture_name=lecture_name,
-                        subject_id=subject_id,
-                        subject_name=subject_name,
-                        chunk_index=chunk_count + 1,
-                        lecture_order=lecture_order,
+                metadata = ChunkMetadata(
+                    chunk_id=str(uuid4()),
+                    lecture_id=lecture_id,
+                    lecture_name=lecture_name,
+                    subject_id=subject_id,
+                    subject_name=subject_name,
+                    chunk_index=chunk_count + 1,
+                    lecture_order=lecture_order,
+                    pages_number=sorted(list(page_numbers)),
+                )
+                
+                
+                section_text = re.sub(r"<figure>\s*</figure>", "", section_text)
+                chunk_payloads.append(
+                    VDBChunkPayload(
+                        text=section_text,
+                        metadata=metadata.model_dump(),
                     )
-
-                    chunk_payloads.append(
-                        VDBChunkPayload(
-                            text=chunk_text,
-                            metadata=metadata.model_dump(),
-                        )
-                    )
-                    chunk_count += 1
+                )
+                chunk_count += 1
 
 
             logger.info(
@@ -94,7 +104,7 @@ class ChunkingService:
         prepared_content: AnalyzeResult,
         element_id: str,
         full_content: str
-    ) -> str:
+    ) -> Tuple[str, Optional[int]]:
 
         if "/paragraphs/" in element_id:
             idx = int(element_id.split("/")[-1])
@@ -106,14 +116,19 @@ class ChunkingService:
             idx = int(element_id.split("/")[-1])
             elements = self._get(prepared_content, "figures", [])
         else:
-            return ""
+            return "", None
         
         if idx >= len(elements):
-            return ""
+            return "", None
         
         element = elements[idx]
         spans = self._get(element, "spans", [])
-        
+
+
+        page_number = None
+        br = self._get(element, "bounding_regions", None)
+        if br:
+            page_number = self._get(br[0], "page_number", None)
 
         chunk_parts = []
         for span in spans:
@@ -124,7 +139,7 @@ class ChunkingService:
                 if extracted_text.strip():
                     chunk_parts.append(extracted_text)
         
-        return "".join(chunk_parts)
+        return "".join(chunk_parts), page_number
 
 
 def get_chunking_service() -> ChunkingService:

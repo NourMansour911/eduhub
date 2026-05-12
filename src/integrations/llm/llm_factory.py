@@ -1,4 +1,4 @@
-from .providers import OpenAIProvider,  HuggingFaceProvider
+from .providers import  HuggingFaceProvider
 
 from helpers import get_logger
 from typing import Optional
@@ -12,16 +12,7 @@ class LLMFactory:
         default_temperature: float = 0.7,
         default_max_tokens: int = 500
         ) :
-        
-        if provider == "OPENAI":
-            return OpenAIProvider(
-                api_key = api_key,
-                api_url = api_url,
-                default_max_tokens=default_max_tokens,
-                default_temperature=default_temperature,
-                max_retries=max_retries,
-                timeout=timeout)
-            
+
         if provider == "HF":
             return HuggingFaceProvider()
 

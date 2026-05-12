@@ -1,6 +1,7 @@
 # Auto-generated __init__.py
 
 from . import assistant_router
+from .assistant_router import chat
 from .assistant_router import summarize
 from . import grading_router
 from .grading_router import grade_batch
@@ -24,6 +25,7 @@ __all__ = [
     "home_router",
     "lecture_router",
     "vectordb_router",
+    "chat",
     "delete_collection",
     "delete_lecture",
     "delete_lectures_by_subject",

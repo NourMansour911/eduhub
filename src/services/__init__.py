@@ -1,5 +1,6 @@
 # Auto-generated __init__.py
 
+from . import chunking
 from . import embedding
 from . import grading
 from . import lectures
@@ -13,6 +14,7 @@ from . import summarize
 from . import vdb_service
 
 __all__ = [
+    "chunking",
     "embedding",
     "grading",
     "lectures",
