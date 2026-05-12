@@ -1,14 +1,41 @@
-from pydantic import BaseModel,Field
-from typing import List,Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Any
 
 class SearchRequest(BaseModel):
     query: str
     limit: Optional[int] = 5
 
+
+class VDBSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="User primary query")
+    rewritten_queries: Optional[List[str]] = Field(
+        default=None,
+        description="Optional rewritten/expanded queries",
+    )
+    limit: int = Field(default=10, ge=1, le=100)
+    rerank_top_k: Optional[int] = Field(default=None, ge=1, le=200)
+    use_rerank: bool = Field(default=True)
+    filters: Optional[Any] = Field(
+        default=None,
+        description="Optional VDB filter list or native filter",
+    )
+
 class ChunkResponse(BaseModel):
     id: str = Field(..., description="Chunk ID")
     text: str = Field(..., description="Chunk text (full or truncated)")
     metadata: dict
+
+
+class SearchChunkResponse(ChunkResponse):
+    score: Optional[float] = None
+    rerank_score: Optional[float] = None
+
+
+class VDBSearchResponse(BaseModel):
+    collection_name: str
+    query: str
+    returned_chunks: int
+    chunks: List[SearchChunkResponse]
 
 
 class CollectionChunksResponse(BaseModel):

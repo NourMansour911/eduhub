@@ -449,13 +449,7 @@ class QdrantDBProvider(VectorDBInterface):
         query_text: str,
         limit: int,
         filters: Optional[Any] = None,
-        use_bm25: bool = True,
     ) -> List[Dict[str, Any]]:
-        
-        if not use_bm25:
-            logger.info(f"[BM25] Disabled for collection: {collection_name}")
-            return []
-
         logger.info(f"[BM25] collection: {collection_name} ")
 
         bm25 = self._ensure_bm25(collection_name)

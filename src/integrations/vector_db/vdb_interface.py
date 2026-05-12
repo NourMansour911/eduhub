@@ -98,6 +98,5 @@ class VectorDBInterface(ABC):
         query_text: str,
         limit: int,
         filters: Optional[Any] = None,
-        use_bm25: bool = True
     ) -> List[Dict[str, Any]]:
         pass

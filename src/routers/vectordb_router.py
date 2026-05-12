@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, Path
 
 from helpers import get_logger
 from services.vdb_service import VDBService, get_vdb_service
-from schemas.vectordb_schema import CollectionChunksResponse, ChunksQuerySchema, DeleteCollectionResponse
+from schemas.vectordb_schema import (
+    CollectionChunksResponse,
+    ChunksQuerySchema,
+    DeleteCollectionResponse,
+    VDBSearchRequest,
+    VDBSearchResponse,
+)
 
 logger = get_logger(__name__)
 
@@ -10,6 +16,20 @@ vectordb_route = APIRouter(
     prefix="/vdb/{collection_name}",
     tags=["VectorDB"],
 )
+
+
+@vectordb_route.post(
+    "/search",
+    response_model=VDBSearchResponse,
+    summary="Search collection",
+    description="Searches the vector collection using semantic + keyword retrieval with optional reranking.",
+)
+async def search_collection(
+    body: VDBSearchRequest,
+    collection_name: str = Path(..., description="Vector collection name."),
+    vdb_service: VDBService = Depends(get_vdb_service),
+):
+    return await vdb_service.search_api(collection_name=collection_name, body=body)
 
 
 @vectordb_route.get(
