@@ -35,6 +35,36 @@ class ChunkingService:
         chunk_payloads: List[VDBChunkPayload] = []
         chunk_count = 0
         seen_text_hashes: Set[str] = set()
+
+        def append_chunk_payload_if_new(chunk_text: str, pages_numbers: List[int]) -> None:
+            nonlocal chunk_count
+
+            normalized_text = (chunk_text or "").strip()
+            if not normalized_text:
+                return
+
+            text_hash = hashlib.md5(normalized_text.encode("utf-8")).hexdigest()
+            if text_hash in seen_text_hashes:
+                return
+            seen_text_hashes.add(text_hash)
+
+            metadata = ChunkMetadata(
+                chunk_id=str(uuid4()),
+                lecture_id=lecture_id,
+                lecture_name=lecture_name,
+                subject_id=subject_id,
+                subject_name=subject_name,
+                chunk_index=chunk_count + 1,
+                lecture_order=lecture_order,
+                pages_numbers=pages_numbers,
+            )
+            chunk_payloads.append(
+                VDBChunkPayload(
+                    text=normalized_text,
+                    metadata=metadata.model_dump(),
+                )
+            )
+            chunk_count += 1
         
 
         full_content = self._get(prepared_content, "content", "")
@@ -46,13 +76,16 @@ class ChunkingService:
             for section in sections:
                 
                 elements = self._get(section, "elements", [])
-
+                used_paras_indices = set()
                 section_parts: List[str] = []
                 page_numbers: Set[int] = set()
                 for element_id in elements:
-                    element_text, element_page = await self._extract_element_text(
+                    element_text, element_page, returned_idx = await self._extract_element_text(
                         prepared_content, element_id, full_content
                     )
+                    if returned_idx is not None:
+                        used_paras_indices.add(returned_idx)
+                        
                     element_text = (element_text or "").strip()
                     if element_text:
                         section_parts.append(element_text)
@@ -63,33 +96,53 @@ class ChunkingService:
                 if not section_text:
                     continue
 
-
-                text_hash = hashlib.md5(section_text.encode("utf-8")).hexdigest()
-                if text_hash in seen_text_hashes:
-                    continue
-                seen_text_hashes.add(text_hash)
-
-                metadata = ChunkMetadata(
-                    chunk_id=str(uuid4()),
-                    lecture_id=lecture_id,
-                    lecture_name=lecture_name,
-                    subject_id=subject_id,
-                    subject_name=subject_name,
-                    chunk_index=chunk_count + 1,
-                    lecture_order=lecture_order,
-                    pages_numbers=sorted(list(page_numbers)),
-                )
-                
-                
                 section_text = re.sub(r"<figure>\s*</figure>", "", section_text)
-                chunk_payloads.append(
-                    VDBChunkPayload(
-                        text=section_text,
-                        metadata=metadata.model_dump(),
-                    )
-                )
-                chunk_count += 1
+                append_chunk_payload_if_new(section_text, sorted(list(page_numbers)))
+            
+            paragraphs = self._get(prepared_content, "paragraphs", [])
+            paragraphs_no = len(paragraphs)
+            
+            all_indices = set(range(paragraphs_no))
+            orphans_indices = all_indices - used_paras_indices
 
+            sorted_indices = sorted(orphans_indices)
+            current_parts: List[str] = []
+            current_pages: Set[int] = set()
+            current_word_count = 0
+
+            for idx in sorted_indices:
+                paragraph = paragraphs[idx]
+                text = (self._get(paragraph, "text", "") or "").strip()
+                if not text or len(text.split()) < 10:
+                    continue
+
+                bounding_regions = self._get(paragraph, "bounding_regions", []) or []
+                page_number = None
+                if bounding_regions:
+                    page_number = self._get(bounding_regions[0], "page_number", None)
+
+                paragraph_words = len(text.split())
+                page_changed = False
+                if current_pages and page_number is not None:
+                    is_nearby_page = any(abs(page_number - p) <= 2 for p in current_pages)
+                    page_changed = not is_nearby_page
+
+                if current_parts and (page_changed or current_word_count + paragraph_words > 350):
+                    chunk_text = "\n".join(current_parts).strip()
+                    append_chunk_payload_if_new(chunk_text, sorted(current_pages))
+
+                    current_parts = []
+                    current_pages = set()
+                    current_word_count = 0
+
+                current_parts.append(text)
+                current_word_count += paragraph_words
+                if page_number is not None:
+                    current_pages.add(page_number)
+
+            if current_parts:
+                chunk_text = "\n".join(current_parts).strip()
+                append_chunk_payload_if_new(chunk_text, sorted(current_pages))
 
             logger.info(
                 f"Processed Azure analyze result",
@@ -112,22 +165,25 @@ class ChunkingService:
         prepared_content: AnalyzeResult,
         element_id: str,
         full_content: str
-    ) -> Tuple[str, Optional[int]]:
-
+    ) -> Tuple[str, Optional[int], Optional[int]]:
+        
         if "/paragraphs/" in element_id:
             idx = int(element_id.split("/")[-1])
             elements = self._get(prepared_content, "paragraphs", [])
+            returned_idx = idx
         elif "/tables/" in element_id:
             idx = int(element_id.split("/")[-1])
             elements = self._get(prepared_content, "tables", [])
+            returned_idx = None
         elif "/figures/" in element_id:
             idx = int(element_id.split("/")[-1])
             elements = self._get(prepared_content, "figures", [])
+            returned_idx = None
         else:
-            return "", None
+            return "", None, None
         
         if idx >= len(elements):
-            return "", None
+            return "", None, None
         
         element = elements[idx]
         spans = self._get(element, "spans", [])
@@ -147,7 +203,7 @@ class ChunkingService:
                 if extracted_text.strip():
                     chunk_parts.append(extracted_text)
         
-        return "".join(chunk_parts), page_number
+        return "".join(chunk_parts), page_number,returned_idx
 
 
 def get_chunking_service() -> ChunkingService:
