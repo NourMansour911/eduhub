@@ -1,4 +1,5 @@
 import re
+import hashlib
 
 from helpers.logger import get_logger
 from models.chunk_model import ChunkMetadata
@@ -33,6 +34,7 @@ class ChunkingService:
 
         chunk_payloads: List[VDBChunkPayload] = []
         chunk_count = 0
+        seen_text_hashes: Set[str] = set()
         
 
         full_content = self._get(prepared_content, "content", "")
@@ -60,6 +62,12 @@ class ChunkingService:
                 section_text = "\n".join(section_parts).strip()
                 if not section_text:
                     continue
+
+
+                text_hash = hashlib.md5(section_text.encode("utf-8")).hexdigest()
+                if text_hash in seen_text_hashes:
+                    continue
+                seen_text_hashes.add(text_hash)
 
                 metadata = ChunkMetadata(
                     chunk_id=str(uuid4()),

@@ -3,7 +3,6 @@ from integrations.llm import LLMInterface
 from integrations.vector_db import VectorDBInterface
 import asyncio
 from typing import List, Dict, Any, Optional
-import hashlib
 from typing import List, Dict, Any
 logger = get_logger(__name__, level="error")
 
@@ -71,10 +70,10 @@ class Retrieval:
         )
 
         semantic_results, keyword_results = await asyncio.gather(semantic_task, keyword_task)
-        semantic_results = self._deduplicate_by_text(semantic_results)
-        keyword_results = self._deduplicate_by_text(keyword_results)
 
-        logger.info(f"Retrieved {len(semantic_results)} semantic results and {len(keyword_results)} keyword results for query: {query}")
+        semantic_results = self._deduplicate_by_id(semantic_results)
+        keyword_results = self._deduplicate_by_id(keyword_results)
+
         fused = self._reciprocal_rank_fusion([
             semantic_results,
             keyword_results,
@@ -132,26 +131,24 @@ class Retrieval:
         return [docs_by_id[i] for i in ordered_ids[:top_k]]
     
 
-
-    def _deduplicate_by_text(
-        self,
-        results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-
+    def _deduplicate_by_id(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         seen = set()
-        cleaned = []
+        cleaned: List[Dict[str, Any]] = []
 
         for item in results or []:
-            text = (item.get("text") or "").strip()
-            if not text:
+
+            doc_id = item.get("id") or item.get("doc_id")
+            if not doc_id:
+                cleaned.append(item)
                 continue
 
-            text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
-
-            if text_hash in seen:
+            doc_id_str = str(doc_id)
+            if doc_id_str in seen:
                 continue
 
-            seen.add(text_hash)
+            seen.add(doc_id_str)
             cleaned.append(item)
 
         return cleaned
+
+
