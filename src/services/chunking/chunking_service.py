@@ -124,9 +124,9 @@ class ChunkingService:
                 paragraph_words = len(text.split())
                 page_changed = False
                 if current_pages and page_number is not None:
-                    is_nearby_page = any(abs(page_number - p) <= 2 for p in current_pages)
-                    page_changed = not is_nearby_page
-
+                    last_page = max(current_pages)
+                    page_changed = abs(page_number - last_page) > 2
+                    
                 if current_parts and (page_changed or current_word_count + paragraph_words > 350):
                     chunk_text = "\n".join(current_parts).strip()
                     append_chunk_payload_if_new(chunk_text, sorted(current_pages))
