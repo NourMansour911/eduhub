@@ -2,8 +2,8 @@ import re
 import hashlib
 
 from helpers.logger import get_logger
-from models.chunk_model import ChunkMetadata
-from models.vdb_payload_model import VDBChunkPayload
+from dtos.chunk_dto import ChunkMetadata
+from dtos.vdb_payload_dto import VDBChunkPayload
 from .chunking_exceptions import ChunkProcessingError
 from typing import List, Dict, Any, Optional, Union, Set, Tuple
 from uuid import uuid4

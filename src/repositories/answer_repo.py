@@ -1,5 +1,5 @@
 from models import AnswerModel
-from models.enums import DBEnum 
+from enums import DBEnum
 from bson import ObjectId
 
 

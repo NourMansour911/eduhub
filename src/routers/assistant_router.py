@@ -42,3 +42,4 @@ async def chat(
     user_id: str = Path(..., description="User identifier used for memory and trace metadata."),
 ):
     return ChatResponse(ai_response="kol w eshkor")
+

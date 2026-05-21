@@ -1,5 +1,5 @@
 from models import LectureModel
-from models.enums import DBEnum
+from enums import DBEnum
 from bson import ObjectId
 
 

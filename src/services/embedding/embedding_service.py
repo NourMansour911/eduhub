@@ -5,7 +5,7 @@ from fastapi import Depends
 from core.request_dependencies import get_embedding_client
 from helpers import get_logger
 from integrations.llm import LLMInterface
-from models.vdb_payload_model import VDBChunkPayload
+from dtos.vdb_payload_dto import VDBChunkPayload
 
 from .embedding_exceptions import EmbeddingGenerationError
 
