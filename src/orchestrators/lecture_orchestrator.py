@@ -63,8 +63,6 @@ class LectureOrchestrator:
                     metadatas=metas,
                     use_bm25=True,
                     fields_for_indexing=[
-                        {"name": "lecture_name", "type": str},
-                        {"name": "subject_name", "type": str},
                         {"name": "lecture_id", "type": str},
                         {"name": "subject_id", "type": str},
                     ]

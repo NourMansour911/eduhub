@@ -74,7 +74,7 @@ class LectureService:
         except Exception as exc:
             raise LectureServiceException(
                 details={"operation": "prepare_lecture_content", "error": str(exc), "pdf_url": pdf_url}
-            )
+            ) from exc
 
 
     async def add_lecture(self, lecture: LectureModel):
@@ -83,30 +83,41 @@ class LectureService:
         except DuplicateKeyError as exc:
             raise LectureConflictError(details={"lecture_id": lecture.lecture_id, "error": str(exc)})
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "store_lecture", "error": str(exc)})
+            raise LectureServiceException(details={"operation": "store_lecture", "error": str(exc)}) from exc
 
     async def get_lecture(self, lecture_id: str) -> LectureModel:
         try:
             lecture = await self.lecture_repo.get_lecture_by_lecture_id(lecture_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "get_lecture", "error": str(exc)})
+            raise LectureServiceException(details={"operation": "get_lecture", "error": str(exc)}) from exc
         if not lecture:
             raise LectureNotFoundError(details={"lecture_id": lecture_id})
 
         return lecture
 
+    async def get_lecture_content(self, lecture_id: str) -> str:
+        try:
+            lecture = await self.get_lecture(lecture_id)
+            return lecture.content
+        except LectureNotFoundError:
+            raise
+        except Exception as exc:
+            raise LectureServiceException(
+                details={"operation": "get_lecture_content", "lecture_id": lecture_id, "error": str(exc)}
+            ) from exc
+
     async def get_lectures_by_subject(self, subject_id: str) -> LectureListResponse:
         try:
             lectures = await self.lecture_repo.get_lectures_by_subject(subject_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "get_lectures_by_subject", "error": str(exc)})
+            raise LectureServiceException(details={"operation": "get_lectures_by_subject", "error": str(exc)}) from exc
         return LectureListResponse(items=lectures)
 
     async def delete_lecture(self, payload: DeleteLectureByIdRequest) -> DeleteLectureResponse:
         try:
             deleted_count = await self.lecture_repo.delete_by_lecture_id(payload.lecture_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "delete_lecture", "error": str(exc)})
+            raise LectureServiceException(details={"operation": "delete_lecture", "error": str(exc)}) from exc
         if deleted_count == 0:
             raise LectureNotFoundError(details={"lecture_id": payload.lecture_id})
 
@@ -126,7 +137,7 @@ class LectureService:
         try:
             deleted_count = await self.lecture_repo.delete_by_subject_id(payload.subject_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "delete_lectures_by_subject", "error": str(exc)})
+            raise LectureServiceException(details={"operation": "delete_lectures_by_subject", "error": str(exc)}) from exc
         if deleted_count == 0:
             raise LectureNotFoundError(details={"subject_id": payload.subject_id})
 
