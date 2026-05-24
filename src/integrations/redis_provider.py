@@ -117,6 +117,18 @@ class RedisProvider:
             return []
         return collection.messages
 
+    async def get_last_messages(
+        self,
+        user_id: str,
+        session_id: str,
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        collection = await self.get_collection(user_id=user_id, session_id=session_id)
+        if collection is None or limit <= 0:
+            return []
+
+        return collection.messages[-limit:]
+
 
     async def get_cache(self, key: str) -> Optional[str]:
         return await self.get(key)

@@ -82,11 +82,6 @@ class SessionService:
                     },
                 )
             except Exception as exc:
-                logger.error(
-                    "Failed to generate session summary",
-                    exc_info=True,
-                    extra={"user_id": user_id, "session_id": session_id},
-                )
                 raise SessionProcessingError(
                     message="Failed to generate session summary",
                     details={
@@ -100,9 +95,6 @@ class SessionService:
             chunk_id=f"session:{user_id}:{session_id}",
             user_id=user_id,
             session_id=session_id,
-            messages_count=message_count,
-            summary_generated=message_count > 1,
-            archived_at=datetime.now(timezone.utc),
         )
 
         payload = VDBChunkPayload(
@@ -130,11 +122,7 @@ class SessionService:
                 ],
             )
         except Exception as exc:
-            logger.error(
-                "Failed to archive session into Qdrant",
-                exc_info=True,
-                extra={"user_id": user_id, "session_id": session_id},
-            )
+            
             raise SessionProcessingError(
                 message="Failed to archive session into Qdrant",
                 details={
