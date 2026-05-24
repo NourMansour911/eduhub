@@ -44,6 +44,9 @@ Use this skill when:
 ### 5) Logging
 - Every service error path MUST be logged with get_logger.
 - Prefer centralized logging in ServiceException constructor.
+- Custom exceptions MUST NOT be logged before being raised if they already inherit logging behavior from ServiceException.
+- Avoid duplicate logging for the same failure path.
+- If pre-exception logging is absolutely necessary, the exception flow MUST ensure the same error is not logged again by the exception constructor.
 - Log message MUST include contextual details when available.
 
 ### 6) Validation Boundaries

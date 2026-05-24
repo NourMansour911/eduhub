@@ -280,8 +280,6 @@ class VDBService:
         metadatas: List[dict],
         use_bm25: bool = True,
         fields_for_indexing: Optional[List[Dict[str, Type]]] = None,
-        tenant_id: Optional[str] = None,
-        project_id: Optional[str] = None,
     ) -> bool:
         try:
             return await self.vdb_client.store_batch(

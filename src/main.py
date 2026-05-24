@@ -10,6 +10,7 @@ from helpers.logger import get_logger
 from repositories import AnswerRepo, LectureRepo
 from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, session_router, vectordb_router,assistant_router
+from integrations import RedisProvider
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
 from services.chunking.chunking_service import ChunkingService
@@ -62,6 +63,11 @@ async def lifespan(app: FastAPI):
   app.state.lecture_repo = mongo_repos["LectureRepo"]
   logger.info("Mongo repositories loaded successfully")
 
+  # Redis client
+  app.state.redis_provider = RedisProvider(settings.REDIS_URL)
+  await app.state.redis_provider.connect()
+  logger.info("Redis provider loaded successfully")
+
   # Azure Document Intelligence client
   app.state.doc_intelligence_client = DocumentIntelligenceClient(
     endpoint=settings.AZURE_DOC_ENDPOINT,
@@ -72,6 +78,7 @@ async def lifespan(app: FastAPI):
 
   yield
   app.state.vdb_client.disconnect()
+  await app.state.redis_provider.disconnect()
   app.state.mongo_client.close()
   
   
