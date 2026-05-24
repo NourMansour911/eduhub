@@ -7,6 +7,10 @@ from .chunk_model import ChunkMetadata
 from . import enums
 from . import lecture_model
 from .lecture_model import LectureModel
+from . import mongo_document_model
+from .mongo_document_model import MongoDocumentModel
+from . import llm_judge_model
+from .llm_judge_model import LLMJudgeInputModel
 from . import vdb_payload_model
 from .vdb_payload_model import VDBChunkPayload
 
@@ -15,10 +19,14 @@ __all__ = [
     "chunk_model",
     "enums",
     "lecture_model",
+    "mongo_document_model",
+    "llm_judge_model",
     "vdb_payload_model",
     "AnswerModel",
     "ChunkMetadata",
     "LectureModel",
+    "MongoDocumentModel",
+    "LLMJudgeInputModel",
     "VDBChunkPayload",
     
 ]
