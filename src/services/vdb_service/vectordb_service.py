@@ -81,56 +81,6 @@ class VDBService:
             filters=[{"field": field_name, "value": range_value, "op": "range"}],
         )
 
-    async def search_lectures_by_lecture_id(
-        self,
-        lecture_id: str,
-        limit: int = 10,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_by_metadata_field(
-            collection_name="lectures",
-            field_name="lecture_id",
-            field_value=lecture_id,
-            limit=limit,
-        )
-
-    async def search_lectures_by_subject_id(
-        self,
-        subject_id: str,
-        limit: int = 10,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_by_metadata_field(
-            collection_name="lectures",
-            field_name="subject_id",
-            field_value=subject_id,
-            limit=limit,
-        )
-
-    async def search_sessions_by_user_id(
-        self,
-        user_id: str,
-        limit: int = 10,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_by_metadata_field(
-            collection_name="sessions",
-            field_name="user_id",
-            field_value=user_id,
-            limit=limit,
-        )
-
-    async def search_sessions_by_archived_at_range(
-        self,
-        gte: str,
-        lte: str,
-        limit: int = 10,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_by_metadata_range(
-            collection_name="sessions",
-            field_name="archived_at",
-            gte=gte,
-            lte=lte,
-            limit=limit,
-        )
-
     async def search(
         self,
         collection_name: str,

@@ -1,32 +1,34 @@
 from fastapi import Depends
 
-from services.vdb_service import VDBService, get_vdb_service
+from services.lectures.lecture_service import LectureService, get_lecture_service
+from services.session.session_service import SessionService, get_session_service
 
 
 class VDBTools:
-	def __init__(self, vdb_service: VDBService):
-		self.vdb_service = vdb_service
+	def __init__(self, lecture_service: LectureService, session_service: SessionService):
+		self.lecture_service = lecture_service
+		self.session_service = session_service
 
 	async def search_lectures_by_lecture_id(self, lecture_id: str, limit: int = 10):
-		return await self.vdb_service.search_lectures_by_lecture_id(
+		return await self.lecture_service.search_lectures_by_lecture_id(
 			lecture_id=lecture_id,
 			limit=limit,
 		)
 
 	async def search_lectures_by_subject_id(self, subject_id: str, limit: int = 10):
-		return await self.vdb_service.search_lectures_by_subject_id(
+		return await self.lecture_service.search_lectures_by_subject_id(
 			subject_id=subject_id,
 			limit=limit,
 		)
 
 	async def search_sessions_by_user_id(self, user_id: str, limit: int = 10):
-		return await self.vdb_service.search_sessions_by_user_id(
+		return await self.session_service.search_sessions_by_user_id(
 			user_id=user_id,
 			limit=limit,
 		)
 
 	async def search_sessions_by_archived_at_range(self, gte: str, lte: str, limit: int = 10):
-		return await self.vdb_service.search_sessions_by_archived_at_range(
+		return await self.session_service.search_sessions_by_archived_at_range(
 			gte=gte,
 			lte=lte,
 			limit=limit,
@@ -34,9 +36,10 @@ class VDBTools:
 
 
 def get_vdb_tools(
-	vdb_service: VDBService = Depends(get_vdb_service),
+	lecture_service: LectureService = Depends(get_lecture_service),
+	session_service: SessionService = Depends(get_session_service),
 ) -> VDBTools:
-	return VDBTools(vdb_service=vdb_service)
+	return VDBTools(lecture_service=lecture_service, session_service=session_service)
 
 
 __all__ = ["VDBTools", "get_vdb_tools"]

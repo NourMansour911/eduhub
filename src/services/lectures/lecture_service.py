@@ -32,6 +32,8 @@ from .lecture_exceptions import (
     LectureServiceException,
 )
 
+from services.vdb_service.vectordb_service import VDBService, get_vdb_service
+
 logger = get_logger(__name__)
 
 
@@ -42,11 +44,13 @@ class LectureService:
         doc_intelligence_client: DocumentIntelligenceClient,
         summary_llm: ChatOpenAI,
         vdb_client: VectorDBInterface,
+        vdb_service: VDBService,
     ):
         self.lecture_repo = lecture_repo
         self.doc_intelligence_client = doc_intelligence_client
         self.summary_llm = summary_llm
         self.vdb_client = vdb_client
+        self.vdb_service = vdb_service
 
     async def prepare_lecture_content(self, pdf_url: str):
 
@@ -153,12 +157,29 @@ class LectureService:
             )
         return DeleteLectureResponse(deleted_count=deleted_count)
 
+    async def search_lectures_by_lecture_id(self, lecture_id: str, limit: int = 10):
+        return await self.vdb_service.search_by_metadata_field(
+            collection_name="lectures",
+            field_name="lecture_id",
+            field_value=lecture_id,
+            limit=limit,
+        )
+
+    async def search_lectures_by_subject_id(self, subject_id: str, limit: int = 10):
+        return await self.vdb_service.search_by_metadata_field(
+            collection_name="lectures",
+            field_name="subject_id",
+            field_value=subject_id,
+            limit=limit,
+        )
+
 
 def get_lecture_service(
     lecture_repo: LectureRepo = Depends(get_lecture_repo),
     doc_intelligence_client: DocumentIntelligenceClient = Depends(get_doc_intelligence_client),
     lc_openai_client: LCOpenAI = Depends(get_langchain_client),
     vdb_client: VectorDBInterface = Depends(get_vdb_client),
+    vdb_service: VDBService = Depends(get_vdb_service),
     settings: Settings = Depends(get_settings),
 ) -> LectureService:
     
@@ -174,4 +195,5 @@ def get_lecture_service(
         doc_intelligence_client=doc_intelligence_client,
         summary_llm=summary_llm,
         vdb_client=vdb_client,
+        vdb_service=vdb_service,
     )
