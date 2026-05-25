@@ -5,10 +5,9 @@ from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
 from typing import Optional, List, Dict, Type, Any
 from core.request_dependencies import get_vdb_client, get_embedding_client
-from integrations.llm import LLMInterface
+from core.request_dependencies import get_langchain_client
+from integrations.llm import LLMInterface, LCOpenAI
 from core import Settings, get_settings
-from .retrieval import Retrieval
-from .reranker import Reranker
 import json
 
 
@@ -17,6 +16,7 @@ from .vdb_exceptions import (
     VectorDBException,
 
 )
+from .search_service import SearchService
 from ..service_exceptions import ProcessingError
 from ..service_exceptions import ServiceException
 
@@ -31,10 +31,12 @@ class VDBService:
         vdb_client: VectorDBInterface,
         embedding_client: LLMInterface,
         settings: Settings,
+        search_service: SearchService,
     ):
         self.vdb_client = vdb_client
         self.embedding_client = embedding_client
         self.settings = settings
+        self.search_service = search_service
         
 
         logger.info("Vector DB Push Service initialized")
@@ -47,12 +49,12 @@ class VDBService:
         limit: int = 10,
         query_text: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        search_query = (query_text or str(field_value) or "").strip()
-        return await self.search(
+        return await self.search_service.search_by_metadata_field(
             collection_name=collection_name,
-            query=search_query,
+            field_name=field_name,
+            field_value=field_value,
             limit=limit,
-            filters=[{"field": field_name, "value": field_value, "op": "eq"}],
+            query_text=query_text,
         )
 
     async def search_by_metadata_range(
@@ -64,92 +66,14 @@ class VDBService:
         limit: int = 10,
         query_text: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        range_value: Dict[str, Any] = {}
-        if gte is not None:
-            range_value["gte"] = gte
-        if lte is not None:
-            range_value["lte"] = lte
-
-        if not range_value:
-            return []
-
-        search_query = (query_text or f"{gte or ''} {lte or ''}").strip()
-        return await self.search(
+        return await self.search_service.search_by_metadata_range(
             collection_name=collection_name,
-            query=search_query,
+            field_name=field_name,
+            gte=gte,
+            lte=lte,
             limit=limit,
-            filters=[{"field": field_name, "value": range_value, "op": "range"}],
+            query_text=query_text,
         )
-
-    async def search(
-        self,
-        collection_name: str,
-        query: str,
-        rewritten_queries: Optional[List[str]] = None,
-        limit: int = 10,
-        filters: Optional[Any] = None,
-    ) -> List[Dict[str, Any]]:
-
-
-        query = (query or "").strip()
-
-        rewritten_queries = rewritten_queries or []
-        all_queries = [query] + [q for q in rewritten_queries if q and q.strip()]
-
-
-        base_k = max(1, limit)
-        candidate_k = min((base_k * 4), 50)
-
-        try:
-            retrieval = Retrieval(embedding_client=self.embedding_client, vdb_client=self.vdb_client)
-            candidates = await retrieval.retrieve_multi_query(
-                queries=all_queries,
-                collection_name=collection_name,
-                top_k=candidate_k,
-                filters=filters,
-            )
-        except ServiceException:
-            raise
-        except Exception as e:
-            raise VectorDBException(
-                details={
-                    "operation": "retrieve_multi_query",
-                    "collection_name": collection_name,
-                    "error": str(e),
-                    "type": type(e).__name__,
-                }
-            )
-
-        if not candidates:
-            return []
-
-        final_top_k = max(1, int(limit or 10))
-
-        cohere_key = self.settings.COHERE_API_KEY
-        if not cohere_key:
-            return candidates[:final_top_k]
-
-        try:
-            reranker = Reranker(api_key=cohere_key)
-            reranked = await reranker.rerank(
-                query=query,
-                documents=candidates,
-                top_k=final_top_k,
-            )
-            return reranked[:final_top_k]
-        except ServiceException:
-            raise
-        except Exception as e:
-            logger.warning(
-                "Rerank failed; falling back to retrieval results",
-                extra={
-                    "operation": "search.rerank",
-                    "collection_name": collection_name,
-                    "error": str(e),
-                    "type": type(e).__name__,
-                },
-            )
-            return candidates[:final_top_k]
 
     async def search_api(
         self,
@@ -157,10 +81,11 @@ class VDBService:
         body: VDBSearchRequest,
     ) -> VDBSearchResponse:
         try:
-            results = await self.search(
+            results = await self.search_service.search(
                 collection_name=collection_name,
                 query=body.query,
                 rewritten_queries=body.rewritten_queries,
+                rewrite_mode=body.rewrite_mode,
                 limit=body.limit,
                 filters=body.filters,
             )
@@ -351,8 +276,21 @@ class VDBService:
 def get_vdb_service(
     vdb_client: VectorDBInterface = Depends(get_vdb_client),
     embedding_client: LLMInterface = Depends(get_embedding_client),
+    langchain_client: LCOpenAI = Depends(get_langchain_client),
     settings: Settings = Depends(get_settings),
 ) -> VDBService:
-    return VDBService(vdb_client=vdb_client, embedding_client=embedding_client, settings=settings)
+    search_service = SearchService(
+        vdb_client=vdb_client,
+        embedding_client=embedding_client,
+        settings=settings,
+        langchain_client=langchain_client,
+    )
+
+    return VDBService(
+        vdb_client=vdb_client,
+        embedding_client=embedding_client,
+        settings=settings,
+        search_service=search_service,
+    )
 
     

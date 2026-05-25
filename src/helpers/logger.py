@@ -10,7 +10,7 @@ LOG_DIR = os.path.join(BASE_STORAGE_PATH, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "logs.log")
 
-def get_logger(name: str, level: str="error"):
+def get_logger(name: str, level: str="info"):
 
     logger = logging.getLogger(name)
     

@@ -9,30 +9,24 @@ class VDBTools:
 		self.lecture_service = lecture_service
 		self.session_service = session_service
 
-	async def search_lectures_by_lecture_id(self, lecture_id: str, limit: int = 10):
+	async def search_lectures_by_lecture_id(self, lecture_id: str):
 		return await self.lecture_service.search_lectures_by_lecture_id(
 			lecture_id=lecture_id,
-			limit=limit,
+			limit=3,
 		)
 
-	async def search_lectures_by_subject_id(self, subject_id: str, limit: int = 10):
+	async def search_lectures_by_subject_id(self, subject_id: str):
 		return await self.lecture_service.search_lectures_by_subject_id(
 			subject_id=subject_id,
-			limit=limit,
+			limit=5,
 		)
 
-	async def search_sessions_by_user_id(self, user_id: str, limit: int = 10):
+	async def search_sessions_by_user_id(self, user_id: str):
 		return await self.session_service.search_sessions_by_user_id(
 			user_id=user_id,
-			limit=limit,
+			limit=3,
 		)
 
-	async def search_sessions_by_archived_at_range(self, gte: str, lte: str, limit: int = 10):
-		return await self.session_service.search_sessions_by_archived_at_range(
-			gte=gte,
-			lte=lte,
-			limit=limit,
-		)
 
 
 def get_vdb_tools(

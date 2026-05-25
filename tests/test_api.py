@@ -127,6 +127,14 @@ def mock_set_score_service():
 def mock_vdb_service():
     """Create a mock VDBService."""
     mock = MagicMock()
+    mock.search_api = AsyncMock(
+        return_value={
+            "collection_name": TEST_COLLECTION_NAME,
+            "query": "test query",
+            "returned_chunks": 0,
+            "chunks": [],
+        }
+    )
     mock.get_collection_info = MagicMock(
         return_value={
             "collection_name": TEST_COLLECTION_NAME,
@@ -394,6 +402,16 @@ class TestGradingEndpoints:
 
 class TestVectorDBEndpoints:
     """Test suite for vector database endpoints."""
+
+    def test_post_search_returns_200(self, client):
+        """Test that search endpoint returns 200 status."""
+        payload = {
+            "query": "test query",
+            "rewrite_mode": "lecture_search",
+            "limit": 5,
+        }
+        response = client.post(f"/vdb/{TEST_COLLECTION_NAME}/search", json=payload)
+        assert response.status_code == 200
 
     def test_get_collection_info_returns_200(self, client):
         """Test that get collection info endpoint returns 200 status."""

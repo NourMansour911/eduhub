@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
 
 class SearchRequest(BaseModel):
     query: str
@@ -11,6 +11,10 @@ class VDBSearchRequest(BaseModel):
     rewritten_queries: Optional[List[str]] = Field(
         default=None,
         description="Optional rewritten/expanded queries",
+    )
+    rewrite_mode: Optional[Literal["session_summary", "lecture_search", "general"]] = Field(
+        default=None,
+        description="Optional dynamic rewrite mode used to generate additional retrieval queries.",
     )
     limit: int = Field(default=10, ge=1, le=100)
     filters: Optional[Any] = Field(

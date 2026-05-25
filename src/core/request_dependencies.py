@@ -1,4 +1,4 @@
-
+from typing import Optional
 
 from fastapi import Request
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -8,6 +8,7 @@ from integrations import RedisProvider
 
 
 def get_langchain_client(request: Request):
+
     return request.app.state.langchain_client
 
 
