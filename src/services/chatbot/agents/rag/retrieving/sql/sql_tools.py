@@ -1,10 +1,43 @@
+from typing import Any, Optional
+
+from fastapi import Depends
+
+from core.request_dependencies import get_embedding_client
+from integrations.llm import LLMInterface
+
+from .name_resolver import NameResolver
+from .sql_server_calling import SqlServerCalling
+
+
 class SQLTools:
-	def __init__(self) -> None:
-		pass
+	def __init__(self, embedding_client: Optional[LLMInterface] = None) -> None:
+		self.embedding_client = embedding_client
+		self.name_resolver = NameResolver(embedding_client)
+		self.sql_server_calling = SqlServerCalling()
+
+	async def get_student_course_id_by_name(self, student_id: str, course_name: str) -> Optional[dict[str, Any]]:
+		courses = self.sql_server_calling.get_student_courses(student_id)
+		return await self.name_resolver.resolve_best_match_with_threshold(
+			items=courses,
+			query_name=course_name,
+			name_key="name",
+			id_key="course_id",
+			threshold=0.75,
+		)
+
+	async def get_course_lecture_id_by_name(self, course_id: str, lecture_name: str) -> Optional[dict[str, Any]]:
+		lectures = self.sql_server_calling.get_course_lectures(course_id)
+		return await self.name_resolver.resolve_best_match_with_threshold(
+			items=lectures,
+			query_name=lecture_name,
+			name_key="title",
+			id_key="id",
+			threshold=0.75,
+		)
 
 
-def get_sql_tools() -> SQLTools:
-	return SQLTools()
+def get_sql_tools(embedding_client: LLMInterface = Depends(get_embedding_client)) -> SQLTools:
+	return SQLTools(embedding_client=embedding_client)
 
 
 __all__ = ["SQLTools", "get_sql_tools"]
