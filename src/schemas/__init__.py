@@ -19,17 +19,25 @@ from .lecture_schema import DeleteLectureResponse
 from .lecture_schema import LectureListResponse
 from .lecture_schema import LectureStoreRequest
 from .lecture_schema import LectureStoreResponse
+from . import session_schema
+from .session_schema import SessionEndResponse
+from .session_schema import SessionRequest
+from .session_schema import SessionStartResponse
 from . import vectordb_schema
 from .vectordb_schema import ChunkResponse
 from .vectordb_schema import ChunksQuerySchema
 from .vectordb_schema import CollectionChunksResponse
 from .vectordb_schema import DeleteCollectionResponse
+from .vectordb_schema import SearchChunkResponse
 from .vectordb_schema import SearchRequest
+from .vectordb_schema import VDBSearchRequest
+from .vectordb_schema import VDBSearchResponse
 
 __all__ = [
     "assistant_schema",
     "grading_schema",
     "lecture_schema",
+    "session_schema",
     "vectordb_schema",
     "BatchGradingRequest",
     "BatchGradingResponse",
@@ -49,7 +57,13 @@ __all__ = [
     "LectureStoreResponse",
     "RefGradingRequest",
     "RefGradingResponse",
+    "SearchChunkResponse",
     "SearchRequest",
+    "SessionEndResponse",
+    "SessionRequest",
+    "SessionStartResponse",
     "SummarizeRequest",
     "SummarizeResponse",
+    "VDBSearchRequest",
+    "VDBSearchResponse",
 ]

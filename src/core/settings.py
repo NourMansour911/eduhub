@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     AZURE_DOC_KEY: str
 
     # Database
+    DB_BASE_URL: str
     QDRANT_URL: str
     REDIS_URL: str
     MONGODB_URL: str

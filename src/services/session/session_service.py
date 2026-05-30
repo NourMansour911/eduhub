@@ -37,23 +37,6 @@ class SessionService:
         self.vdb_service = vdb_service
         self.summary_chain = build_session_summary_chain(summary_llm)
 
-    async def search_sessions_by_user_id(self, user_id: str, limit: int = 10):
-        return await self.vdb_service.search_by_metadata_field(
-            collection_name="sessions",
-            field_name="user_id",
-            field_value=user_id,
-            limit=limit,
-        )
-
-    async def search_sessions_by_archived_at_range(self, gte: str, lte: str, limit: int = 10):
-        return await self.vdb_service.search_by_metadata_range(
-            collection_name="sessions",
-            field_name="archived_at",
-            gte=gte,
-            lte=lte,
-            limit=limit,
-        )
-
     async def start_session(self, request: SessionRequest) -> SessionStartResponse:
         user_id = request.user_id
         session_id = request.session_id

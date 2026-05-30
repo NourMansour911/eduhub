@@ -1,13 +1,9 @@
-from schemas.vectordb_schema import VDBSearchRequest, VDBSearchResponse, SearchChunkResponse
 from fastapi import Depends
 from helpers.logger import get_logger
 from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
 from typing import Optional, List, Dict, Type, Any
-from core.request_dependencies import get_vdb_client, get_embedding_client
-from core.request_dependencies import get_langchain_client
-from integrations.llm import LLMInterface, LCOpenAI
-from core import Settings, get_settings
+from core.request_dependencies import get_vdb_client
 import json
 
 
@@ -16,9 +12,7 @@ from .vdb_exceptions import (
     VectorDBException,
 
 )
-from .search_service import SearchService
 from ..service_exceptions import ProcessingError
-from ..service_exceptions import ServiceException
 
 
 logger = get_logger("vectordb_service")
@@ -29,95 +23,11 @@ class VDBService:
     def __init__(
         self,
         vdb_client: VectorDBInterface,
-        embedding_client: LLMInterface,
-        settings: Settings,
-        search_service: SearchService,
     ):
         self.vdb_client = vdb_client
-        self.embedding_client = embedding_client
-        self.settings = settings
-        self.search_service = search_service
         
 
         logger.info("Vector DB Push Service initialized")
-
-    async def search_by_metadata_field(
-        self,
-        collection_name: str,
-        field_name: str,
-        field_value: Any,
-        limit: int = 10,
-        query_text: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_service.search_by_metadata_field(
-            collection_name=collection_name,
-            field_name=field_name,
-            field_value=field_value,
-            limit=limit,
-            query_text=query_text,
-        )
-
-    async def search_by_metadata_range(
-        self,
-        collection_name: str,
-        field_name: str,
-        gte: Any = None,
-        lte: Any = None,
-        limit: int = 10,
-        query_text: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        return await self.search_service.search_by_metadata_range(
-            collection_name=collection_name,
-            field_name=field_name,
-            gte=gte,
-            lte=lte,
-            limit=limit,
-            query_text=query_text,
-        )
-
-    async def search_api(
-        self,
-        collection_name: str,
-        body: VDBSearchRequest,
-    ) -> VDBSearchResponse:
-        try:
-            results = await self.search_service.search(
-                collection_name=collection_name,
-                query=body.query,
-                rewritten_queries=body.rewritten_queries,
-                rewrite_mode=body.rewrite_mode,
-                limit=body.limit,
-                filters=body.filters,
-            )
-
-            chunks = [
-                SearchChunkResponse(
-                    id=str(item.get("id")),
-                    text=item.get("text", ""),
-                    metadata=item.get("metadata", {}) or {},
-                    score=item.get("score"),
-                    rerank_score=item.get("rerank_score"),
-                )
-                for item in (results or [])
-            ]
-
-            return VDBSearchResponse(
-                collection_name=collection_name,
-                query=body.query,
-                returned_chunks=len(chunks),
-                chunks=chunks,
-            )
-        except ServiceException:
-            raise
-        except Exception as e:
-            raise VectorDBException(
-                details={
-                    "operation": "search_api",
-                    "collection_name": collection_name,
-                    "error": str(e),
-                    "type": type(e).__name__,
-                }
-            )
 
     def get_collection_info(
         self,
@@ -275,22 +185,9 @@ class VDBService:
 
 def get_vdb_service(
     vdb_client: VectorDBInterface = Depends(get_vdb_client),
-    embedding_client: LLMInterface = Depends(get_embedding_client),
-    langchain_client: LCOpenAI = Depends(get_langchain_client),
-    settings: Settings = Depends(get_settings),
 ) -> VDBService:
-    search_service = SearchService(
-        vdb_client=vdb_client,
-        embedding_client=embedding_client,
-        settings=settings,
-        langchain_client=langchain_client,
-    )
-
     return VDBService(
         vdb_client=vdb_client,
-        embedding_client=embedding_client,
-        settings=settings,
-        search_service=search_service,
     )
 
     

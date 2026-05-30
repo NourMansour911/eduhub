@@ -10,6 +10,7 @@ from .request_dependencies import get_doc_intelligence_client
 from .request_dependencies import get_embedding_client
 from .request_dependencies import get_langchain_client
 from .request_dependencies import get_lecture_repo
+from .request_dependencies import get_redis_provider
 from .request_dependencies import get_vdb_client
 from . import settings
 from .settings import Settings
@@ -28,6 +29,7 @@ __all__ = [
     "get_embedding_client",
     "get_langchain_client",
     "get_lecture_repo",
+    "get_redis_provider",
     "get_settings",
     "get_vdb_client",
 ]

@@ -21,6 +21,7 @@ from . import vectordb_router
 from .vectordb_router import delete_collection
 from .vectordb_router import get_collection_chunks
 from .vectordb_router import get_collection_info
+from .vectordb_router import search_collection
 
 __all__ = [
     "assistant_router",
@@ -40,6 +41,7 @@ __all__ = [
     "get_lectures_by_subject",
     "grade_batch",
     "home",
+    "search_collection",
     "set_reference_answer",
     "start_session",
     "store_lecture",

@@ -1,6 +1,8 @@
 # Auto-generated __init__.py
 
 from . import core
+from . import dtos
+from . import enums
 from . import helpers
 from . import integrations
 from . import main
@@ -15,6 +17,8 @@ from . import storage
 
 __all__ = [
     "core",
+    "dtos",
+    "enums",
     "helpers",
     "integrations",
     "main",
