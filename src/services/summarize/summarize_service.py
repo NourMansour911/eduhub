@@ -30,14 +30,14 @@ class SummarizeService:
         self,
         lecture_content: str,
         lecture_id: str,
-        subject_id: str,
+        course_id: str,
     ) -> Dict[str, str]:
 
 
         content_text = self.clean_markdown(lecture_content)
 
         tasks = [
-            self._generate_summary(content_text, level, lecture_id, subject_id)
+            self._generate_summary(content_text, level, lecture_id, course_id)
             for level in [0, 1, 2]
         ]
 
@@ -75,7 +75,7 @@ class SummarizeService:
         content_text: str,
         level: int,
         lecture_id: str,
-        subject_id: str,
+        course_id: str,
     ) -> str:
 
         try:
@@ -86,7 +86,7 @@ class SummarizeService:
                     "run_name": "summary_run",
                     "metadata": {
                         "lecture_id": lecture_id,
-                        "subject_id": subject_id,
+                        "course_id": course_id,
                         "level": level,
                     },
                 },

@@ -9,9 +9,9 @@ class LectureStoreRequest(BaseModel):
     url: str = Field(..., description="url of the lecture content to be processed ")
     lecture_id: str = Field(..., description="Unique identifier for the lecture.")
     lecture_name: str = Field(..., description="Display name/title of the lecture.")
-    subject_id: str = Field(..., description="The subject/material id this lecture belongs to.")
-    subject_name: str = Field(..., description="The subject/material name this lecture belongs to.")
-    order: Optional[int] = Field(None, description="Optional lecture order within the subject.")
+    course_id: str = Field(..., description="The course/material id this lecture belongs to.")
+    course_name: str = Field(..., description="The course/material name this lecture belongs to.")
+    order: Optional[int] = Field(None, description="Optional lecture order within the course.")
 
 
 class LectureStoreResponse(BaseModel):
@@ -33,5 +33,5 @@ class DeleteLectureByIdRequest(BaseModel):
     lecture_id: str = Field(..., description="Delete a single lecture by lecture_id.")
 
 
-class DeleteLectureBySubjectIdRequest(BaseModel):
-    subject_id: str = Field(..., description="Delete all lectures for a subject_id.")
+class DeleteLectureBycourseIdRequest(BaseModel):
+    course_id: str = Field(..., description="Delete all lectures for a course_id.")

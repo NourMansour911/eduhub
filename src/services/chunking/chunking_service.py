@@ -26,9 +26,9 @@ class ChunkingService:
         self,
         prepared_content: AnalyzeResult,
         lecture_id: str,
-        subject_id: str,
+        course_id: str,
         lecture_name: str,
-        subject_name: str,
+        course_name: str,
         lecture_order: Optional[int] = None,
     ) -> List[VDBChunkPayload]:
 
@@ -52,8 +52,8 @@ class ChunkingService:
                 chunk_id=str(uuid4()),
                 lecture_id=lecture_id,
                 lecture_name=lecture_name,
-                subject_id=subject_id,
-                subject_name=subject_name,
+                course_id=course_id,
+                course_name=course_name,
                 chunk_index=chunk_count + 1,
                 lecture_order=lecture_order,
                 pages_numbers=pages_numbers,
@@ -148,7 +148,7 @@ class ChunkingService:
                 f"Processed Azure analyze result",
                 extra={
                     "lecture_id": lecture_id,
-                    "subject_id": subject_id,
+                    "course_id": course_id,
                     "sections_count": len(sections),
                     "chunks_count": chunk_count
                 }

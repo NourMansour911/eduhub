@@ -21,7 +21,7 @@ from repositories import LectureRepo
 from schemas import (
     DeleteLectureResponse,
     DeleteLectureByIdRequest,
-    DeleteLectureBySubjectIdRequest,
+    DeleteLectureBycourseIdRequest,
     LectureListResponse,
 )
 from helpers import get_logger
@@ -110,11 +110,11 @@ class LectureService:
                 details={"operation": "get_lecture_content", "lecture_id": lecture_id, "error": str(exc)}
             ) from exc
 
-    async def get_lectures_by_subject(self, subject_id: str) -> LectureListResponse:
+    async def get_lectures_by_course(self, course_id: str) -> LectureListResponse:
         try:
-            lectures = await self.lecture_repo.get_lectures_by_subject(subject_id)
+            lectures = await self.lecture_repo.get_lectures_by_course(course_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "get_lectures_by_subject", "error": str(exc)}) from exc
+            raise LectureServiceException(details={"operation": "get_lectures_by_course", "error": str(exc)}) from exc
         return LectureListResponse(items=lectures)
 
     async def delete_lecture(self, payload: DeleteLectureByIdRequest) -> DeleteLectureResponse:
@@ -137,41 +137,27 @@ class LectureService:
             )
         return DeleteLectureResponse( deleted_count=deleted_count)
 
-    async def delete_lectures_by_subject(self, payload: DeleteLectureBySubjectIdRequest) -> DeleteLectureResponse:
+    async def delete_lectures_by_course(self, payload: DeleteLectureBycourseIdRequest) -> DeleteLectureResponse:
         try:
-            deleted_count = await self.lecture_repo.delete_by_subject_id(payload.subject_id)
+            deleted_count = await self.lecture_repo.delete_by_course_id(payload.course_id)
         except Exception as exc:
-            raise LectureServiceException(details={"operation": "delete_lectures_by_subject", "error": str(exc)}) from exc
+            raise LectureServiceException(details={"operation": "delete_lectures_by_course", "error": str(exc)}) from exc
         if deleted_count == 0:
-            raise LectureNotFoundError(details={"subject_id": payload.subject_id})
+            raise LectureNotFoundError(details={"course_id": payload.course_id})
 
         try:
             self.vdb_client.delete_by_filter(
                 collection_name="lectures",
-                filters=[{"field": "subject_id", "value": payload.subject_id, "op": "eq"}],
+                filters=[{"field": "course_id", "value": payload.course_id, "op": "eq"}],
             )
         except Exception as exc:
             logger.warning(
-                "Failed to delete subject vectors",
-                extra={"subject_id": payload.subject_id, "error": str(exc)},
+                "Failed to delete course vectors",
+                extra={"course_id": payload.course_id, "error": str(exc)},
             )
         return DeleteLectureResponse(deleted_count=deleted_count)
 
-    async def search_lectures_by_lecture_id(self, lecture_id: str, limit: int = 10):
-        return await self.vdb_service.search_by_metadata_field(
-            collection_name="lectures",
-            field_name="lecture_id",
-            field_value=lecture_id,
-            limit=limit,
-        )
-
-    async def search_lectures_by_subject_id(self, subject_id: str, limit: int = 10):
-        return await self.vdb_service.search_by_metadata_field(
-            collection_name="lectures",
-            field_name="subject_id",
-            field_value=subject_id,
-            limit=limit,
-        )
+    
 
 
 def get_lecture_service(

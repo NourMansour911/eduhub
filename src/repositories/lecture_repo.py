@@ -28,8 +28,8 @@ class LectureRepo:
 
         return [
             {
-                "key": [("subject_id", 1)],
-                "name": "subject_id_index_1",
+                "key": [("course_id", 1)],
+                "name": "course_id_index_1",
                 "unique": False,
             },
             {
@@ -56,15 +56,15 @@ class LectureRepo:
         result = await self.collection.delete_one({"lecture_id": lecture_id})
         return int(result.deleted_count)
 
-    async def delete_by_subject_id(self, subject_id: str) -> int:
+    async def delete_by_course_id(self, course_id: str) -> int:
 
-        sid = ObjectId(subject_id) if isinstance(subject_id, str) and ObjectId.is_valid(subject_id) else subject_id
-        result = await self.collection.delete_many({"subject_id": sid})
+        sid = ObjectId(course_id) if isinstance(course_id, str) and ObjectId.is_valid(course_id) else course_id
+        result = await self.collection.delete_many({"course_id": sid})
         return int(result.deleted_count)
 
-    async def get_lectures_by_subject(self, subject_id: str) -> list[LectureModel]:
+    async def get_lectures_by_course(self, course_id: str) -> list[LectureModel]:
 
-        cursor = self.collection.find({"subject_id": subject_id}).sort("order", 1)
+        cursor = self.collection.find({"course_id": course_id}).sort("order", 1)
         results = []
         async for doc in cursor:
             results.append(LectureModel(**doc))

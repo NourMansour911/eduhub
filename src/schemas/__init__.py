@@ -14,7 +14,7 @@ from .grading_schema import RefGradingRequest
 from .grading_schema import RefGradingResponse
 from . import lecture_schema
 from .lecture_schema import DeleteLectureByIdRequest
-from .lecture_schema import DeleteLectureBySubjectIdRequest
+from .lecture_schema import DeleteLectureBycourseIdRequest
 from .lecture_schema import DeleteLectureResponse
 from .lecture_schema import LectureListResponse
 from .lecture_schema import LectureStoreRequest
@@ -48,7 +48,7 @@ __all__ = [
     "CollectionChunksResponse",
     "DeleteCollectionResponse",
     "DeleteLectureByIdRequest",
-    "DeleteLectureBySubjectIdRequest",
+    "DeleteLectureBycourseIdRequest",
     "DeleteLectureResponse",
     "GradingRequest",
     "GradingResponse",

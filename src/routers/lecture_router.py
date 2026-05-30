@@ -5,7 +5,7 @@ from schemas import (
     DeleteLectureResponse,
     LectureStoreRequest,
     DeleteLectureByIdRequest,
-    DeleteLectureBySubjectIdRequest,
+    DeleteLectureBycourseIdRequest,
     LectureListResponse,
     LectureStoreResponse,
 )
@@ -47,16 +47,16 @@ async def get_lecture(
 
 
 @lecture_route.get(
-    "/subject/{subject_id}",
-    summary="List lectures by subject",
-    description="Returns all lectures for a subject_id.",
+    "/course/{course_id}",
+    summary="List lectures by course",
+    description="Returns all lectures for a course_id.",
     response_model=LectureListResponse,
 )
-async def get_lectures_by_subject(
-    subject_id: str,
+async def get_lectures_by_course(
+    course_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> LectureListResponse:
-    return await service.get_lectures_by_subject(subject_id)
+    return await service.get_lectures_by_course(course_id)
 
 
 @lecture_route.delete(
@@ -73,13 +73,13 @@ async def delete_lecture(
 
 
 @lecture_route.delete(
-    "/subject/{subject_id}",
-    summary="Delete lectures by subject_id",
-    description="Deletes all lectures for a subject_id.",
+    "/course/{course_id}",
+    summary="Delete lectures by course_id",
+    description="Deletes all lectures for a course_id.",
     response_model=DeleteLectureResponse,
 )
-async def delete_lectures_by_subject(
-    subject_id: str,
+async def delete_lectures_by_course(
+    course_id: str,
     service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
 ) -> DeleteLectureResponse:
-    return await service.delete_lectures_by_subject(DeleteLectureBySubjectIdRequest(subject_id=subject_id))
+    return await service.delete_lectures_by_course(DeleteLectureBycourseIdRequest(course_id=course_id))

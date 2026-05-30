@@ -43,10 +43,13 @@ class SearchService:
 		field_name: str,
 		field_value: Any,
 		limit: int = 10,
-		query_text: Optional[str] = None,
+		query_text: str = "",
 	) -> List[Dict[str, Any]]:
-		search_query = (query_text or str(field_value) or "").strip()
-		return await self.search(
+		if not (query_text and query_text.strip()):
+			raise ServiceException(details={"operation": "search_by_metadata_field", "error": "query_text is required"})
+
+		search_query = query_text.strip()
+		return await self._search(
 			collection_name=collection_name,
 			query=search_query,
 			limit=limit,
@@ -60,7 +63,7 @@ class SearchService:
 		gte: Any = None,
 		lte: Any = None,
 		limit: int = 10,
-		query_text: Optional[str] = None,
+		query_text: str = "",
 	) -> List[Dict[str, Any]]:
 		range_value: Dict[str, Any] = {}
 		if gte is not None:
@@ -71,15 +74,18 @@ class SearchService:
 		if not range_value:
 			return []
 
-		search_query = (query_text or f"{gte or ''} {lte or ''}").strip()
-		return await self.search(
+		if not (query_text and query_text.strip()):
+			raise ServiceException(details={"operation": "search_by_metadata_range", "error": "query_text is required"})
+
+		search_query = query_text.strip()
+		return await self._search(
 			collection_name=collection_name,
 			query=search_query,
 			limit=limit,
 			filters=[{"field": field_name, "value": range_value, "op": "range"}],
 		)
 
-	async def search(
+	async def _search(
 		self,
 		collection_name: str,
 		query: str,

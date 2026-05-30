@@ -41,9 +41,9 @@ class LectureOrchestrator:
             chunk_payloads = await self.chunking_service.process_azure_analyze_result(
                 prepared_content=prepared_content,
                 lecture_id=payload.lecture_id,
-                subject_id=payload.subject_id,
+                course_id=payload.course_id,
                 lecture_name=payload.lecture_name,
-                subject_name=payload.subject_name,
+                course_name=payload.course_name,
                 lecture_order=payload.order,
             )
 
@@ -64,7 +64,7 @@ class LectureOrchestrator:
                     use_bm25=True,
                     fields_for_indexing=[
                         {"name": "lecture_id", "type": str},
-                        {"name": "subject_id", "type": str},
+                        {"name": "course_id", "type": str},
                     ]
                 )
                 logger.info(
@@ -86,7 +86,7 @@ class LectureOrchestrator:
                     "type": type(e).__name__,
                     "context": {
                         "lecture_id": payload.lecture_id,
-                        "subject_id": payload.subject_id,
+                        "course_id": payload.course_id,
                     },
                 },
             ) from e
@@ -96,7 +96,7 @@ class LectureOrchestrator:
         """ summaries = await self.summarize_service.generate_all_summaries(
             lecture_content=raw_content,
             lecture_id=payload.lecture_id,
-            subject_id=payload.subject_id,
+            course_id=payload.course_id,
         ) """
         
         projects_root = Path(__file__).parents[3]  # Navigate to d:\training\AI\projects
@@ -108,8 +108,8 @@ class LectureOrchestrator:
         lecture = LectureModel(
             lecture_id=payload.lecture_id,
             lecture_name=payload.lecture_name,
-            subject_id=payload.subject_id,
-            subject_name=payload.subject_name,
+            course_id=payload.course_id,
+            course_name=payload.course_name,
             summaries=summaries,
             content=raw_content,
             order=payload.order,

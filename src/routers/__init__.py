@@ -10,9 +10,9 @@ from . import home_router
 from .home_router import home
 from . import lecture_router
 from .lecture_router import delete_lecture
-from .lecture_router import delete_lectures_by_subject
+from .lecture_router import delete_lectures_by_course
 from .lecture_router import get_lecture
-from .lecture_router import get_lectures_by_subject
+from .lecture_router import get_lectures_by_course
 from .lecture_router import store_lecture
 from . import session_router
 from .session_router import end_session
@@ -33,12 +33,12 @@ __all__ = [
     "chat",
     "delete_collection",
     "delete_lecture",
-    "delete_lectures_by_subject",
+    "delete_lectures_by_course",
     "end_session",
     "get_collection_chunks",
     "get_collection_info",
     "get_lecture",
-    "get_lectures_by_subject",
+    "get_lectures_by_course",
     "grade_batch",
     "home",
     "search_collection",

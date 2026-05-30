@@ -26,7 +26,7 @@ from services.summarize import get_summarize_service
 from services.grading import get_set_reference_service, get_set_score_service
 from services.vdb_service import get_vdb_service
 
-TEST_SUBJECT_ID = "test_subject"
+TEST_course_ID = "test_course"
 TEST_LECTURE_ID = "test_lecture"
 TEST_COLLECTION_NAME = "test_collection"
 TEST_USER_ID = "test_user"
@@ -52,7 +52,7 @@ def mock_lecture_orchestrator():
     mock.store_lecture_with_summaries = AsyncMock(
         return_value={
             "lecture_id": TEST_LECTURE_ID,
-            "subject_id": TEST_SUBJECT_ID,
+            "course_id": TEST_course_ID,
             "status": "success",
         }
     )
@@ -67,13 +67,13 @@ def mock_lecture_service():
         return_value={
             "lecture_id": TEST_LECTURE_ID,
             "lecture_name": "Test Lecture",
-            "subject_id": TEST_SUBJECT_ID,
-            "subject_name": "Test Subject",
+            "course_id": TEST_course_ID,
+            "course_name": "Test course",
             "content": {"pages": []},
             "summaries": {},
         }
     )
-    mock.get_lectures_by_subject = AsyncMock(
+    mock.get_lectures_by_course = AsyncMock(
         return_value={
             "items": [],
         }
@@ -83,7 +83,7 @@ def mock_lecture_service():
             "deleted_count": 1,
         }
     )
-    mock.delete_lectures_by_subject = AsyncMock(
+    mock.delete_lectures_by_course = AsyncMock(
         return_value={
             "deleted_count": 0,
         }
@@ -226,8 +226,8 @@ class TestLectureEndpoints:
             "url": "https://example.com/lecture.pdf",
             "lecture_id": TEST_LECTURE_ID,
             "lecture_name": "Test Lecture",
-            "subject_id": TEST_SUBJECT_ID,
-            "subject_name": "Test Subject",
+            "course_id": TEST_course_ID,
+            "course_name": "Test course",
         }
         response = client.post("/lectures", json=payload)
         assert response.status_code == 200
@@ -238,8 +238,8 @@ class TestLectureEndpoints:
             "url": "https://example.com/lecture.pdf",
             "lecture_id": TEST_LECTURE_ID,
             "lecture_name": "Test Lecture",
-            "subject_id": TEST_SUBJECT_ID,
-            "subject_name": "Test Subject",
+            "course_id": TEST_course_ID,
+            "course_name": "Test course",
         }
         response = client.post("/lectures", json=payload)
         data = response.json()
@@ -259,19 +259,19 @@ class TestLectureEndpoints:
         data = response.json()
         
         assert data["lecture_id"] == TEST_LECTURE_ID
-        assert data["subject_id"] == TEST_SUBJECT_ID
+        assert data["course_id"] == TEST_course_ID
         assert "lecture_name" in data
-        assert "subject_name" in data
+        assert "course_name" in data
         assert "content" in data
 
-    def test_get_lectures_by_subject_returns_200(self, client):
-        """Test that get lectures by subject endpoint returns 200 status."""
-        response = client.get(f"/lectures/subject/{TEST_SUBJECT_ID}")
+    def test_get_lectures_by_course_returns_200(self, client):
+        """Test that get lectures by course endpoint returns 200 status."""
+        response = client.get(f"/lectures/course/{TEST_course_ID}")
         assert response.status_code == 200
 
-    def test_get_lectures_by_subject_returns_list(self, client):
-        """Test that get lectures by subject returns a list."""
-        response = client.get(f"/lectures/subject/{TEST_SUBJECT_ID}")
+    def test_get_lectures_by_course_returns_list(self, client):
+        """Test that get lectures by course returns a list."""
+        response = client.get(f"/lectures/course/{TEST_course_ID}")
         data = response.json()
         
         assert "items" in data
@@ -289,14 +289,14 @@ class TestLectureEndpoints:
         
         assert "deleted_count" in data
 
-    def test_delete_lectures_by_subject_returns_200(self, client):
-        """Test that delete lectures by subject endpoint returns 200 status."""
-        response = client.delete(f"/lectures/subject/{TEST_SUBJECT_ID}")
+    def test_delete_lectures_by_course_returns_200(self, client):
+        """Test that delete lectures by course endpoint returns 200 status."""
+        response = client.delete(f"/lectures/course/{TEST_course_ID}")
         assert response.status_code == 200
 
-    def test_delete_lectures_by_subject_returns_deletion_status(self, client):
-        """Test that delete lectures by subject returns deletion status."""
-        response = client.delete(f"/lectures/subject/{TEST_SUBJECT_ID}")
+    def test_delete_lectures_by_course_returns_deletion_status(self, client):
+        """Test that delete lectures by course returns deletion status."""
+        response = client.delete(f"/lectures/course/{TEST_course_ID}")
         data = response.json()
         
         assert "deleted_count" in data
