@@ -15,7 +15,6 @@ class PlanStep(BaseModel):
 	id: str = Field(..., description="Unique step id like step_1")
 	tool_name: str = Field(..., description="Tool name from the registry")
 	args: Dict[str, Any] = Field(default_factory=dict)
-	reason: str = Field(..., description="Reason for choosing this step")
 	depends_on: List[str] = Field(default_factory=list)
 
 
@@ -218,5 +217,3 @@ def build_planner_chain(llm: ChatOpenAI) -> Runnable:
 		| RunnableLambda(lambda x: x.steps)
 	)
 
-
-__all__ = ["build_planner_chain", "get_default_tools_registry"]

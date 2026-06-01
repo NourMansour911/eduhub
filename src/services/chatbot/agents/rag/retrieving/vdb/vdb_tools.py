@@ -53,4 +53,3 @@ def get_vdb_tools(
 	return VDBTools(search_service=search_service)
 
 
-__all__ = ["VDBTools", "get_vdb_tools"]

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import List, Any
 
 
 class SummarizeRequest(BaseModel):
@@ -13,4 +14,4 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="Message to send to the chat")
     
 class ChatResponse(BaseModel):
-    ai_response: str = Field(..., description="Generated chat response")
+    ai_response: Any = Field(..., description="Generated chat response")

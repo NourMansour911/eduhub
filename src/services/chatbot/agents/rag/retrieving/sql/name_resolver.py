@@ -91,4 +91,3 @@ class NameResolver:
 		return float(np.dot(left, right) / denominator)
 
 
-__all__ = ["NameResolver"]

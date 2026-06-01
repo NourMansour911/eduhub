@@ -1,10 +1,9 @@
 from typing import Any, Dict, List, Optional
 
-from core import Settings
+from core import Settings, get_settings
 from core.request_dependencies import (
 	get_embedding_client,
 	get_langchain_client,
-	get_settings,
 	get_vdb_client,
 )
 from fastapi import Depends

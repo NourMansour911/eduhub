@@ -63,5 +63,3 @@ class SQLTools:
 def get_sql_tools(embedding_client: LLMInterface = Depends(get_embedding_client)) -> SQLTools:
 	return SQLTools(embedding_client=embedding_client)
 
-
-__all__ = ["SQLTools", "get_sql_tools"]

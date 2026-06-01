@@ -22,7 +22,7 @@ def build_rag_subgraph(
     settings: Settings,
 
 ):
-    planner_llm = planner_llm or lc_openai_client.get_langchain_llm(
+    planner_llm = lc_openai_client.get_langchain_llm(
         model=settings.GENERATION_MODEL_ID,
         temperature=0.0,
     )
@@ -46,4 +46,3 @@ def build_rag_subgraph(
     return graph.compile()
 
 
-__all__ = ["RAGSubgraphState", "build_rag_subgraph"]

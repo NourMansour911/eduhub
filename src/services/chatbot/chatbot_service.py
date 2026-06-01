@@ -30,7 +30,7 @@ class ChatbotService:
 	async def chat(self, payload: ChatRequest) -> ChatResponse:
 		result = await self.build_context(payload.message)
 		return ChatResponse(
-			ai_response=json.dumps(result.get("plan", result), ensure_ascii=False, default=str)
+			ai_response=result
 		)
 
 
@@ -41,4 +41,3 @@ def get_chatbot_service(
 	return ChatbotService(lc_openai_client=lc_openai_client, settings=settings)
 
 
-__all__ = ["ChatbotService", "get_chatbot_service"]
