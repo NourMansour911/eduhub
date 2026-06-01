@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal, Union
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -18,45 +18,63 @@ class PlanStep(BaseModel):
 	depends_on: List[str] = Field(default_factory=list)
 
 
+
+class Clarification(BaseModel):
+    status: Literal[0] = 0
+    question: str
+
+
 class Plan(BaseModel):
-	steps: List[PlanStep] = Field(default_factory=list)
-	goal: str = Field(..., description="The original user query or goal that this plan addresses")
+    status: Literal[1] = 1
+    steps: List[PlanStep]
+
+
+class PlannerOutput(BaseModel):
+    result: Union[Plan, Clarification]
 
 
 
-PARSER = PydanticOutputParser(pydantic_object=Plan)
+PARSER = PydanticOutputParser(pydantic_object=PlannerOutput)
 
 
 SYSTEM_PROMPT = """
-You are the Planner. Your role is to output ONLY a valid JSON execution DAG for the user query.
+You are a DAG planner for an agentic tool-using system.
+
+Task: convert the user request into an executable tool DAG or return a clarification question.
 
 Rules:
-- Do NOT answer the user.
-- Do NOT execute tools.
-- Treat all tools as black boxes.
-- Use ONLY tool names defined below (exact match).
-- Produce a DAG as a JSON object with a top-level `steps` array.
+- NEVER ask for student_id, course_id, lecture_id.
+- student_id is always available at runtime as "$student_id".
+- ALWAYS prefer constructing a tool chain over asking the user.
+- Use ONLY tools from the registry (exact names).
+- Tools are black boxes.
+- Use depends_on for sequencing.
+- Use $step_id.output_key for data passing.
 
-Each step object must include these keys:
-- `id`: unique step id (e.g. "step_1").
-- `tool_name`: tool name exactly as listed in the registry.
-- `args`: object with the arguments to pass to the tool.
-- `output`: object describing the expected output schema or example keys and their types (used by downstream steps).
-- `depends_on`: array of step ids this step depends on (may be empty).
+Decision logic (STRICT):
+- If ANY tool sequence can move toward solving the request → MUST return a PLAN.
+- Only return CLARIFICATION if NO possible tool chain exists to progress.
+- You must explicitly select or resolve the correct item using tools or reasoning.
 
-If a step needs data from a previous step, reference it in `args` using the syntax `$<step_id>.<output_key>` (for example `$step_1.course_id`).
+When multiple distinct concepts exist:
 
-Available tools (name + description + usage + args schema + output (optional)):
+You MUST:
+1. Extract all atomic concepts explicitly.
+2. Create at least one retrieval step per concept.
+3. Never combine multiple concepts into a single retrieval query.
+4. Each step must target exactly ONE concept.
+
+Tools:
 {tools_registry}
 
-
-
-Output MUST be valid JSON only — no surrounding text, commentary, or explanations.
-
-The JSON must strictly follow this schema guidance:
+Output schema:
 {format_instructions}
-"""
 
+Output constraints:
+- Output ONLY valid JSON
+- No explanations
+- No extra text
+"""
 
 
 
@@ -83,7 +101,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "ask_in_specific_lecture_by_lecture_id",
 			"description": "Search vector DB for chunks in a lecture.",
-			"usage": "When to use: query content limited to a specific lecture (provide lecture_id and query).",
+			"usage": "When to use: query content limited to a specific lecture",
 			"args_schema": {
 				"lecture_id": "str",
 				"query": "str",
@@ -92,7 +110,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "ask_in_the_whole_course_by_course_id",
 			"description": "Search vector DB across a course.",
-			"usage": "When to use: search all lectures in a course for relevant chunks (provide course_id and query).",
+			"usage": "When to use: search all lectures in a course for relevant chunks.",
 			"args_schema": {
 				"course_id": "str",
 				"query": "str",
@@ -101,15 +119,15 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "search_in_sessions_history",
 			"description": "Search the user's past sessions.",
-			"usage": "When to use: retrieve prior interactions or context for the same user (provide user_id and query).",
+			"usage": "When to use: only if the intent that.",
 			"args_schema": {
-				"user_id": "str",
+				"student_id": "$student_id",
 				"query": "str",
 			},
 		},
 		{
 			"name": "ask_in_legal_regulations",
-			"description": "Search legal and regulatory lectures (REG01).",
+			"description": "Search legal and regulatory lectures.",
 			"usage": "When to use: ask regulatory or legal questions that must reference official materials.",
 			"args_schema": {
 				"query": "str",
@@ -118,20 +136,20 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "get_course_id_by_course_name",
 			"description": "Resolve a course id from its name.",
-			"usage": "When to use: map a user-provided course name (approximately) to its internal id (provide student_id and course_name).",
+			"usage": "When to use: map a user-provided course name (approximately) to its internal id.",
 			"output": {
 				"course_id": "str",
 				"course_name": "str"
 			},
 			"args_schema": {
-				"student_id": "str",
+				"student_id": "$student_id",
 				"course_name": "str",
 			},
 		},
 		{
 			"name": "get_lecture_id_by_lecture_name",
 			"description": "Resolve a lecture id from its title.",
-			"usage": "When to use: map a lecture title (approximately) to its internal id within a course (provide course_id and lecture_name).",
+			"usage": "When to use: map a lecture title (approximately) to its internal id within a course.",
 			"output": {
 				"lecture_id": "str",
 				"lecture_name": "str"
@@ -144,7 +162,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "get_course_details_by_course_id",
 			"description": "Fetch course metadata by course id.",
-			"usage": "When to use: retrieve course details (title, description, instructor) for display or validation (provide course_id).",
+			"usage": "When to use: retrieve course details (title, description, instructor) for display or validation.",
 			"output": {
 				"course_id": "str",
 				"title": "str",
@@ -158,7 +176,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "get_all_student_courses_ids_and_names",
 			"description": "List a student's courses.",
-			"usage": "When to use: enumerate available courses for a student (provide student_id).",
+			"usage": "When to use: enumerate available courses for a student.",
 			"output": {
 				"courses": "list[dict] (course_id, course_name)",
 				"total": "int"
@@ -170,7 +188,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "get_lecture_whole_content_by_lecture_id",
 			"description": "Return the full lecture content by lecture id.",
-			"usage": "When to use: obtain the complete lecture text for quoting, analysis, or chunking (provide lecture_id).",
+			"usage": "When to use: obtain the complete lecture text for quoting, analysis, or chunking.",
 			"output": {
 				"content": "str",
 				"lecture_id": "str"
@@ -182,7 +200,7 @@ def get_default_tools_registry() -> List[Dict[str, Any]]:
 		{
 			"name": "get_lecture_summary_by_lecture_id",
 			"description": "Return a lecture summary by lecture id.",
-			"usage": "When to use: get a concise overview of a lecture when full content is not required (provide lecture_id).",
+			"usage": "When to use: get a concise overview of a lecture when full content is not required.",
 			"output": {
 				"summary": "str",
 				"lecture_id": "str",
@@ -214,6 +232,5 @@ def build_planner_chain(llm: ChatOpenAI) -> Runnable:
 		| PROMPT
 		| llm
 		| PARSER
-		| RunnableLambda(lambda x: x.steps)
 	)
 
