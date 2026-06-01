@@ -13,15 +13,16 @@ from pydantic import BaseModel, Field
 
 class PlanStep(BaseModel):
 	id: str = Field(..., description="Unique step id like step_1")
-	source: str = Field(..., description="Tool source group such as vdb, sql, mongo")
-	tool: str = Field(..., description="Tool name from the registry")
-	output: Dict[str, Any] = Field(default_factory=dict, description="Expected output schema or example produced by the tool")
+	tool_name: str = Field(..., description="Tool name from the registry")
 	args: Dict[str, Any] = Field(default_factory=dict)
+	reason: str = Field(..., description="Reason for choosing this step")
 	depends_on: List[str] = Field(default_factory=list)
 
 
 class Plan(BaseModel):
 	steps: List[PlanStep] = Field(default_factory=list)
+	goal: str = Field(..., description="The original user query or goal that this plan addresses")
+
 
 
 PARSER = PydanticOutputParser(pydantic_object=Plan)
@@ -39,18 +40,21 @@ Rules:
 
 Each step object must include these keys:
 - `id`: unique step id (e.g. "step_1").
-- `tool`: tool name exactly as listed in the registry.
+- `tool_name`: tool name exactly as listed in the registry.
 - `args`: object with the arguments to pass to the tool.
 - `output`: object describing the expected output schema or example keys and their types (used by downstream steps).
 - `depends_on`: array of step ids this step depends on (may be empty).
 
 If a step needs data from a previous step, reference it in `args` using the syntax `$<step_id>.<output_key>` (for example `$step_1.course_id`).
 
-Output MUST be valid JSON only — no surrounding text, commentary, or explanation.
-
-Available tools (name + description + usage + output):
+Available tools (name + description + usage + args schema + output (optional)):
 {tools_registry}
 
+
+
+Output MUST be valid JSON only — no surrounding text, commentary, or explanations.
+
+The JSON must strictly follow this schema guidance:
 {format_instructions}
 """
 

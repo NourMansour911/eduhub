@@ -5,6 +5,7 @@ from schemas import SummarizeRequest, SummarizeResponse
 from services.summarize import get_summarize_service, SummarizeService
 from schemas import ChatRequest
 from schemas.assistant_schema import ChatResponse
+from services.chatbot import ChatbotService, get_chatbot_service
 
 logger = get_logger(__name__)
 
@@ -40,6 +41,8 @@ async def chat(
     chat_request: ChatRequest,
     session_id: str = Path(..., description="Session identifier used for memory and trace metadata."),
     user_id: str = Path(..., description="User identifier used for memory and trace metadata."),
+	service: ChatbotService = Depends(get_chatbot_service),
 ):
-    return ChatResponse(ai_response="kol w eshkor")
+	_ = session_id, user_id
+	return await service.chat(chat_request)
 
