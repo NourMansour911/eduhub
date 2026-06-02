@@ -7,7 +7,7 @@ from . import planner
 from .planner import Plan
 from .planner import PlanStep
 from .planner import build_planner_chain
-from .planner import get_default_tools_registry
+from .tools_registry import get_default_tools_registry
 from . import reflection
 
 __all__ = [

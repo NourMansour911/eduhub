@@ -34,6 +34,7 @@ class NameResolver:
 		return {
 			"id": match.get("id"),
 			"name": match.get("name"),
+			"resolver_score": resolver_score,
 
 		}
 

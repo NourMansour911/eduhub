@@ -14,30 +14,36 @@ from .agents.rag import build_rag_subgraph
 
 
 class ChatbotService:
-	def __init__(self, lc_openai_client: LCOpenAI, settings: Settings) -> None:
-		self.rag_subgraph = build_rag_subgraph(
-			lc_openai_client=lc_openai_client,
-			settings=settings,
-		)
+    def __init__(self, lc_openai_client: LCOpenAI, settings: Settings) -> None:
+        self.rag_subgraph = build_rag_subgraph(
+            lc_openai_client=lc_openai_client,
+            settings=settings,
+        )
 
-	async def build_context(self, message: str) -> Dict[str, Any]:
-		message = (message or "").strip()
-		if not message:
-			raise ValueError("message is required")
+    async def build_context(self, message: str, student_id: str) -> Dict[str, Any]:
+        message = (message or "").strip()
+        if not message:
+            raise ValueError("message is required")
 
-		return await self.rag_subgraph.ainvoke({"user_query": message})
+        student_id = (student_id or "").strip()
+        if not student_id:
+            raise ValueError("student_id is required")
 
-	async def chat(self, payload: ChatRequest) -> ChatResponse:
-		result = await self.build_context(payload.message)
-		return ChatResponse(
-			ai_response=result
-		)
+        return await self.rag_subgraph.ainvoke(
+            {"user_query": message, "student_id": student_id}
+        )
+
+    async def chat(self, payload: ChatRequest, student_id: str) -> ChatResponse:
+        result = await self.build_context(payload.message, student_id)
+        return ChatResponse(
+            ai_response=result
+        )
 
 
 def get_chatbot_service(
-	lc_openai_client: LCOpenAI = Depends(get_langchain_client),
-	settings: Settings = Depends(get_settings),
+    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
+    settings: Settings = Depends(get_settings),
 ) -> ChatbotService:
-	return ChatbotService(lc_openai_client=lc_openai_client, settings=settings)
+    return ChatbotService(lc_openai_client=lc_openai_client, settings=settings)
 
 
