@@ -27,15 +27,14 @@ class NameResolver:
 		if match is None:
 			return None
 
-		resolver_score = float(match.get("resolver_score") or 0.0)
-		if resolver_score < threshold:
+		confidence_score = float(match.get("confidence_score") or 0.0)
+		if confidence_score < threshold:
 			return None
 
 		return {
 			"id": match.get("id"),
 			"name": match.get("name"),
-			"resolver_score": resolver_score,
-
+			"confidence_score": confidence_score,
 		}
 
 	async def resolve_best_match(
@@ -81,7 +80,7 @@ class NameResolver:
 		resolved_item["id"] = resolved_item.get(id_key)
 		resolved_item["name"] = candidate_names[best_index]
 		resolved_item["requested_name"] = query
-		resolved_item["resolver_score"] = best_score
+		resolved_item["confidence_score"] = best_score
 		return resolved_item
 
 	@staticmethod

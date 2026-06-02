@@ -11,6 +11,7 @@ from helpers.logger import get_logger
 from integrations.llm import LCOpenAI, LLMInterface
 from integrations.vector_db import VectorDBInterface
 
+from dtos.vdb_payload_dto import VDBSearchResultPayload
 from services.vdb_service.vdb_exceptions import VectorDBException
 from services.vdb_service.vdb_exceptions import VectorizationError
 from services.service_exceptions import ServiceException
@@ -43,7 +44,7 @@ class SearchService:
 		field_value: Any,
 		limit: int = 10,
 		query_text: str = "",
-	) -> List[Dict[str, Any]]:
+	) -> List[VDBSearchResultPayload]:
 		if not (query_text and query_text.strip()):
 			raise ServiceException(details={"operation": "search_by_metadata_field", "error": "query_text is required"})
 
@@ -63,7 +64,7 @@ class SearchService:
 		lte: Any = None,
 		limit: int = 10,
 		query_text: str = "",
-	) -> List[Dict[str, Any]]:
+	) -> List[VDBSearchResultPayload]:
 		range_value: Dict[str, Any] = {}
 		if gte is not None:
 			range_value["gte"] = gte
@@ -92,7 +93,7 @@ class SearchService:
 		rewrite_mode: Optional[str] = None,
 		limit: int = 10,
 		filters: Optional[Any] = None,
-	) -> List[Dict[str, Any]]:
+	) -> List[VDBSearchResultPayload]:
 		query = (query or "").strip()
 
 		rewritten_queries = await self._resolve_rewritten_queries(
@@ -135,7 +136,7 @@ class SearchService:
 
 		cohere_key = self.settings.COHERE_API_KEY
 		if not cohere_key:
-			return candidates[:final_top_k]
+			return self._normalize_vdb_results(candidates[:final_top_k])
 
 		try:
 			reranker = Reranker(api_key=cohere_key)
@@ -144,7 +145,7 @@ class SearchService:
 				documents=candidates,
 				top_k=final_top_k,
 			)
-			return reranked[:final_top_k]
+			return self._normalize_vdb_results(reranked[:final_top_k])
 		except ServiceException:
 			raise
 		except Exception as exc:
@@ -157,7 +158,20 @@ class SearchService:
 					"type": type(exc).__name__,
 				},
 			)
-			return candidates[:final_top_k]
+			return self._normalize_vdb_results(candidates[:final_top_k])
+
+	def _normalize_vdb_results(self, results: List[Dict[str, Any]]) -> List[VDBSearchResultPayload]:
+		normalized_results: List[VDBSearchResultPayload] = []
+		for item in results or []:
+			payload = VDBSearchResultPayload(
+				id=str(item.get("id", "")),
+				relevance_score=item.get("score"),
+				text=str(item.get("text", "")),
+				metadata=item.get("metadata", {}) if isinstance(item.get("metadata", {}), dict) else {},
+			)
+			normalized_results.append(payload)
+		return normalized_results
+
 
 	async def _resolve_rewritten_queries(
 		self,
