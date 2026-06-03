@@ -36,11 +36,8 @@ class RAGSubgraphOutput(BaseModel):
 class RAGSubgraphState(BaseModel):
     user_query: str
     student_id: str
-    
     planner_output: Optional[PlannerOutput] = None 
     execution_state: ExecutionState = Field(default_factory=ExecutionState)
     contexts: List[RAGContextDTO] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None
     
-
-    final_output: Optional[RAGSubgraphOutput] = None

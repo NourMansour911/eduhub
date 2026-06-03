@@ -19,12 +19,12 @@ class RAGSubgraph:
         planner_llm = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1)
         reflection_llm = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1)
 
-        # 2. Initialize Nodes
+        
         self.planner_node = PlannerNode(planner_llm)
         self.executor_node = ExecutorNode(tool_registry=tool_registry)
         self.reflection_node = ReflectionNode(reflection_llm)
 
-        # 3. Build Graph
+        
         self.graph = self._build_graph()
 
     def _build_graph(self):
@@ -91,7 +91,7 @@ class RAGSubgraph:
             clarification_question = state.planner_output.clarification_question
             
         return {
-            "final_output": RAGSubgraphOutput(
+            "retriving_results": RAGSubgraphOutput(
                 status=status,
                 contexts=state.contexts,
                 clarification_question=clarification_question
