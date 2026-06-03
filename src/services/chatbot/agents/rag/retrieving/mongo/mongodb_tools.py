@@ -1,6 +1,6 @@
 from fastapi import Depends
 
-from dtos import RAGContextDTO
+from dtos import RAGContextDTO, FailureInfo
 from services.lectures import LectureService, get_lecture_service
 from services.summarize import SummarizeService, get_summarize_service
 
@@ -25,26 +25,26 @@ class MongoDBTools:
 		)
 
 		if lecture_content:
-			status = 1
+			failure_info = None
 			content = {
 				"lecture_content": lecture_content,
 			}
 		else:
-			status = 0
-			content = {
-				"message": "Lecture content was not found.",
-				"clarification_message": "Please verify the lecture identifier.",
-				"explanation": "No lecture content exists for the provided lecture ID.",
-			}
+			failure_info = FailureInfo(
+				message="Lecture content was not found.",
+				clarification_message="Please verify the lecture identifier.",
+				explanation="No lecture content exists for the provided lecture ID.",
+			)
+			content = {}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="get_lecture_whole_content_by_lecture_id",
 			tool_args={
 				"lecture_id": lecture_id,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 	async def get_lecture_summary_by_lecture_id(
@@ -58,26 +58,26 @@ class MongoDBTools:
 		)
 
 		if summary:
-			status = 1
+			failure_info = None
 			content = {
 				"summary": summary,
 			}
 		else:
-			status = 0
-			content = {
-				"message": "Lecture summary was not found.",
-				"clarification_message": "Please verify the lecture identifier.",
-				"explanation": "No summary exists for the provided lecture ID.",
-			}
+			failure_info = FailureInfo(
+				message="Lecture summary was not found.",
+				clarification_message="Please verify the lecture identifier.",
+				explanation="No summary exists for the provided lecture ID.",
+			)
+			content = {}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="get_lecture_summary_by_lecture_id",
 			tool_args={
 				"lecture_id": lecture_id,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 

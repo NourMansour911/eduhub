@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import Depends
 
-from dtos import RAGContextDTO, VDBSearchResultPayload
+from dtos import RAGContextDTO, VDBSearchResultPayload, FailureInfo
 from .search_service import SearchService, get_search_service
 
 
@@ -35,20 +35,19 @@ class VDBTools:
 		]
 
 		if not filtered_payload:
-			status = 0
-			content = {
-				"message": "No relevant information found in the lecture.",
-				"clarification_message": "Could you please provide more details or specify your question related to the lecture?",
-				"explanation": "No relevant information in the lecture passed the relevance threshold.",
-			}
+			failure_info = FailureInfo(
+				message="No relevant information found in the lecture.",
+				clarification_message="Could you please provide more details or specify your question related to the lecture?",
+				explanation="No relevant information in the lecture passed the relevance threshold.",
+			)
+			content = {}
 		else:
-			status = 1
+			failure_info = None
 			content = {
 				"retrieved_context": filtered_payload,
 			}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="ask_in_specific_lecture_by_lecture_id",
 			tool_args={
@@ -56,6 +55,7 @@ class VDBTools:
 				"query": query,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 	async def ask_in_the_whole_course_by_course_id(
@@ -82,20 +82,19 @@ class VDBTools:
 		]
 
 		if not filtered_payload:
-			status = 0
-			content = {
-				"message": "No relevant information found across the course.",
-				"clarification_message": "Could you provide more details or specify the topic within the course?",
-				"explanation": "No chunks passed the relevance threshold for this course and query.",
-			}
+			failure_info = FailureInfo(
+				message="No relevant information found across the course.",
+				clarification_message="Could you provide more details or specify the topic within the course?",
+				explanation="No chunks passed the relevance threshold for this course and query.",
+			)
+			content = {}
 		else:
-			status = 1
+			failure_info = None
 			content = {
 				"retrieved_context": filtered_payload,
 			}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="ask_in_the_whole_course_by_course_id",
 			tool_args={
@@ -103,6 +102,7 @@ class VDBTools:
 				"query": query,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 	async def search_in_sessions_history(
@@ -129,20 +129,19 @@ class VDBTools:
 		]
 
 		if not filtered_payload:
-			status = 0
-			content = {
-				"message": "No relevant session history found.",
-				"clarification_message": "Try rephrasing the question or provide more context.",
-				"explanation": "No past session chunks matched the query above the relevance threshold.",
-			}
+			failure_info = FailureInfo(
+				message="No relevant session history found.",
+				clarification_message="Try rephrasing the question or provide more context.",
+				explanation="No past session chunks matched the query above the relevance threshold.",
+			)
+			content = {}
 		else:
-			status = 1
+			failure_info = None
 			content = {
 				"retrieved_context": filtered_payload,
 			}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="search_in_sessions_history",
 			tool_args={
@@ -150,6 +149,7 @@ class VDBTools:
 				"query": query,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 	async def ask_in_legal_regulations(
@@ -175,26 +175,26 @@ class VDBTools:
 		]
 
 		if not filtered_payload:
-			status = 0
-			content = {
-				"message": "No relevant legal/regulatory content found.",
-				"clarification_message": "Try giving more context or a regulation code if known.",
-				"explanation": "No regulatory chunks passed the relevance threshold for this query.",
-			}
+			failure_info = FailureInfo(
+				message="No relevant legal/regulatory content found.",
+				clarification_message="Try giving more context or a regulation code if known.",
+				explanation="No regulatory chunks passed the relevance threshold for this query.",
+			)
+			content = {}
 		else:
-			status = 1
+			failure_info = None
 			content = {
 				"retrieved_context": filtered_payload,
 			}
 
 		return RAGContextDTO(
-			status=status,
 			source=self.source,
 			tool_name="ask_in_legal_regulations",
 			tool_args={
 				"query": query,
 			},
 			content=content,
+			failure_info=failure_info,
 		)
 
 

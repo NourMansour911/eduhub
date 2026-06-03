@@ -13,27 +13,8 @@ from .tools_registry import get_default_tools_registry
 
 
 
-class PlanStep(BaseModel):
-	id: str = Field(..., description="Unique step id like step_1")
-	tool_name: str = Field(..., description="Tool name from the registry")
-	args: Dict[str, Any] = Field(default_factory=dict)
-	depends_on: List[str] = Field(default_factory=list)
-
-
-
-class Clarification(BaseModel):
-    status: Literal[0] = 0
-    question: str
-
-
-class Plan(BaseModel):
-    status: Literal[1] = 1
-    steps: List[PlanStep]
-
-
-class PlannerOutput(BaseModel):
-    result: Union[Plan, Clarification]
-
+from ..states import PlanStep, PlannerOutput
+from .tools_registry import get_default_tools_registry
 
 
 PARSER = PydanticOutputParser(pydantic_object=PlannerOutput)
@@ -54,8 +35,8 @@ Rules:
 - Use $step_id.output_key for data passing.
 
 Decision logic (STRICT):
-- If ANY tool sequence can move toward solving the request → MUST return a PLAN.
-- Only return CLARIFICATION if NO possible tool chain exists to progress.
+- If ANY tool sequence can move toward solving the request → MUST return a PLAN (status="plan").
+- Only return CLARIFICATION (status="clarification") if NO possible tool chain exists to progress.
 - You must explicitly select or resolve the correct item using tools or reasoning.
 
 When multiple distinct concepts exist:

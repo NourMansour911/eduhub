@@ -1,84 +1,118 @@
-from __future__ import annotations
+from typing import Any, Dict, List, Literal, Optional, Union, Callable
+from pydantic import BaseModel, Field
+from langgraph.graph import StateGraph, END, START
+from langchain_openai import ChatOpenAI
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, TypedDict, Union
-
-from langchain_core.runnables import Runnable, RunnableLambda
-from langgraph.graph import END, START, StateGraph
-
-from core import Settings
-from integrations.llm import LCOpenAI
-
-from .nodes.executer import execute_plan, ExecuterError
-from .nodes.planner import Plan, build_planner_chain
-
-
-class RAGSubgraphState(TypedDict, total=False):
-    user_query: str
-    student_id: str
-    plan: Any
-    reflection: str
+from src.dtos import RAGContextDTO
+from .states import RAGSubgraphState, ExecutionState, ReflectionDecision, RAGSubgraphOutput, PlannerOutput
+from .nodes.planner import build_planner_chain
+from .nodes.executer import executor_node
+from .nodes.reflection import reflection_node, build_reflection_chain
 
 
 def build_rag_subgraph(
-    lc_openai_client: LCOpenAI,
-    settings: Settings,
-    tool_source: Optional[Union[Mapping[str, Callable[..., Any]], Iterable[Any]]] = None,
+    llm: ChatOpenAI,
+    tool_registry: Dict[str, Callable]
 ):
-    planner_llm = lc_openai_client.get_langchain_llm(
-        model=settings.GENERATION_MODEL_ID,
-        temperature=0.0,
-    )
+    # 1. Initialize Chains
+    planner_chain = build_planner_chain(llm)
+    reflection_chain = build_reflection_chain(llm)
 
-    planner_chain: Runnable = build_planner_chain(planner_llm)
+    # 2. Define Nodes
+    async def run_planner_node(state: RAGSubgraphState) -> Dict[str, Any]:
+        # Looping logic: clear previous execution items if needed, or keep for history?
+        # The prompt says "Support reflection -> planner loop"
+        output: PlannerOutput = await planner_chain.ainvoke({
+            "user_query": state.user_query,
+            "student_id": state.student_id
+        })
+        return {"planner_output": output}
 
-    async def run_planner(state: RAGSubgraphState) -> Dict[str, Any]:
-        user_query = (state.get("user_query") or "").strip()
-        if not user_query:
-            raise ValueError("user_query is required")
+    async def run_executor_node(state: RAGSubgraphState) -> Dict[str, Any]:
+        result = await executor_node(state, tool_registry)
+        return result
 
-        student_id = (state.get("student_id") or "").strip()
-        if not student_id:
-            raise ValueError("student_id is required")
+    async def run_reflection_node(state: RAGSubgraphState) -> Dict[str, Any]:
+        result = await reflection_node(state, reflection_chain)
+        return result
 
+    # 3. Routing Logic
+    def route_after_planner(state: RAGSubgraphState) -> Literal["executor", "end_clarification"]:
+        if not state.planner_output:
+            return "end_clarification"
+        
+        if state.planner_output.status == "clarification":
+            return "end_clarification"
+        return "executor"
+
+    def route_after_reflection(state: RAGSubgraphState) -> Literal["planner", "end_success", "end_clarification"]:
+        if not state.reflection_decision:
+            return "end_success"
+        
+        decision = state.reflection_decision.decision
+        if decision == "replan":
+            return "planner"
+        elif decision == "clarification":
+            return "end_clarification"
+        else:
+            return "end_success"
+
+    # 4. Final Output Node
+    async def finalize_node(state: RAGSubgraphState) -> Dict[str, Any]:
+        status = "success"
+        clarification_question = None
+        
+        # Check clarification from reflection first
+        if state.reflection_decision and state.reflection_decision.decision == "clarification":
+            status = "clarification"
+            clarification_question = state.reflection_decision.clarification_question
+        # Then check clarification from planner
+        elif state.planner_output and state.planner_output.status == "clarification":
+            status = "clarification"
+            clarification_question = state.planner_output.clarification_question
+            
         return {
-            "plan": await planner_chain.ainvoke({"user_query": user_query, "student_id": student_id}),
+            "final_output": RAGSubgraphOutput(
+                status=status,
+                contexts=state.contexts,
+                clarification_question=clarification_question
+            )
         }
 
-    async def handle_planner_output(state: RAGSubgraphState) -> Dict[str, Any]:
-        planner_output = state.get("plan")
-        if planner_output is None:
-            raise ValueError("Planner output is missing")
+    # 5. Build Graph
+    workflow = StateGraph(RAGSubgraphState)
 
-        plan = getattr(planner_output, "result", None)
-        if plan is None:
-            raise ValueError("Planner result is missing")
+    workflow.add_node("planner", run_planner_node)
+    workflow.add_node("executor", run_executor_node)
+    workflow.add_node("reflection", run_reflection_node)
+    workflow.add_node("finalize", finalize_node)
 
-        status = getattr(plan, "status", None)
-        if status == 0:
-            question = getattr(plan, "question", None)
-            if question is None and isinstance(plan, dict):
-                question = plan.get("question", "Unknown reason")
-            if question is None:
-                question = "Unknown reason"
-            return {"reflection": f"Planner could not build an executable plan: {question}"}
+    workflow.add_edge(START, "planner")
+    
+    workflow.add_conditional_edges(
+        "planner",
+        route_after_planner,
+        {
+            "executor": "executor",
+            "end_clarification": "finalize"
+        }
+    )
 
-        
-        plan = Plan.model_validate(plan)
-        if tool_source is not None:
-            try:
-                return await execute_plan(plan, tool_source, runtime_context={"student_id": state["student_id"]})
-            except ExecuterError as exc:
-                return {"reflection": str(exc)}
+    workflow.add_edge("executor", "reflection")
 
-        return {"plan": plan}
+    workflow.add_conditional_edges(
+        "reflection",
+        route_after_reflection,
+        {
+            "planner": "planner",
+            "end_success": "finalize",
+            "end_clarification": "finalize"
+        }
+    )
 
-    graph = StateGraph(RAGSubgraphState)
-    graph.add_node("planner", RunnableLambda(run_planner))
-    graph.add_node("planner_output", RunnableLambda(handle_planner_output))
-    graph.add_edge(START, "planner")
-    graph.add_edge("planner", "planner_output")
-    graph.add_edge("planner_output", END)
+    workflow.add_edge("finalize", END)
 
-    return graph.compile()
+    return workflow.compile()
+
 
 

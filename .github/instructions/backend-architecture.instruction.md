@@ -103,13 +103,20 @@ Each feature module can contain:
 
 ## 6. General Coding Rules
 
-- Keep functions small and focused
-- Prefer composition over inheritance
-- Avoid duplication across modules
-- Maintain consistent naming across features
-- Keep architecture predictable across the project
+- Keep functions small and focused.
+- Prefer composition over inheritance.
+- **Strict Typing**: Use Pydantic v2 Models for all state and output objects.
+- **Avoid Redundant Type Checks**: Trust type hints and provided contracts; do NOT use `isinstance` excessively when types are already declared in the flow.
+- **Centralized Schemas**: In complex graphs or workflows, keep shared state models in a centralized `states.py` or `schemas.py` to prevent circular imports.
+- Maintain consistent naming across features.
 
-## 7. Architecture Consistency Rule
+## 7. Advanced Workflow & Failure Management (e.g., LangGraph/RAG)
+
+- **Failure Info Pattern**: Do NOT use numeric status codes for success/failure. Instead, use a `failure_info: Optional[FailureInfo]` field. A non-None `failure_info` indicates failure.
+- **Graceful Tool Failures**: Tools should return a success object with `failure_info` rather than throwing raw exceptions unless the error is catastrophic.
+
+
+## 8. Architecture Consistency Rule
 
 Any new feature added MUST follow existing structure patterns.
 

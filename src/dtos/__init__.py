@@ -3,7 +3,7 @@
 from . import chunk_dto
 from .chunk_dto import ChunkMetadata
 from . import rag_context_dto
-from .rag_context_dto import RAGContextDTO
+from .rag_context_dto import RAGContextDTO, FailureInfo
 from . import redis_session_dto
 from .redis_session_dto import RedisSessionDTO
 from . import session_archive_metadata_dto
