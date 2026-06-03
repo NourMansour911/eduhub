@@ -1,26 +1,17 @@
 import json
-import re
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
 
 from .tools_registry import get_default_tools_registry
+from ..states import PlannerOutput, RAGSubgraphState
 
 
-
-
-from ..states import PlanStep, PlannerOutput
-from .tools_registry import get_default_tools_registry
-
-
-PARSER = PydanticOutputParser(pydantic_object=PlannerOutput)
-
-
-SYSTEM_PROMPT = """
+class PlannerNode:
+    SYSTEM_PROMPT = """
 You are a DAG planner for an agentic tool-using system.
 
 Task: convert the user request into an executable tool DAG or return a clarification question.
@@ -59,41 +50,19 @@ Output constraints:
 - No extra text
 """
 
+    def __init__(self, llm: ChatOpenAI):
+        self.parser = PydanticOutputParser(pydantic_object=PlannerOutput)
+        self.prompt = ChatPromptTemplate.from_messages([
+            ("system", self.SYSTEM_PROMPT),
+            ("human", "User query:\n{user_query}"),
+        ]).partial(
+            format_instructions=self.parser.get_format_instructions(),
+            tools_registry=lambda: json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2)
+        )
+        
+        self.chain = self.prompt | llm | self.parser
 
-
-
-PROMPT = ChatPromptTemplate.from_messages(
-	[
-		("system", SYSTEM_PROMPT),
-		(
-			"human",
-			"""
-User query:
-{user_query}
-""",
-		),
-	]
-).partial(format_instructions=PARSER.get_format_instructions())
-
-
-def _prepare_inputs(inputs: Dict[str, Any]) -> Dict[str, Any]:
-	user_query = (inputs.get("user_query") or "").strip()
-	if not user_query:
-		raise ValueError("user_query is required")
-
-	return {
-		"user_query": user_query,
-		"tools_registry": json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2),
-	}
-
-
-
-
-def build_planner_chain(llm: ChatOpenAI) -> Runnable:
-	return (
-		RunnableLambda(_prepare_inputs)
-		| PROMPT
-		| llm
-		| PARSER
-	)
+    async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
+        planner_output = await self.chain.ainvoke({"user_query": state.user_query})
+        return {"planner_output": planner_output}
 

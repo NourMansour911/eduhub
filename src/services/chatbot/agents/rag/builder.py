@@ -1,51 +1,73 @@
 from typing import Any, Dict, List, Literal, Optional, Union, Callable
-from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, END, START
-from langchain_openai import ChatOpenAI
+from integrations.llm import LCOpenAI
 
-from src.dtos import RAGContextDTO
-from .states import RAGSubgraphState, ExecutionState, ReflectionDecision, RAGSubgraphOutput, PlannerOutput
-from .nodes.planner import build_planner_chain
-from .nodes.executer import executor_node
-from .nodes.reflection import reflection_node, build_reflection_chain
+from .states import RAGSubgraphState, RAGSubgraphOutput
+from .nodes.planner import PlannerNode
+from .nodes.executer import ExecutorNode
+from .nodes.reflection import ReflectionNode
+from core import Settings
+from .nodes import get_default_tools_registry
 
+class RAGSubgraph:
+    def __init__(
+        self,
+        lc_openai_client: LCOpenAI,
+        settings: Settings,
+    ):
+        tool_registry = get_default_tools_registry()
+        planner_llm = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1)
+        reflection_llm = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1)
 
-def build_rag_subgraph(
-    llm: ChatOpenAI,
-    tool_registry: Dict[str, Callable]
-):
-    # 1. Initialize Chains
-    planner_chain = build_planner_chain(llm)
-    reflection_chain = build_reflection_chain(llm)
+        # 2. Initialize Nodes
+        self.planner_node = PlannerNode(planner_llm)
+        self.executor_node = ExecutorNode(tool_registry=tool_registry)
+        self.reflection_node = ReflectionNode(reflection_llm)
 
-    # 2. Define Nodes
-    async def run_planner_node(state: RAGSubgraphState) -> Dict[str, Any]:
-        # Looping logic: clear previous execution items if needed, or keep for history?
-        # The prompt says "Support reflection -> planner loop"
-        output: PlannerOutput = await planner_chain.ainvoke({
-            "user_query": state.user_query,
-            "student_id": state.student_id
-        })
-        return {"planner_output": output}
+        # 3. Build Graph
+        self.graph = self._build_graph()
 
-    async def run_executor_node(state: RAGSubgraphState) -> Dict[str, Any]:
-        result = await executor_node(state, tool_registry)
-        return result
+    def _build_graph(self):
+        workflow = StateGraph(RAGSubgraphState)
 
-    async def run_reflection_node(state: RAGSubgraphState) -> Dict[str, Any]:
-        result = await reflection_node(state, reflection_chain)
-        return result
+        workflow.add_node("planner", self.planner_node)
+        workflow.add_node("executor", self.executor_node)
+        workflow.add_node("reflection", self.reflection_node)
+        workflow.add_node("finalize", self._finalize_node)
 
-    # 3. Routing Logic
-    def route_after_planner(state: RAGSubgraphState) -> Literal["executor", "end_clarification"]:
-        if not state.planner_output:
-            return "end_clarification"
+        workflow.add_edge(START, "planner")
         
-        if state.planner_output.status == "clarification":
+        workflow.add_conditional_edges(
+            "planner",
+            self._route_after_planner,
+            {
+                "executor": "executor",
+                "end_clarification": "finalize"
+            }
+        )
+
+        workflow.add_edge("executor", "reflection")
+
+        workflow.add_conditional_edges(
+            "reflection",
+            self._route_after_reflection,
+            {
+                "planner": "planner",
+                "end_success": "finalize",
+                "end_clarification": "finalize"
+            }
+        )
+
+        workflow.add_edge("finalize", END)
+
+        return workflow.compile()
+
+    def _route_after_planner(self, state: RAGSubgraphState) -> Literal["executor", "end_clarification"]:
+        if not state.planner_output or state.planner_output.status == "clarification":
             return "end_clarification"
         return "executor"
 
-    def route_after_reflection(state: RAGSubgraphState) -> Literal["planner", "end_success", "end_clarification"]:
+    def _route_after_reflection(self, state: RAGSubgraphState) -> Literal["planner", "end_success", "end_clarification"]:
         if not state.reflection_decision:
             return "end_success"
         
@@ -57,16 +79,13 @@ def build_rag_subgraph(
         else:
             return "end_success"
 
-    # 4. Final Output Node
-    async def finalize_node(state: RAGSubgraphState) -> Dict[str, Any]:
+    async def _finalize_node(self, state: RAGSubgraphState) -> Dict[str, Any]:
         status = "success"
         clarification_question = None
         
-        # Check clarification from reflection first
         if state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
             clarification_question = state.reflection_decision.clarification_question
-        # Then check clarification from planner
         elif state.planner_output and state.planner_output.status == "clarification":
             status = "clarification"
             clarification_question = state.planner_output.clarification_question
@@ -78,41 +97,6 @@ def build_rag_subgraph(
                 clarification_question=clarification_question
             )
         }
-
-    # 5. Build Graph
-    workflow = StateGraph(RAGSubgraphState)
-
-    workflow.add_node("planner", run_planner_node)
-    workflow.add_node("executor", run_executor_node)
-    workflow.add_node("reflection", run_reflection_node)
-    workflow.add_node("finalize", finalize_node)
-
-    workflow.add_edge(START, "planner")
-    
-    workflow.add_conditional_edges(
-        "planner",
-        route_after_planner,
-        {
-            "executor": "executor",
-            "end_clarification": "finalize"
-        }
-    )
-
-    workflow.add_edge("executor", "reflection")
-
-    workflow.add_conditional_edges(
-        "reflection",
-        route_after_reflection,
-        {
-            "planner": "planner",
-            "end_success": "finalize",
-            "end_clarification": "finalize"
-        }
-    )
-
-    workflow.add_edge("finalize", END)
-
-    return workflow.compile()
 
 
 

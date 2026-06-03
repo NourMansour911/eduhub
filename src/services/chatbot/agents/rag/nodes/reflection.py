@@ -1,14 +1,12 @@
-from typing import List, Literal, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
-from src.dtos import RAGContextDTO
-from ..states import RAGSubgraphState, ReflectionDecision, RAGSubgraphOutput, ExecutionState
-from .planner import PlannerOutput
+from ..states import RAGSubgraphState, ReflectionDecision
 
 
-REFLECTION_PROMPT = """
+class ReflectionNode:
+    REFLECTION_PROMPT = """
 You are a Reflection node in a RAG system.
 Your task is to evaluate if the retrieved contexts are sufficient to answer the user query, or if a replan or clarification is needed.
 
@@ -28,31 +26,28 @@ If any tool has failed (failure_info is present) and provided a "clarification_m
 Output ONLY valid JSON matching the schema.
 """
 
-REFLECTION_PARSER = PydanticOutputParser(pydantic_object=ReflectionDecision)
+    def __init__(self, llm: ChatOpenAI):
+        self.parser = PydanticOutputParser(pydantic_object=ReflectionDecision)
+        self.prompt = ChatPromptTemplate.from_template(self.REFLECTION_PROMPT)
+        self.chain = self.prompt | llm | self.parser
 
+    async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
+        user_query = state.user_query
+        planner_output = state.planner_output
+        execution_state = state.execution_state
+        contexts = state.contexts
 
-def build_reflection_chain(llm: ChatOpenAI):
-    prompt = ChatPromptTemplate.from_template(REFLECTION_PROMPT)
-    return prompt | llm | REFLECTION_PARSER
+        contexts_serialized = [c.model_dump() for c in contexts]
+        planner_serialized = planner_output.model_dump() if planner_output else {}
+        exec_state_serialized = execution_state.model_dump() if execution_state else {}
 
+        decision: ReflectionDecision = await self.chain.ainvoke({
+            "user_query": user_query,
+            "planner_output": planner_serialized,
+            "execution_state": exec_state_serialized,
+            "contexts": contexts_serialized
+        })
 
-async def reflection_node(state: RAGSubgraphState, reflection_chain) -> Dict[str, Any]:
-    user_query = state.user_query
-    planner_output = state.planner_output
-    execution_state = state.execution_state
-    contexts = state.contexts
-
-    contexts_serialized = [c.model_dump() for c in contexts]
-    planner_serialized = planner_output.model_dump() if planner_output else {}
-    exec_state_serialized = execution_state.model_dump() if execution_state else {}
-
-    decision: ReflectionDecision = await reflection_chain.ainvoke({
-        "user_query": user_query,
-        "planner_output": planner_serialized,
-        "execution_state": exec_state_serialized,
-        "contexts": contexts_serialized
-    })
-
-    return {
-        "reflection_decision": decision
-    }
+        return {
+            "reflection_decision": decision
+        }
