@@ -13,6 +13,8 @@ from . import mongo_document_model
 from .mongo_document_model import MongoDocumentModel
 from . import vdb_payload_model
 from .vdb_payload_model import VDBChunkPayload
+from . import student_persona_model
+from .student_persona_model import StudentPersonaModel
 
 __all__ = [
     "answer_model",
@@ -22,10 +24,12 @@ __all__ = [
     "llm_judge_model",
     "mongo_document_model",
     "vdb_payload_model",
+    "student_persona_model",
     "AnswerModel",
     "ChunkMetadata",
     "LLMJudgeInputModel",
     "LectureModel",
     "MongoDocumentModel",
     "VDBChunkPayload",
+    "StudentPersonaModel",
 ]
