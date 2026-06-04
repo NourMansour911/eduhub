@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from src.core import get_settings
 from src.integrations.llm import LCOpenAI
 from src.services.chatbot.agents.rag import build_rag_subgraph

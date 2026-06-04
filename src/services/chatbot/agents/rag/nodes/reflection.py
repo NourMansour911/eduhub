@@ -8,22 +8,24 @@ from ..states import RAGSubgraphState, ReflectionDecision
 class ReflectionNode:
     REFLECTION_PROMPT = """
 You are a Reflection node in a RAG system.
-Your task is to evaluate if the retrieved contexts are sufficient to answer the user query, or if a replan or clarification is needed.
+Your task is to evaluate the execution history and decide the next move.
 
-User Query: {user_query}
-Planner Output: {planner_output}
-Execution State (Errors/Outputs): {execution_state}
-Retrieved Contexts: {contexts}
+Core Responsibility:
+1. Examine "Step Outputs" to see what tools were called and what they returned.
+2. If tools failed, read their "failure_info" and "explanation".
+3. Determine if the gathered information is enough to answer "{user_query}".
 
-Decision Logic:
-1. "success": If the retrieved contexts are sufficient to answer the query and there are no critical execution errors.
-2. "replan": If the current plan failed OR the retrieved contexts are insufficient but more tools could be used.
-3. "clarification": If the retrieved contexts are insufficient and you need more information from the user to proceed.
+Rules for your Decision:
+- "success": Everything needed is found.
+- "replan": Information is missing, but a DIFFERENT tool or a different search query might find it. 
+- "clarification": The query is impossible to satisfy without asking the user (e.g., tool specifically requested missing info via "clarification_message").
 
-STRICT RULE FOR CLARIFICATION:
-If any tool has failed (failure_info is present) and provided a "clarification_message", you SHOULD prefer using that message for your "clarification_question" as it is a predefined instruction for the user to help the tools succeed.
+Your "reason" field must explain your thought process:
+- Why did you choose this decision?
+- If replanning, what is missing?
+- If successful, what was the key information found?
 
-Output ONLY valid JSON matching the schema.
+{format_instructions}
 """
 
     def __init__(self, llm: ChatOpenAI):
@@ -34,18 +36,16 @@ Output ONLY valid JSON matching the schema.
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         user_query = state.user_query
         planner_output = state.planner_output
-        execution_state = state.execution_state
-        contexts = state.contexts
-
-        contexts_serialized = [c.model_dump() for c in contexts]
+        step_outputs = state.step_outputs
+        
         planner_serialized = planner_output.model_dump() if planner_output else {}
-        exec_state_serialized = execution_state.model_dump() if execution_state else {}
+        step_outputs_serialized = [out.model_dump() for out in step_outputs] if step_outputs else []
 
         decision: ReflectionDecision = await self.chain.ainvoke({
             "user_query": user_query,
             "planner_output": planner_serialized,
-            "execution_state": exec_state_serialized,
-            "contexts": contexts_serialized
+            "execution_state": step_outputs_serialized,
+            "format_instructions": self.parser.get_format_instructions()
         })
 
         return {

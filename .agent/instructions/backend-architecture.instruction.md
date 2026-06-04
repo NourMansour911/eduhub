@@ -15,7 +15,7 @@ These instructions define how code should be structured, not business logic deta
 - If a task clearly matches a specialized skill, use that skill-guided workflow instead of guessing.
 - Skills are for focused workflows and edge cases; do not ignore them when the task fits.
 - Use the project structure and the active instruction files together when deciding the right primitive.
-- Repo skills live in `.github/skills/*.skill.md`.
+- Repo skills live in `.agent/skills/*.skill.md`.
 - User-level skills live in the VS Code user prompts folder, but project work should prefer repo skills first.
 - For chain/prompt/runnable work, check for a matching skill before inventing a new pattern.
 

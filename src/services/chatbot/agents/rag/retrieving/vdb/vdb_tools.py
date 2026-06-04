@@ -2,7 +2,8 @@ from typing import List
 
 from fastapi import Depends
 
-from dtos import RAGContextDTO, VDBSearchResultPayload, FailureInfo
+from dtos import VDBSearchResultPayload
+from ...states import StepOutput, FailureInfo
 from .search_service import SearchService, get_search_service
 
 
@@ -13,10 +14,11 @@ class VDBTools:
 
 	async def ask_in_specific_lecture_by_lecture_id(
 		self,
+		step_id: str,
 		lecture_id: str,
 		query: str,
 		threshold: float = 0.4,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
@@ -47,7 +49,8 @@ class VDBTools:
 				"retrieved_context": filtered_payload,
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="ask_in_specific_lecture_by_lecture_id",
 			tool_args={
@@ -60,10 +63,11 @@ class VDBTools:
 
 	async def ask_in_the_whole_course_by_course_id(
 		self,
+		step_id: str,
 		course_id: str,
 		query: str,
 		threshold: float = 0.4,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
@@ -94,7 +98,8 @@ class VDBTools:
 				"retrieved_context": filtered_payload,
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="ask_in_the_whole_course_by_course_id",
 			tool_args={
@@ -107,16 +112,17 @@ class VDBTools:
 
 	async def search_in_sessions_history(
 		self,
-		user_id: str,
+		step_id: str,
+		student_id: str,
 		query: str,
 		threshold: float = 0.4,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
 				collection_name="sessions",
 				field_name="user_id",
-				field_value=user_id,
+				field_value=student_id,
 				limit=3,
 				query_text=query,
 			)
@@ -141,11 +147,12 @@ class VDBTools:
 				"retrieved_context": filtered_payload,
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="search_in_sessions_history",
 			tool_args={
-				"user_id": user_id,
+				"user_id": student_id,
 				"query": query,
 			},
 			content=content,
@@ -154,9 +161,10 @@ class VDBTools:
 
 	async def ask_in_legal_regulations(
 		self,
+		step_id: str,
 		query: str,
 		threshold: float = 0.4,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
@@ -187,7 +195,8 @@ class VDBTools:
 				"retrieved_context": filtered_payload,
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="ask_in_legal_regulations",
 			tool_args={

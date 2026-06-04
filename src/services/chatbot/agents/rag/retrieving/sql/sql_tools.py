@@ -5,7 +5,7 @@ from fastapi import Depends
 from core.request_dependencies import get_embedding_client
 from integrations.llm import LLMInterface
 
-from dtos import RAGContextDTO, FailureInfo
+from ...states import StepOutput, FailureInfo
 from .name_resolver import NameResolver
 from .sql_server_calling import SqlServerCalling
 
@@ -19,9 +19,10 @@ class SQLTools:
 
 	async def get_course_id_by_course_name(
 		self,
+		step_id: str,
 		student_id: str,
 		course_name: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		courses = self.sql_server_calling.get_student_courses(student_id)
 
@@ -47,7 +48,8 @@ class SQLTools:
 				"course_name": resolved_course["name"],
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_course_id_by_course_name",
 			tool_args={
@@ -60,9 +62,10 @@ class SQLTools:
 
 	async def get_lecture_id_by_lecture_name(
 		self,
+		step_id: str,
 		course_id: str,
 		lecture_name: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		lectures = self.sql_server_calling.get_course_lectures(course_id)
 
@@ -88,7 +91,8 @@ class SQLTools:
 				"lecture_name": resolved_lecture["title"],
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_lecture_id_by_lecture_name",
 			tool_args={
@@ -101,8 +105,9 @@ class SQLTools:
 
 	async def get_course_details_by_course_id(
 		self,
+		step_id: str,
 		course_id: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		course_details = self.sql_server_calling.get_course_details(course_id)
 
@@ -117,7 +122,8 @@ class SQLTools:
 			failure_info = None
 			content = course_details
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_course_details_by_course_id",
 			tool_args={
@@ -129,8 +135,9 @@ class SQLTools:
 
 	async def get_all_student_courses_ids_and_names(
 		self,
+		step_id: str,
 		student_id: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		courses: list[dict[str, Any]] = (
 			self.sql_server_calling.get_student_courses(student_id)
@@ -149,7 +156,8 @@ class SQLTools:
 				"courses": courses,
 			}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_all_student_courses_ids_and_names",
 			tool_args={

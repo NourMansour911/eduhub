@@ -1,164 +1,84 @@
 import asyncio
 import re
 from typing import Any, Dict, List, Callable
-from src.dtos import RAGContextDTO, FailureInfo
-from ..states import ExecutionState, RAGSubgraphState, PlanStep
+from ..states import RAGSubgraphState, PlanStep, StepOutput, FailureInfo
 
 
 class ExecutorNode:
     def __init__(self, tool_registry: Dict[str, Callable]):
         self.tool_registry = tool_registry
 
-    async def _execute_step(
-        self,
-        step: PlanStep,
-        execution_state: ExecutionState,
-        runtime_vars: Dict[str, Any]
-    ) -> RAGContextDTO:
-        tool_name = step.tool_name
-        if tool_name not in self.tool_registry:
-            return RAGContextDTO(
-                source="Executor",
-                tool_name=tool_name,
-                failure_info=FailureInfo(
-                    message=f"Tool '{tool_name}' not found.",
-                    explanation=f"The planner requested a tool that is not registered: {tool_name}"
-                )
-            )
-
-        tool_func = self.tool_registry[tool_name]
+    def _resolve_arg(self, arg_value: Any, runtime_vars: Dict[str, Any], step_outputs_dict: Dict[str, StepOutput]) -> Any:
         
-        # Resolve arguments
-        resolved_args = {}
-        for arg_name, arg_value in step.args.items():
-            if isinstance(arg_value, str):
-                # Resolve runtime variables
-                if arg_value.startswith("$") and not arg_value.startswith("$step_"):
-                    var_name = arg_value[1:]
-                    resolved_args[arg_name] = runtime_vars.get(var_name)
-                    if resolved_args[arg_name] is None:
-                        return RAGContextDTO(
-                            source="Executor",
-                            tool_name=tool_name,
-                            failure_info=FailureInfo(
-                                message=f"Missing variable: {var_name}",
-                                explanation=f"Runtime variable '{var_name}' not found for arg '{arg_name}'."
-                            )
-                        )
-                
-                # Resolve step references
-                elif arg_value.startswith("$step_"):
-                    match = re.match(r"^\$(step_\d+)\.(.+)$", arg_value)
-                    if match:
-                        prev_step_id = match.group(1)
-                        key = match.group(2)
-                        
-                        prev_output: RAGContextDTO = execution_state.step_outputs.get(prev_step_id)
-                        if not prev_output:
-                            return RAGContextDTO(
-                                source="Executor",
-                                tool_name=tool_name,
-                                failure_info=FailureInfo(
-                                    message=f"Step {prev_step_id} output missing",
-                                    explanation=f"Tool depends on {prev_step_id} which hasn't produced output."
-                                )
-                            )
-                        
-                        resolved_args[arg_name] = prev_output.content.get(key)
-                        if resolved_args[arg_name] is None:
-                            return RAGContextDTO(
-                                source="Executor",
-                                tool_name=tool_name,
-                                failure_info=FailureInfo(
-                                    message=f"Key {key} not found",
-                                    explanation=f"Key '{key}' not found in step '{prev_step_id}' output."
-                                )
-                            )
-                    else:
-                        resolved_args[arg_name] = arg_value
-                else:
-                    resolved_args[arg_name] = arg_value
-            else:
-                resolved_args[arg_name] = arg_value
+        if not isinstance(arg_value, str) or not arg_value.startswith("$"):
+            return arg_value
+
+        var_name = arg_value[1:]  
+
+        if not var_name.startswith("step_"):
+            return runtime_vars.get(var_name, arg_value)
+
+        parts = var_name.split(".", 1)
+        if len(parts) == 2:
+            step_id, key = parts
+            if step_id in step_outputs_dict and key in step_outputs_dict[step_id].content:
+                return step_outputs_dict[step_id].content[key]
+        
+        return arg_value
+
+    async def _execute_step(self, step: PlanStep, step_outputs_dict: Dict[str, StepOutput], runtime_vars: Dict[str, Any]) -> StepOutput:
+        if step.tool_name not in self.tool_registry:
+            return StepOutput(step_id=step.id, source="Executor", tool_name=step.tool_name, 
+                                failure_info=FailureInfo(message=f"Tool '{step.tool_name}' not found."))
+
+        tool_func = self.tool_registry[step.tool_name]
+        
+        
+        resolved_args = {k: self._resolve_arg(v, runtime_vars, step_outputs_dict) for k, v in step.args.items()}
+        resolved_args["step_id"] = step.id
 
         try:
-            if asyncio.iscoroutinefunction(tool_func):
-                return await tool_func(**resolved_args)
-            return tool_func(**resolved_args)
+            return await tool_func(**resolved_args)
         except Exception as e:
-            return RAGContextDTO(
-                source="Executor",
-                tool_name=tool_name,
-                failure_info=FailureInfo(
-                    message="Tool execution error",
-                    explanation=str(e)
-                )
-            )
+            return StepOutput(step_id=step.id, source="Executor", tool_name=step.tool_name, 
+                                failure_info=FailureInfo(message="Execution Error", explanation=str(e)))
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
-        """
-        Executes the DAG of steps defined in the plan.
-        """
         planner_output = state.planner_output
         if not planner_output or planner_output.status != "plan" or not planner_output.steps:
             return {}
 
-        plan_steps = planner_output.steps
-        execution_state = state.execution_state
-        runtime_vars = {
-            "student_id": state.student_id
-        }
-
-        # Track completed steps
-        completed_steps = set(execution_state.step_outputs.keys())
-        steps_to_run = [s for s in plan_steps if s.id not in completed_steps]
+        step_outputs = list(state.step_outputs)
+        step_outputs_dict = {out.step_id: out for out in step_outputs}
+        runtime_vars = {"student_id": state.student_id}
         
-        # We execute in layers (deterministic DAG execution)
+        executed_ids = set(step_outputs_dict.keys())
+        steps_to_run = [s for s in planner_output.steps if s.id not in executed_ids]
+        
         while steps_to_run:
-            # Find steps which have all dependencies met
-            ready_steps = [
-                s for s in steps_to_run 
-                if all(dep in completed_steps for dep in s.depends_on)
-            ]
+            ready_steps = [s for s in steps_to_run if all(dep in executed_ids for dep in s.depends_on)]
             
-            if not ready_steps:
-                # Check if there's a deadlock or missing dependency output
-                if steps_to_run:
-                    execution_state.execution_errors.append("Deadlock or missing dependencies in plan.")
+            if not ready_steps: 
                 break
 
-            # Execute ready steps in parallel
-            tasks = [
-                self._execute_step(step, execution_state, runtime_vars)
-                for step in ready_steps
-            ]
+            results: List[StepOutput] = await asyncio.gather(*[
+                self._execute_step(step, step_outputs_dict, runtime_vars) for step in ready_steps
+            ])
             
-            results: List[RAGContextDTO] = await asyncio.gather(*tasks)
-            
-            has_failure = False
-            for step, result in zip(ready_steps, results):
-                execution_state.step_outputs[step.id] = result
+            has_error = False
+            for result in results:
+                step_outputs.append(result)
+                step_outputs_dict[result.step_id] = result
+                executed_ids.add(result.step_id)
                 
                 if result.failure_info:
-                    error_msg = result.failure_info.message
-                    execution_state.execution_errors.append(
-                        f"Step {step.id} ({step.tool_name}) reported failure: {error_msg}"
-                    )
-                    has_failure = True
-                
-                completed_steps.add(step.id)
-                steps_to_run = [s for s in steps_to_run if s.id != step.id]
-
-            if has_failure:
-                break
-
-        # Collect all successful contexts
-        contexts = [
-            out for out in execution_state.step_outputs.values()
-            if not out.failure_info
-        ]
+                    has_error = True
+            
+            if has_error: 
+                break  
+            
+            steps_to_run = [s for s in steps_to_run if s.id not in executed_ids]
 
         return {
-            "execution_state": execution_state,
-            "contexts": contexts
+            "step_outputs": step_outputs
         }

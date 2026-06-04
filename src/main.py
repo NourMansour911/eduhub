@@ -13,8 +13,7 @@ from routers import grading_router, home_router, lecture_router, session_router,
 from integrations import RedisProvider
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
-from services.chunking.chunking_service import ChunkingService
-from services.embedding.embedding_service import ChunkEmbeddingService
+
 import os
 
 settings = get_settings()

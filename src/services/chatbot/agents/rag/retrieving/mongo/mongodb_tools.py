@@ -1,6 +1,6 @@
 from fastapi import Depends
 
-from dtos import RAGContextDTO, FailureInfo
+from ...states import StepOutput, FailureInfo
 from services.lectures import LectureService, get_lecture_service
 from services.summarize import SummarizeService, get_summarize_service
 
@@ -17,8 +17,9 @@ class MongoDBTools:
 
 	async def get_lecture_whole_content_by_lecture_id(
 		self,
+		step_id: str,
 		lecture_id: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		lecture_content = await self.lecture_service.get_lecture_content(
 			lecture_id
@@ -37,7 +38,8 @@ class MongoDBTools:
 			)
 			content = {}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_lecture_whole_content_by_lecture_id",
 			tool_args={
@@ -49,8 +51,9 @@ class MongoDBTools:
 
 	async def get_lecture_summary_by_lecture_id(
 		self,
+		step_id: str,
 		lecture_id: str,
-	) -> RAGContextDTO:
+	) -> StepOutput:
 
 		summary = await self.summarize_service.get_summary(
 			lecture_id=lecture_id,
@@ -70,7 +73,8 @@ class MongoDBTools:
 			)
 			content = {}
 
-		return RAGContextDTO(
+		return StepOutput(
+			step_id=step_id,
 			source=self.source,
 			tool_name="get_lecture_summary_by_lecture_id",
 			tool_args={
