@@ -1,6 +1,5 @@
 # Auto-generated __init__.py
 
-from . import chatbot
 from . import chunking
 from . import embedding
 from . import grading
@@ -16,7 +15,6 @@ from . import summarize
 from . import vdb_service
 
 __all__ = [
-    "chatbot",
     "chunking",
     "embedding",
     "grading",

@@ -104,10 +104,7 @@ class RAGSubgraph:
         clarification_question = None
         
         all_contexts = list(state.history) + list(state.step_outputs)
-        successful_contexts = [
-            out for out in all_contexts
-            if not out.failure_info
-        ]
+
 
         if state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
@@ -119,7 +116,7 @@ class RAGSubgraph:
         return {
             "retriving_results": RAGSubgraphOutput(
                 status=status,
-                contexts=successful_contexts,
+                contexts=all_contexts,
                 clarification_question=clarification_question
             )
         }

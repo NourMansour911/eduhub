@@ -1,9 +1,9 @@
 {
   "dockerfile_lines": [],
   "graphs": {
-    "chatbot": "./langgraph_app.py:graph"
+    "chatbot": "./src/services/chatbot/studio.py:graph"
   },
-  "env": "./.env",
+  "env": "./src/.env",
   "python_version": "3.11",
   "dependencies": [
     "."

@@ -50,4 +50,4 @@ class RAGSubgraphState(BaseModel):
     planner_output: Optional[PlannerOutput] = None 
     step_outputs: List[StepOutput] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None
-    retriving_results: Optional[RAGSubgraphOutput] = None
+    retriving_results: Optional[RAGSubgraphOutput] = None
