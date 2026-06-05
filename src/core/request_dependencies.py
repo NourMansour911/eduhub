@@ -3,7 +3,7 @@ from typing import Optional, TYPE_CHECKING
 from fastapi import Request
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 
-from repositories import AnswerRepo, LectureRepo
+from repositories import AnswerRepo, LectureRepo, StudentPersonaRepo
 
 if TYPE_CHECKING:
     from integrations import RedisProvider
@@ -22,6 +22,10 @@ def get_answer_repo(request: Request) -> AnswerRepo:
 def get_lecture_repo(request: Request) -> LectureRepo:
 
     return request.app.state.lecture_repo
+
+
+def get_student_persona_repo(request: Request) -> StudentPersonaRepo:
+    return request.app.state.student_persona_repo
 
 
 def get_vdb_client(request: Request):

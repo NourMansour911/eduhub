@@ -7,7 +7,7 @@ from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
-from repositories import AnswerRepo, LectureRepo
+from repositories import AnswerRepo, LectureRepo, StudentPersonaRepo
 from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, session_router, vectordb_router,assistant_router
 from integrations import RedisProvider
@@ -56,10 +56,11 @@ async def lifespan(app: FastAPI):
   app.state.mongo_db = app.state.mongo_client[settings.MONGO_DB_NAME]
   mongo_repos = await init_mongo_resources(
     app.state.mongo_db,
-    [AnswerRepo, LectureRepo],
+    [AnswerRepo, LectureRepo, StudentPersonaRepo],
   )
   app.state.answer_repo = mongo_repos["AnswerRepo"]
   app.state.lecture_repo = mongo_repos["LectureRepo"]
+  app.state.student_persona_repo = mongo_repos["StudentPersonaRepo"]
   logger.info("Mongo repositories loaded successfully")
 
   # Redis client

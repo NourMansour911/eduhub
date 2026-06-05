@@ -8,7 +8,9 @@ from core import Settings, get_settings
 from core.request_dependencies import (
     get_langchain_client,
     get_redis_provider,
+    get_student_persona_repo,
 )
+from repositories import StudentPersonaRepo
 from dtos import RedisSessionDTO, SessionArchiveMetadataDTO, VDBChunkPayload
 from helpers import get_logger
 from integrations import RedisProvider
@@ -31,16 +33,23 @@ class SessionService:
         summary_llm: ChatOpenAI,
         embedding_service: ChunkEmbeddingService,
         vdb_service: VDBService,
+        student_persona_repo: StudentPersonaRepo,
     ):
         self.redis_provider = redis_provider
         self.embedding_service = embedding_service
         self.vdb_service = vdb_service
+        self.student_persona_repo = student_persona_repo
         self.summary_chain = build_session_summary_chain(summary_llm)
 
     async def start_session(self, request: SessionRequest) -> SessionStartResponse:
         user_id = request.user_id
         session_id = request.session_id
-        collection = RedisSessionDTO(user_id=user_id)
+        
+        
+        persona_doc = await self.student_persona_repo.get_persona_by_student_id(user_id)
+        persona_str = persona_doc.persona if persona_doc else None
+
+        collection = RedisSessionDTO(user_id=user_id, persona=persona_str)
         await self.redis_provider.save_collection(collection, session_id=session_id)
 
         return SessionStartResponse(
@@ -159,6 +168,7 @@ def get_session_service(
     lc_openai_client: LCOpenAI = Depends(get_langchain_client),
     embedding_service: ChunkEmbeddingService = Depends(get_chunk_embedding_service),
     vdb_service: VDBService = Depends(get_vdb_service),
+    student_persona_repo: StudentPersonaRepo = Depends(get_student_persona_repo),
     settings: Settings = Depends(get_settings),
 ) -> SessionService:
     summary_llm = lc_openai_client.get_langchain_llm(
@@ -172,4 +182,5 @@ def get_session_service(
         summary_llm=summary_llm,
         embedding_service=embedding_service,
         vdb_service=vdb_service,
+        student_persona_repo=student_persona_repo,
     )
