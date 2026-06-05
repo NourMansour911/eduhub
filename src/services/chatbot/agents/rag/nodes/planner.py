@@ -22,7 +22,7 @@ Execution History (use to adjust strategy & avoid repeated failures):
 Rules:
 1. NEVER ask for student_id, course_id, or lecture_id.
 2. student_id is "$student_id". Match course names in query to IDs in 'Courses Context' (e.g., "Data Mining(ID: IS422P)" -> course_id="IS422P"). Do not guess/invent IDs; clarify if missing.
-3. Pass data between steps using "$step_id.output_key".
+3. Pass data between steps using "$step_id.output_key". Use the EXACT "returns" schema defined in the Tools Registry to form your path. For example, if a tool returns {{"lectures": [{{"id": "str"}}]}}, reference the ID as "$step_1.lectures[0].id". NEVER use generic outputs like "$step_1[0]" or "$step_1.output".
 4. Prefer planning. Only clarify if no tools can help progress.
 5. Use exact tool names and args from the Tools Registry.
 6. The "query" field should represent the core concept to retrieve.

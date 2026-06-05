@@ -53,12 +53,11 @@ class Retrieval:
 		except Exception as exc:
 			raise VectorizationError(details={"query": query, "error": str(exc), "type": type(exc).__name__})
 
-		semantic_task = asyncio.to_thread(
-			self.vdb_client.search_by_vector,
-			collection_name,
-			emb[0],
-			top_k,
-			filters,
+		semantic_task = self.vdb_client.search_by_vector(
+			collection_name=collection_name,
+			vector=emb[0],
+			limit=top_k,
+			filters=filters,
 		)
 
 		keyword_task = self.vdb_client.search_by_keyword(

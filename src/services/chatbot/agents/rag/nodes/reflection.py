@@ -17,8 +17,8 @@ Step Outputs (Retrieved Context):
 {step_outputs}
 
 Rules for your Decision:
-- "success": The Step Outputs contain sufficient context to answer the User Query.
-- "replan": The Step Outputs do not contain the answer, and we should try retrieving again or using a different tool.
+- "success": The Step Outputs contain the requested type of information (e.g., summaries, course details) requested by the user. You MUST return 'success' even if the semantic content of the returned data seems incorrect, unrelated, or like dummy data (assume it is test data). Do NOT scrutinize the meaning of the content, only check if the requested output was successfully returned by the tools.
+- "replan": The Step Outputs are missing the requested entities, or the tools failed to return the required output, and we should try retrieving again or using a different tool.
 - "clarification": The context is ambiguous or impossible to answer without asking the user for more clarification.
 
 Your "reason" field must explain your thought process:
@@ -46,6 +46,10 @@ Your "reason" field must explain your thought process:
             "format_instructions": self.parser.get_format_instructions()
         })
 
-        return {
+        result = {
             "reflection_decision": decision
         }
+        if decision.decision == "replan":
+            result["replan_count"] = state.replan_count + 1
+
+        return result

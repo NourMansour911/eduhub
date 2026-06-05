@@ -1,5 +1,5 @@
 
-from qdrant_client import models, QdrantClient
+from qdrant_client import models, AsyncQdrantClient
 from ..vdb_interface import VectorDBInterface
 from typing import List, Optional, Dict, Any, Type
 from helpers.logger import get_logger
@@ -12,7 +12,7 @@ from .bm25 import BM25Encoder
 class QdrantDBProvider(VectorDBInterface):
 
     def __init__(self,url: str,distance_method: str, vector_size: int):
-        self.client: Optional[QdrantClient] = None
+        self.client: Optional[AsyncQdrantClient] = None
         self.url = url
         self.vector_size = vector_size
         self.distance_method = None
@@ -26,7 +26,7 @@ class QdrantDBProvider(VectorDBInterface):
         
 
     def connect(self) -> None:
-        self.client = QdrantClient(url=self.url)
+        self.client = AsyncQdrantClient(url=self.url)
         logger.info("[CONNECT SUCCESS]")
 
     def disconnect(self) -> None:
@@ -44,22 +44,23 @@ class QdrantDBProvider(VectorDBInterface):
         )
 
 
-    def is_collection_existed(self, collection_name: str) -> bool:
-        return self.client.collection_exists(collection_name=collection_name)
+    async def is_collection_existed(self, collection_name: str) -> bool:
+        return await self.client.collection_exists(collection_name=collection_name)
 
-    def list_all_collections(self) -> List[str]:
-        return [c.name for c in self.client.get_collections().collections]
+    async def list_all_collections(self) -> List[str]:
+        res = await self.client.get_collections()
+        return [c.name for c in res.collections]
 
 
-    def _create_payload_indexes(
+    async def _create_payload_indexes(
         self,
         collection_name: str,
         fields_for_indexing: List[Dict[str, Any]],
     ) -> None:
         if not fields_for_indexing:
             return
-        if not self.is_collection_existed(collection_name):
-            self.client.get_collection(collection_name=collection_name)
+        if not await self.is_collection_existed(collection_name):
+            await self.client.get_collection(collection_name=collection_name)
 
         for item in fields_for_indexing:
             field_name = item.get("name")
@@ -70,7 +71,7 @@ class QdrantDBProvider(VectorDBInterface):
             resolved_field = self._resolve_field_path(field_name)
             schema = self._map_python_type_to_qdrant(field_type)
 
-            self.client.create_payload_index(
+            await self.client.create_payload_index(
                 collection_name=collection_name,
                 field_name=resolved_field,
                 field_schema=schema,
@@ -149,7 +150,7 @@ class QdrantDBProvider(VectorDBInterface):
             return field
         return f"metadata.{field}"
 
-    def create_collection(
+    async def create_collection(
         self,
         collection_name: str,
         embedding_size: int,
@@ -157,12 +158,12 @@ class QdrantDBProvider(VectorDBInterface):
         enable_bm25: bool = True,
         fields_for_indexing: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
-        if do_reset and self.is_collection_existed(collection_name):
-            self.delete_collection(collection_name)
+        if do_reset and await self.is_collection_existed(collection_name):
+            await self.delete_collection(collection_name)
             logger.info(f"Deleted collection {collection_name} for reset")
 
         created = False
-        if not self.is_collection_existed(collection_name):
+        if not await self.is_collection_existed(collection_name):
             create_payload = {
                 "collection_name": collection_name,
                 "vectors_config": models.VectorParams(
@@ -174,12 +175,12 @@ class QdrantDBProvider(VectorDBInterface):
                 create_payload["sparse_vectors_config"] = {
                     "bm25": models.SparseVectorParams(),
                 }
-            self.client.create_collection(**create_payload)
+            await self.client.create_collection(**create_payload)
             logger.info(f"Created collection {collection_name}")
             created = True
 
         if fields_for_indexing:
-            self._create_payload_indexes(
+            await self._create_payload_indexes(
                 collection_name=collection_name,
                 fields_for_indexing=fields_for_indexing,
             )
@@ -192,8 +193,8 @@ class QdrantDBProvider(VectorDBInterface):
         enable_bm25: bool ,
         fields_for_indexing: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
-        if not self.is_collection_existed(collection_name):
-            self.create_collection(
+        if not await self.is_collection_existed(collection_name):
+            await self.create_collection(
                 collection_name,
                 embedding_size=self.vector_size,
                 enable_bm25=enable_bm25,
@@ -203,17 +204,17 @@ class QdrantDBProvider(VectorDBInterface):
 
         return True
 
-    def delete_collection(self, collection_name: str) -> None:
+    async def delete_collection(self, collection_name: str) -> None:
         self.bm25_map.pop(collection_name, None)
-        self.client.delete_collection(collection_name=collection_name)
+        await self.client.delete_collection(collection_name=collection_name)
         return
 
-    def delete_by_filter(
+    async def delete_by_filter(
         self,
         collection_name: str,
         filters: Optional[Any] = None,
     ) -> Any:
-        if not self.is_collection_existed(collection_name):
+        if not await self.is_collection_existed(collection_name):
             logger.warning(
                 "[DELETE BY FILTER] Collection does not exist",
                 extra={"collection_name": collection_name},
@@ -224,14 +225,14 @@ class QdrantDBProvider(VectorDBInterface):
         if resolved_filter is None:
             raise ValueError("delete_by_filter requires non-empty filters")
 
-        result = self.client.delete(
+        result = await self.client.delete(
             collection_name=collection_name,
             points_selector=models.FilterSelector(filter=resolved_filter),
         )
         return result
 
-    def get_collection_info(self, collection_name: str) -> dict:
-        return self.client.get_collection(collection_name=collection_name)
+    async def get_collection_info(self, collection_name: str) -> dict:
+        return await self.client.get_collection(collection_name=collection_name)
 
 
     async def store_batch(
@@ -263,7 +264,7 @@ class QdrantDBProvider(VectorDBInterface):
         if use_bm25:
             self.fit_bm25(collection_name, texts)
 
-        success = self._insert_many(
+        success = await self._insert_many(
             collection_name=collection_name,
             texts=texts,
             vectors=vectors,
@@ -280,7 +281,7 @@ class QdrantDBProvider(VectorDBInterface):
         )
         return True
 
-    def _insert_many(
+    async def _insert_many(
         self,
         collection_name: str,
         texts: list,
@@ -292,8 +293,8 @@ class QdrantDBProvider(VectorDBInterface):
     ) -> bool:
         if metadata is None:
             metadata = [None] * len(texts)
-        if not self.is_collection_existed(collection_name):
-            self.client.get_collection(collection_name=collection_name)
+        if not await self.is_collection_existed(collection_name):
+            await self.client.get_collection(collection_name=collection_name)
 
         bm25 = self.bm25_map.get(collection_name) if use_bm25 else None
 
@@ -332,14 +333,14 @@ class QdrantDBProvider(VectorDBInterface):
                     )
                 )
 
-            self.client.upsert(
+            await self.client.upsert(
                 collection_name=collection_name,
                 points=batch_points,
             )
 
         return True
 
-    def get_collection_chunks(
+    async def get_collection_chunks(
         self,
         collection_name: str,
         page: int = 1,
@@ -350,10 +351,10 @@ class QdrantDBProvider(VectorDBInterface):
     ) -> Dict[str, Any]:
         if page < 1:
             page = 1
-        if not self.is_collection_existed(collection_name):
-            self.client.get_collection(collection_name=collection_name)
+        if not await self.is_collection_existed(collection_name):
+            await self.client.get_collection(collection_name=collection_name)
 
-        collection_info = self.client.get_collection(
+        collection_info = await self.client.get_collection(
             collection_name=collection_name
         )
         total_points = collection_info.points_count
@@ -375,7 +376,7 @@ class QdrantDBProvider(VectorDBInterface):
             if resolved_filters is not None:
                 scroll_kwargs["scroll_filter"] = resolved_filters
                 
-            batch, next_offset = self.client.scroll(**scroll_kwargs)
+            batch, next_offset = await self.client.scroll(**scroll_kwargs)
 
             if current_page == page:
                 points = batch
@@ -414,7 +415,7 @@ class QdrantDBProvider(VectorDBInterface):
         }
 
 
-    def search_by_vector(
+    async def search_by_vector(
         self,
         collection_name: str,
         vector: List[float],
@@ -431,7 +432,7 @@ class QdrantDBProvider(VectorDBInterface):
         if resolved_filters is not None:
             query_kwargs["query_filter"] = resolved_filters
 
-        results = self.client.query_points(**query_kwargs)
+        results = await self.client.query_points(**query_kwargs)
         return [
             {
                 "id": str(p.id),
@@ -452,7 +453,7 @@ class QdrantDBProvider(VectorDBInterface):
     ) -> List[Dict[str, Any]]:
         logger.info(f"[BM25] collection: {collection_name} ")
 
-        bm25 = self._ensure_bm25(collection_name)
+        bm25 = await self._ensure_bm25(collection_name)
         if not bm25:
             return []
 
@@ -472,7 +473,7 @@ class QdrantDBProvider(VectorDBInterface):
         if resolved_filters is not None:
             query_kwargs["query_filter"] = resolved_filters
 
-        results = self.client.query_points(**query_kwargs)
+        results = await self.client.query_points(**query_kwargs)
         return [
             {
                 "id": str(p.id),
@@ -484,7 +485,7 @@ class QdrantDBProvider(VectorDBInterface):
         ]
             
             
-    def _rebuild_bm25_from_collection(self, collection_name: str) -> bool:
+    async def _rebuild_bm25_from_collection(self, collection_name: str) -> bool:
 
         logger.info(
             f"[BM25] Rebuilding for '{collection_name}' "
@@ -493,7 +494,7 @@ class QdrantDBProvider(VectorDBInterface):
         all_texts = []
         offset = None
         while True:
-            points, next_offset = self.client.scroll(
+            points, next_offset = await self.client.scroll(
                 collection_name=collection_name,
                 limit=100,
                 offset=offset,
@@ -515,10 +516,10 @@ class QdrantDBProvider(VectorDBInterface):
         self.fit_bm25(collection_name, all_texts)
         return True
 
-    def _ensure_bm25(self, collection_name: str) -> Optional[BM25Encoder]:
+    async def _ensure_bm25(self, collection_name: str) -> Optional[BM25Encoder]:
 
         bm25 = self.bm25_map.get(collection_name)
         if not bm25:
-            if self._rebuild_bm25_from_collection(collection_name):
+            if await self._rebuild_bm25_from_collection(collection_name):
                 bm25 = self.bm25_map.get(collection_name)
         return bm25

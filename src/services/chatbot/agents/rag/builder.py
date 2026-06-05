@@ -92,6 +92,8 @@ class RAGSubgraph:
         
         decision = state.reflection_decision.decision
         if decision == "replan":
+            if state.replan_count >= 2:
+                return "end_success"
             return "planner"
         elif decision == "clarification":
             return "end_clarification"
@@ -101,11 +103,14 @@ class RAGSubgraph:
     async def _finalize_node(self, state: RAGSubgraphState) -> Dict[str, Any]:
         status = "success"
         clarification_question = None
+        error_message = None
         
         all_contexts = list(state.history) + list(state.step_outputs)
 
-
-        if state.reflection_decision and state.reflection_decision.decision == "clarification":
+        if state.replan_count >= 2 and state.reflection_decision and state.reflection_decision.decision == "replan":
+            status = "failed"
+            error_message = "Exceeded the maximum number of replan attempts (2) without finding a satisfactory answer."
+        elif state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
             clarification_question = state.reflection_decision.clarification_question
         elif state.planner_output and state.planner_output.status == "clarification":
@@ -116,7 +121,8 @@ class RAGSubgraph:
             "retriving_results": RAGSubgraphOutput(
                 status=status,
                 contexts=all_contexts,
-                clarification_question=clarification_question
+                clarification_question=clarification_question,
+                error_message=error_message
             )
         }
 

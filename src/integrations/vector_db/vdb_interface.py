@@ -12,15 +12,15 @@ class VectorDBInterface(ABC):
 
     # Collections
     @abstractmethod
-    def is_collection_existed(self, collection_name: str) -> bool:
+    async def is_collection_existed(self, collection_name: str) -> bool:
         pass
 
     @abstractmethod
-    def list_all_collections(self) -> List[str]:
+    async def list_all_collections(self) -> List[str]:
         pass
 
     @abstractmethod
-    def create_collection(
+    async def create_collection(
         self,
         collection_name: str,
         embedding_size: int,
@@ -40,11 +40,11 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def delete_collection(self, collection_name: str) -> None:
+    async def delete_collection(self, collection_name: str) -> None:
         pass
 
     @abstractmethod
-    def delete_by_filter(
+    async def delete_by_filter(
         self,
         collection_name: str,
         filters: Optional[Any] = None,
@@ -52,7 +52,7 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def get_collection_info(self, collection_name: str) -> dict:
+    async def get_collection_info(self, collection_name: str) -> dict:
         pass
 
     @abstractmethod
@@ -70,7 +70,7 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def get_collection_chunks(
+    async def get_collection_chunks(
         self,
         collection_name: str,
         page: int = 1,
@@ -82,7 +82,7 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def search_by_vector(
+    async def search_by_vector(
         self,
         collection_name: str,
         vector: List[float],

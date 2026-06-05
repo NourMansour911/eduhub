@@ -126,7 +126,7 @@ class LectureService:
             raise LectureNotFoundError(details={"lecture_id": payload.lecture_id})
 
         try:
-            self.vdb_client.delete_by_filter(
+            await self.vdb_client.delete_by_filter(
                 collection_name="lectures",
                 filters=[{"field": "lecture_id", "value": payload.lecture_id, "op": "eq"}],
             )
@@ -146,7 +146,7 @@ class LectureService:
             raise LectureNotFoundError(details={"course_id": payload.course_id})
 
         try:
-            self.vdb_client.delete_by_filter(
+            await self.vdb_client.delete_by_filter(
                 collection_name="lectures",
                 filters=[{"field": "course_id", "value": payload.course_id, "op": "eq"}],
             )

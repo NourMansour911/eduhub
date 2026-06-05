@@ -29,12 +29,12 @@ class VDBService:
 
         logger.info("Vector DB Push Service initialized")
 
-    def get_collection_info(
+    async def get_collection_info(
         self,
         collection_name: str,
     ):
         try:
-            info = self.vdb_client.get_collection_info(collection_name=collection_name)
+            info = await self.vdb_client.get_collection_info(collection_name=collection_name)
 
             return json.loads(
                 json.dumps(info, default=lambda x: x.__dict__)
@@ -50,7 +50,7 @@ class VDBService:
                 }
             )
 
-    def get_chunks(
+    async def get_chunks(
         self,
         collection_name: str,
         text_limit: int,
@@ -62,7 +62,7 @@ class VDBService:
             if page < 1:
                 page = 1
 
-            raw_data = self.vdb_client.get_collection_chunks(
+            raw_data = await self.vdb_client.get_collection_chunks(
                 collection_name=collection_name,
                 page=page,
                 limit=limit,
@@ -101,12 +101,12 @@ class VDBService:
                 }
             )
 
-    def delete_collection(
+    async def delete_collection(
         self,
         collection_name: str,
     ) -> dict:
         try:
-            self.vdb_client.delete_collection(collection_name=collection_name)
+            await self.vdb_client.delete_collection(collection_name=collection_name)
             return {
                 "collection_name": collection_name,
                 "deleted": True,
@@ -121,13 +121,13 @@ class VDBService:
                 }
             )
 
-    def delete_by_filter(
+    async def delete_by_filter(
         self,
         collection_name: str,
         filters: Optional[object] = None,
     ) -> dict:
         try:
-            result = self.vdb_client.delete_by_filter(
+            result = await self.vdb_client.delete_by_filter(
                 collection_name=collection_name,
                 filters=filters,
             )

@@ -38,9 +38,10 @@ class ReflectionDecision(BaseModel):
 
 
 class RAGSubgraphOutput(BaseModel):
-    status: Literal["success", "clarification"]
+    status: Literal["success", "clarification", "failed"]
     contexts: List[StepOutput] = Field(default_factory=list)
     clarification_question: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 class RAGSubgraphState(BaseModel):
@@ -52,3 +53,4 @@ class RAGSubgraphState(BaseModel):
     step_outputs: List[StepOutput] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None
     retriving_results: Optional[RAGSubgraphOutput] = None
+    replan_count: int = Field(default=0, description="Tracks how many times replanning occurred")

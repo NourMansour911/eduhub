@@ -9,7 +9,6 @@ class ExecutorNode:
         self.tool_registry = tool_registry
 
     def _resolve_arg(self, arg_value: Any, runtime_vars: Dict[str, Any], step_outputs_dict: Dict[str, StepOutput]) -> Any:
-        
         if not isinstance(arg_value, str) or not arg_value.startswith("$"):
             return arg_value
 
@@ -18,13 +17,47 @@ class ExecutorNode:
         if not var_name.startswith("step_"):
             return runtime_vars.get(var_name, arg_value)
 
-        parts = var_name.split(".", 1)
-        if len(parts) == 2:
-            step_id, key = parts
-            if step_id in step_outputs_dict and key in step_outputs_dict[step_id].content:
-                return step_outputs_dict[step_id].content[key]
+        match = re.match(r'^(step_\d+)(.*)$', var_name)
+        if not match:
+            return arg_value
         
-        return arg_value
+        step_id, path = match.groups()
+        if step_id not in step_outputs_dict:
+            return arg_value
+        
+        current_val = step_outputs_dict[step_id].content
+        if not path:
+            return current_val
+            
+        access_pattern = re.compile(r'^(?:\.([a-zA-Z_][a-zA-Z0-9_]*)|\[(\d+)\]|\[[\'"]([^\'\"]+)[\'"]\])')
+        
+        while path:
+            m = access_pattern.match(path)
+            if not m:
+                return arg_value
+            
+            key, idx, str_key = m.groups()
+            matched_len = m.end()
+            path = path[matched_len:]
+            
+            if key is not None:
+                if isinstance(current_val, dict) and key in current_val:
+                    current_val = current_val[key]
+                else:
+                    return arg_value
+            elif idx is not None:
+                idx_int = int(idx)
+                if isinstance(current_val, list) and 0 <= idx_int < len(current_val):
+                    current_val = current_val[idx_int]
+                else:
+                    return arg_value
+            elif str_key is not None:
+                if isinstance(current_val, dict) and str_key in current_val:
+                    current_val = current_val[str_key]
+                else:
+                    return arg_value
+                    
+        return current_val
 
     async def _execute_step(self, step: PlanStep, step_outputs_dict: Dict[str, StepOutput], runtime_vars: Dict[str, Any]) -> StepOutput:
         if step.tool_name not in self.tool_registry:
@@ -40,8 +73,10 @@ class ExecutorNode:
         try:
             return await tool_func(**resolved_args)
         except Exception as e:
-            return StepOutput(step_id=step.id, source="Executor", tool_name=step.tool_name, 
-                                failure_info=FailureInfo(message="Execution Error", explanation=str(e)))
+            import traceback
+            tb_str = traceback.format_exc()
+            return StepOutput(step_id=step.id, source="Executor", tool_name=step.tool_name, tool_args=resolved_args,
+                                failure_info=FailureInfo(message="Execution Error", explanation=tb_str))
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         planner_output = state.planner_output

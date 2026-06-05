@@ -42,7 +42,7 @@ async def get_collection_info(
     collection_name: str = Path(..., description="Vector collection name."),
     vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return vdb_service.get_collection_info(collection_name=collection_name)
+    return await vdb_service.get_collection_info(collection_name=collection_name)
 
 
 @vectordb_route.get(
@@ -57,7 +57,7 @@ async def get_collection_chunks(
     query: ChunksQuerySchema = Depends(),
     vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return vdb_service.get_chunks(
+    return await vdb_service.get_chunks(
         collection_name=collection_name,
         page=query.page,
         limit=query.limit,
@@ -76,4 +76,4 @@ async def delete_collection(
     collection_name: str = Path(..., description="Vector collection name."),
     vdb_service: VDBService = Depends(get_vdb_service),
 ):
-    return vdb_service.delete_collection(collection_name=collection_name)
+    return await vdb_service.delete_collection(collection_name=collection_name)
