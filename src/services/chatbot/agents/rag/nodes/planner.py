@@ -16,8 +16,14 @@ You are a DAG planner. Convert the user request to a tool plan DAG (status="plan
 
 {reflection_feedback}
 
-Execution History (use to adjust strategy & avoid repeated failures):
-{history}
+Execution History of the current message (use to adjust strategy & avoid repeated failures):
+{previous_attempts}
+
+Recent Conversation Chat History:
+{chat_history}
+
+Steps Outputs of Previous Messages:
+{previous_steps_outputs}
 
 Rules:
 1. NEVER ask for student_id, course_id, or lecture_id.
@@ -51,14 +57,14 @@ Output Schema:
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         
-        history = list(state.history)
+        previous_attempts = list(state.previous_attempts)
         step_outputs = list(state.step_outputs)
         
         if step_outputs:
-            history.extend(step_outputs)
+            previous_attempts.extend(step_outputs)
             step_outputs = []
 
-        history_serialized = [h.model_dump() for h in history]
+        previous_attempts_serialized = [h.model_dump() for h in previous_attempts]
         
         reflection_feedback = ""
         if state.reflection_decision and state.reflection_decision.decision == "replan":
@@ -66,7 +72,9 @@ Output Schema:
 
         planner_output = await self.chain.ainvoke({
             "user_query": state.user_query,
-            "history": history_serialized,
+            "previous_attempts": previous_attempts_serialized,
+            "chat_history": state.chat_history,
+            "previous_steps_outputs": state.previous_steps_outputs,
             "reflection_feedback": reflection_feedback,
             "student_courses": state.student_courses
         })

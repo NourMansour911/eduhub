@@ -105,7 +105,11 @@ class RAGSubgraph:
         clarification_question = None
         error_message = None
         
-        all_contexts = list(state.history) + list(state.step_outputs)
+        all_raw = list(state.previous_attempts) + list(state.step_outputs)
+        filtered_contexts = [
+            ctx for ctx in all_raw
+            if ctx.failure_info is None or ctx.failure_info.clarification_message is not None
+        ]
 
         if state.replan_count >= 2 and state.reflection_decision and state.reflection_decision.decision == "replan":
             status = "failed"
@@ -120,7 +124,7 @@ class RAGSubgraph:
         return {
             "retriving_results": RAGSubgraphOutput(
                 status=status,
-                contexts=all_contexts,
+                contexts=filtered_contexts,
                 clarification_question=clarification_question,
                 error_message=error_message
             )
