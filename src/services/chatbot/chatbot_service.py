@@ -41,8 +41,16 @@ class ChatbotService:
         if not student_id:
             raise ValueError("student_id is required")
 
+        courses = self.sql_tools.sql_server_calling.get_student_courses(student_id)
+        # Format as "Data Mining(ID: IS422P), HCI(ID: HCI_T01)" to save maximum tokens
+        courses_str = ", ".join([f"{c.get('name', 'Unknown')}(ID:{c.get('course_id', 'Unknown')})" for c in courses])
+
         return await self.rag_subgraph.ainvoke(
-            {"user_query": message, "student_id": student_id}
+            {
+                "user_query": message, 
+                "student_id": student_id,
+                "student_courses": courses_str
+            }
         )
 
     async def chat(self, payload: ChatRequest, student_id: str) -> ChatResponse:

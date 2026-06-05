@@ -167,6 +167,38 @@ class SQLTools:
 			failure_info=failure_info,
 		)
 
+	async def get_all_course_lectures_by_course_id(
+		self,
+		step_id: str,
+		course_id: str,
+	) -> StepOutput:
+
+		lectures = self.sql_server_calling.get_course_lectures(course_id)
+
+		if not lectures:
+			failure_info = FailureInfo(
+				message="No lectures were found for this course.",
+				clarification_message="Please verify the course identifier.",
+				explanation="No lectures exist for the given course ID.",
+			)
+			content = {}
+		else:
+			failure_info = None
+			content = {
+				"lectures": lectures, 
+			}
+
+		return StepOutput(
+			step_id=step_id,
+			source=self.source,
+			tool_name="get_all_course_lectures_by_course_id",
+			tool_args={
+				"course_id": course_id,
+			},
+			content=content,
+			failure_info=failure_info,
+		)
+
 
 def get_sql_tools(
 	embedding_client: LLMInterface = Depends(get_embedding_client),

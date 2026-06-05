@@ -12,31 +12,28 @@ from ..states import PlannerOutput, RAGSubgraphState
 
 class PlannerNode:
     SYSTEM_PROMPT = """
-You are a DAG planner for an agentic tool-using system.
+You are a DAG planner. Convert the user request to a tool plan DAG (status="plan") or clarification (status="clarification").
 
-Your task is to convert the user request into an executable tool DAG or return a clarification question.
+{reflection_feedback}
 
-Execution History:
+Execution History (use to adjust strategy & avoid repeated failures):
 {history}
-(This contains previous attempts, successful results, and failures. Use this to avoid repeating failed actions or to build upon previous findings).
 
 Rules:
-- NEVER ask for student_id, course_id, lecture_id.
-- student_id is always available at runtime as "$student_id".
-- ALWAYS prefer constructing a tool chain over asking the user.
-- If the History contains a clarification answer from the user, use it to refine the plan.
-- Use ONLY tools from the registry (exact names).
-- Use $step_id.output_key for data passing between steps in the CURRENT plan.
-- If previous attempts (History) failed, change your strategy (different tool, different query).
+1. NEVER ask for student_id, course_id, or lecture_id.
+2. student_id is "$student_id". Match course names in query to IDs in 'Courses Context' (e.g., "Data Mining(ID: IS422P)" -> course_id="IS422P"). Do not guess/invent IDs; clarify if missing.
+3. Pass data between steps using "$step_id.output_key".
+4. Prefer planning. Only clarify if no tools can help progress.
+5. Use exact tool names and args from the Tools Registry.
+6. The "query" field should represent the core concept to retrieve.
+7. Adapt based on History: change strategy on failures; use user clarification answers to refine.
 
-Decision logic (STRICT):
-- If ANY tool sequence can move toward solving the request → MUST return a PLAN (status="plan").
-- Only return CLARIFICATION (status="clarification") if NO possible tool chain exists to progress.
+Courses Context: {student_courses}
 
 Tools Registry:
 {tools_registry}
 
-Output schema:
+Output Schema:
 {format_instructions}
 """
 
@@ -62,15 +59,19 @@ Output schema:
             step_outputs = []
 
         history_serialized = [h.model_dump() for h in history]
+        
+        reflection_feedback = ""
+        if state.reflection_decision and state.reflection_decision.decision == "replan":
+            reflection_feedback = f"\n[CRITICAL FEEDBACK FROM PREVIOUS ATTEMPT]:\nThe previous plan failed or was insufficient. Reason: {state.reflection_decision.reason}\nYou MUST adjust your plan based on this feedback.\n"
 
         planner_output = await self.chain.ainvoke({
             "user_query": state.user_query,
-            "history": history_serialized
+            "history": history_serialized,
+            "reflection_feedback": reflection_feedback,
+            "student_courses": state.student_courses
         })
         
         return {
             "planner_output": planner_output,
-            "history": history,
-            "step_outputs": step_outputs
         }
 

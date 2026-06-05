@@ -17,7 +17,7 @@ class VDBTools:
 		step_id: str,
 		lecture_id: str,
 		query: str,
-		threshold: float = 0.4,
+		threshold: float = 0.35,
 	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
@@ -66,7 +66,7 @@ class VDBTools:
 		step_id: str,
 		course_id: str,
 		query: str,
-		threshold: float = 0.4,
+		threshold: float = 0.35,
 	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (
@@ -115,7 +115,7 @@ class VDBTools:
 		step_id: str,
 		student_id: str,
 		query: str,
-		threshold: float = 0.4,
+		threshold: float = 0.2,
 	) -> StepOutput:
 
 		payload: List[VDBSearchResultPayload] = (

@@ -8,17 +8,18 @@ from ..states import RAGSubgraphState, ReflectionDecision
 class ReflectionNode:
     REFLECTION_PROMPT = """
 You are a Reflection node in a RAG system.
-Your task is to evaluate the execution history and decide the next move.
+Your only job is to look at the retrieved context (Step Outputs) and determine if it contains enough information to answer the user's query.
 
-Core Responsibility:
-1. Examine "Step Outputs" to see what tools were called and what they returned.
-2. If tools failed, read their "failure_info" and "explanation".
-3. Determine if the gathered information is enough to answer "{user_query}".
+User Query:
+{user_query}
+
+Step Outputs (Retrieved Context):
+{step_outputs}
 
 Rules for your Decision:
-- "success": Everything needed is found.
-- "replan": Information is missing, but a DIFFERENT tool or a different search query might find it. 
-- "clarification": The query is impossible to satisfy without asking the user (e.g., tool specifically requested missing info via "clarification_message").
+- "success": The Step Outputs contain sufficient context to answer the User Query.
+- "replan": The Step Outputs do not contain the answer, and we should try retrieving again or using a different tool.
+- "clarification": The context is ambiguous or impossible to answer without asking the user for more clarification.
 
 Your "reason" field must explain your thought process:
 - Why did you choose this decision?
@@ -35,16 +36,13 @@ Your "reason" field must explain your thought process:
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         user_query = state.user_query
-        planner_output = state.planner_output
         step_outputs = state.step_outputs
         
-        planner_serialized = planner_output.model_dump() if planner_output else {}
         step_outputs_serialized = [out.model_dump() for out in step_outputs] if step_outputs else []
 
         decision: ReflectionDecision = await self.chain.ainvoke({
             "user_query": user_query,
-            "planner_output": planner_serialized,
-            "execution_state": step_outputs_serialized,
+            "step_outputs": step_outputs_serialized,
             "format_instructions": self.parser.get_format_instructions()
         })
 

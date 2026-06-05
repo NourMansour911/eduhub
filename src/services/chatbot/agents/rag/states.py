@@ -46,6 +46,7 @@ class RAGSubgraphOutput(BaseModel):
 class RAGSubgraphState(BaseModel):
     user_query: str
     student_id: str
+    student_courses: str = Field(default="", description="Compact string of student courses")
     history: List[StepOutput] = Field(default_factory=list, description="History of previous execution attempts if any")
     planner_output: Optional[PlannerOutput] = None 
     step_outputs: List[StepOutput] = Field(default_factory=list)

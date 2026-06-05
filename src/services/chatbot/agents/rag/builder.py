@@ -31,10 +31,9 @@ class RAGSubgraph:
             "get_lecture_whole_content_by_lecture_id": mongodb_tools.get_lecture_whole_content_by_lecture_id,
             "get_lecture_summary_by_lecture_id": mongodb_tools.get_lecture_summary_by_lecture_id,
             
-            "get_course_id_by_course_name": sql_tools.get_course_id_by_course_name,
             "get_lecture_id_by_lecture_name": sql_tools.get_lecture_id_by_lecture_name,
             "get_course_details_by_course_id": sql_tools.get_course_details_by_course_id,
-            "get_all_student_courses_ids_and_names": sql_tools.get_all_student_courses_ids_and_names,
+            "get_all_course_lectures_by_course_id": sql_tools.get_all_course_lectures_by_course_id,
         }
         
         planner_llm = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, temperature=0.1)
