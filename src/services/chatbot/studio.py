@@ -6,11 +6,33 @@ src_dir = Path(__file__).resolve().parent.parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
+
+class MockRedisProvider:
+    """No-op Redis stand-in for graph visualisation in LangGraph Studio."""
+
+    async def get_collection(self, **_):
+        return None
+
+    async def save_collection(self, *_, **__):
+        pass
+
+    async def clear_session_collection(self, **_):
+        pass
+
+    def build_collection_key(self, **_) -> str:
+        return "mock-key"
+
+    async def connect(self):
+        pass
+
+    async def disconnect(self):
+        pass
+
 from core import get_settings
 from integrations.llm import LCOpenAI, LLMFactory
 from integrations.vector_db import VectorDBFactory
 from motor.motor_asyncio import AsyncIOMotorClient
-from repositories import LectureRepo
+from repositories import LectureRepo, StudentPersonaRepo
 from services.lectures import LectureService
 from services.summarize import SummarizeService
 from services.vdb_service.vectordb_service import VDBService
@@ -19,6 +41,7 @@ from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
 from services.chatbot.agents.rag import build_rag_subgraph
+from services.chatbot.builder import build_chatbot_graph
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 
@@ -37,7 +60,12 @@ embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID, embed
 vdb_provider_factory = VectorDBFactory(settings)
 vdb_client = vdb_provider_factory.create(provider=settings.VECTOR_DB_BACKEND)
 vdb_client.connect()
-search_service = SearchService(vdb_client=vdb_client, embedding_client=embedding_client,settings=settings,langchain_client=lc_openai_client)
+search_service = SearchService(
+    vdb_client=vdb_client,
+    embedding_client=embedding_client,
+    settings=settings,
+    langchain_client=lc_openai_client,
+)
 vdb_tools = VDBTools(search_service=search_service)
 
 mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
@@ -71,10 +99,35 @@ mongodb_tools = MongoDBTools(
 
 sql_tools = SQLTools(embedding_client=embedding_client)
 
-graph = build_rag_subgraph(
+# ── LLM map for the main chatbot graph ──────────────────────────────────────
+chatbot_llm_map = {
+    "orchestrator": lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID, temperature=0.0
+    ),
+    "answering": lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID, temperature=0.7
+    ),
+    "summary": lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID, temperature=0.1
+    ),
+    "persona": lc_openai_client.get_langchain_llm(
+        model=settings.GENERATION_MODEL_ID, temperature=0.1
+    ),
+}
+
+# ── RAG subgraph (lc_client passed in; builds its own rag_llm_map internally)
+rag_subgraph = build_rag_subgraph(
     lc_openai_client=lc_openai_client,
     settings=settings,
     vdb_tools=vdb_tools,
     mongodb_tools=mongodb_tools,
     sql_tools=sql_tools,
+    redis_provider=MockRedisProvider(),
+)
+
+# ── Main chatbot graph ───────────────────────────────────────────────────────
+graph = build_chatbot_graph(
+    llm_map=chatbot_llm_map,
+    rag_subgraph=rag_subgraph,
+    redis_provider=MockRedisProvider(),
 )

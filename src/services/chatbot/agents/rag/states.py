@@ -39,7 +39,8 @@ class ReflectionDecision(BaseModel):
 
 class RAGSubgraphOutput(BaseModel):
     status: Literal["success", "clarification", "failed"]
-    contexts: List[StepOutput] = Field(default_factory=list)
+    retrieved_context: Optional[str] = None
+    run_step_outputs: List[StepOutput] = Field(default_factory=list)
     clarification_question: Optional[str] = None
     error_message: Optional[str] = None
 
@@ -49,8 +50,8 @@ class RAGSubgraphState(BaseModel):
     student_id: str
     student_courses: str = Field(default="", description="Compact string of student courses")
     previous_attempts: List[StepOutput] = Field(default_factory=list, description="Step outputs of previous attempts in the current run")
-    chat_history: List[Any] = Field(default_factory=list, description="Recent messages from the conversation history")
-    previous_steps_outputs: List[Dict[str, Any]] = Field(default_factory=list, description="Serialized step outputs from previous messages/turns")
+    messages_history: List[Any] = Field(default_factory=list, description="Recent messages from the conversation history")
+    previous_steps_outputs: List[List[StepOutput]] = Field(default_factory=list, description="Step outputs from previous messages/turns")
     planner_output: Optional[PlannerOutput] = None 
     step_outputs: List[StepOutput] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None

@@ -41,3 +41,10 @@ class StudentPersonaRepo:
     async def get_persona_by_student_id(self, student_id: str) -> StudentPersonaModel | None:
         record = await self.collection.find_one({"student_id": student_id})
         return StudentPersonaModel(**record) if record else None
+
+    async def upsert_persona(self, student_id: str, persona: str) -> None:
+        await self.collection.update_one(
+            {"student_id": student_id},
+            {"$set": {"persona": persona}},
+            upsert=True
+        )

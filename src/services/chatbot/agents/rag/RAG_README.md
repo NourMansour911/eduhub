@@ -39,34 +39,69 @@ graph TD
 
 ---
 
-## Deep Dive: Technical Architecture
+## Nodes
 
-Under the hood, this system is engineered for high performance, strict type safety, and fault tolerance. Here is a closer look at the technical implementation.
+### Planner (`temp=0.1`)
+Receives the user query + execution history + reflection feedback and outputs a `PlannerOutput`:
+- `status="plan"` with a list of `PlanStep` objects (each with `id`, `tool_name`, `args`, `depends_on`)
+- `status="clarification"` with a question to send back to the user
 
-### Dynamic DAG Generation
-The Planner does not output a simple list of steps; it generates a Directed Acyclic Graph (DAG). Using strict Pydantic v2 parsers, the LLM constructs `PlanStep` objects that explicitly define their dependencies (`depends_on`). This ensures the orchestrator understands the exact topological order required for execution.
+The `depends_on` field is what makes this a DAG — step_2 can depend on step_1's output and reference it as `$step_1.lecture_id`.
 
-### Deterministic Asynchronous Execution
-The Executor node is a custom-built asynchronous engine. It evaluates the DAG in real-time, identifying "Ready Steps" whose dependencies have already been met. It then utilizes `asyncio.gather` to execute these independent tools concurrently. This topological layering minimizes I/O bottlenecks when querying multiple databases.
+The Planner also enforces course scope: if the query references a course the student is not enrolled in, it returns a clarification instead of a plan.
 
-### Advanced State Management and Variable Injection
-Managing data flow between dynamically generated steps requires a robust state architecture. 
-- **Flat State Tracking**: Instead of deeply nested and error-prone dictionaries, the system state utilizes a highly performant, flat `List[StepOutput]`. 
-- **O(1) Resolution**: During execution, the engine builds a transient dictionary to achieve O(1) lookups. This enables instant resolution of cross-step variables (e.g., passing `$step_1.lecture_id` into step 2) and global runtime variables (like `$student_id`).
-- **Clean Injection**: The execution engine autonomously injects the `step_id` directly into the underlying tool arguments, ensuring complete traceability across the stack.
+### Executor
+No LLM. Pure async execution engine:
+1. Reads the DAG from `PlannerOutput.steps`
+2. Resolves variable references (`$step_1.key`, `$student_id`) at runtime via O(1) dict lookup
+3. In each iteration: collects all steps whose `depends_on` are already satisfied → `asyncio.gather` runs them concurrently
+4. On any tool failure: writes a `FailureInfo` to the `StepOutput` and breaks early for Reflection to handle
+5. Injects `step_id` into each tool call for full traceability
 
-### Self-Healing and Graceful Failures
-Traditional systems crash or return empty responses when a database query fails. This architecture is designed to self-heal.
-- When a tool encounters an issue (e.g., a missing record), it does not throw an exception. Instead, it returns a graceful `FailureInfo` object.
-- The Reflection node detects this failure and issues a `replan` decision.
-- Crucially, the system preserves the failed attempts by migrating the current outputs into a historical context (`history`). The Planner then reads this history, understands what went wrong, and formulates a new, alternative retrieval plan.
+### Reflection (`temp=0.0`)
+Classifies whether the retrieved `step_outputs` are sufficient to answer the user:
+- `success` — the tool returned the requested type of content (even if it looks like test data)
+- `replan` — outputs were missing or tools failed; includes a reason the Planner will use to adjust strategy
+- `clarification` — the query is ambiguous and needs user input
+
+On `replan`, the current `step_outputs` are merged into `previous_attempts` so the Planner can see the full failure history across all attempts.
+
+### Finalize
+No LLM. Aggregates `previous_attempts + step_outputs`, extracts text from each `StepOutput.content` (handling `chunks` with metadata, `summary`, `text`, and raw JSON fallback), and returns a `RAGSubgraphOutput` with `retrieved_context`, `run_step_outputs`, `status`, and optional `clarification_question` or `error_message`.
 
 ---
 
-## The Retrieving Layer
+## State
 
-The tools available to the Planner are strictly typed, modular, and categorized by their underlying data source:
+`RAGSubgraphState` holds:
+- `user_query`, `student_id`, `student_courses`, `messages_history`
+- `previous_steps_outputs` — step outputs from **past turns** (passed in from the main graph)
+- `previous_attempts` — step outputs from **earlier replanning attempts within this turn**
+- `step_outputs` — outputs from the **current execution round**
+- `planner_output`, `reflection_decision`, `replan_count`
+- `retriving_results` — the final `RAGSubgraphOutput` written by Finalize
 
-- **Vector Database (`vdb/`)**: Handles semantic and similarity searches (e.g., Chroma/Qdrant). Includes logic for applying relevance thresholds to ensure high-quality context.
-- **Operational Database (`mongo/`)**: Fetches massive, unstructured JSON documents like full lecture transcripts or pre-computed summaries.
-- **Relational SQL (`sql/`)**: Queries structured user data. This layer includes a specialized LLM-powered `NameResolver` that fuzzily matches natural language terms from the user (e.g., a misspelled course name) against exact primary keys in the database before executing the query.
+---
+
+## Tools
+
+Tools are registered by name in `RAGSubgraph.__init__` and described to the Planner via `tools_registry.py`. Three source categories:
+
+| Source | Tools |
+|---|---|
+| Vector DB (Qdrant) | `ask_in_specific_lecture_by_lecture_id`, `ask_in_the_whole_course_by_course_id`, `search_in_sessions_history`, `ask_in_legal_regulations` |
+| MongoDB | `get_lecture_whole_content_by_lecture_id`, `get_lecture_summary_by_lecture_id` |
+| SQL | `get_lecture_id_by_lecture_name`, `get_course_details_by_course_id`, `get_all_course_lectures_by_course_id` |
+
+The SQL layer includes an LLM-powered name resolver that fuzzy-matches natural language lecture/course names to exact database IDs before executing the query.
+
+---
+
+## LLM Map
+
+Built inside `RAGSubgraph.__init__` from the passed `lc_openai_client`:
+
+| Key | Temperature | Reason |
+|---|---|---|
+| `planner` | 0.1 | Needs structured DAG output — slight flexibility for plan creativity |
+| `reflection` | 0.0 | Binary classification — must be deterministic |

@@ -43,6 +43,5 @@ async def chat(
     user_id: str = Path(..., description="User identifier used for memory and trace metadata."),
 	service: ChatbotService = Depends(get_chatbot_service),
 ):
-	_ = session_id
-	return await service.chat(chat_request, user_id)
+	return await service.chat(chat_request, user_id, session_id)
 

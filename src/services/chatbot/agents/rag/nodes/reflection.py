@@ -1,8 +1,14 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, ReflectionDecision
+from helpers import get_logger
+
+logger = get_logger(__name__)
+
+
+from services.chatbot.utils import format_step_output
 
 
 class ReflectionNode:
@@ -38,13 +44,21 @@ Your "reason" field must explain your thought process:
         user_query = state.user_query
         step_outputs = state.step_outputs
         
-        step_outputs_serialized = [out.model_dump() for out in step_outputs] if step_outputs else []
+        step_outputs_formatted = "\n\n".join([format_step_output(out) for out in step_outputs]) if step_outputs else "No step outputs."
+
+        logger.debug(
+            "ReflectionNode invoked. Query: %s | Step Outputs: %s",
+            user_query,
+            step_outputs_formatted,
+        )
 
         decision: ReflectionDecision = await self.chain.ainvoke({
             "user_query": user_query,
-            "step_outputs": step_outputs_serialized,
+            "step_outputs": step_outputs_formatted,
             "format_instructions": self.parser.get_format_instructions()
         })
+
+        logger.debug("ReflectionNode decision: %s | Reason: %s", decision.decision, decision.reason)
 
         result = {
             "reflection_decision": decision

@@ -1,13 +1,16 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_openai import ChatOpenAI
 
 from .tools_registry import get_default_tools_registry
 from ..states import PlannerOutput, RAGSubgraphState
+from helpers import get_logger
+from services.chatbot.utils import format_step_output, format_nested_step_outputs, format_messages_history
+
+logger = get_logger(__name__)
 
 
 class PlannerNode:
@@ -20,7 +23,7 @@ Execution History of the current message (use to adjust strategy & avoid repeate
 {previous_attempts}
 
 Recent Conversation Chat History:
-{chat_history}
+{messages_history}
 
 Steps Outputs of Previous Messages:
 {previous_steps_outputs}
@@ -33,6 +36,7 @@ Rules:
 5. Use exact tool names and args from the Tools Registry.
 6. The "query" field should represent the core concept to retrieve.
 7. Adapt based on History: change strategy on failures; use user clarification answers to refine.
+8. The user is ONLY allowed to ask questions related to their enrolled courses listed in 'Courses Context'. If the user's query asks about topics, lectures, or courses outside of 'Courses Context', you MUST output status='clarification' and politely clarify that you can only assist with their enrolled courses.
 
 Courses Context: {student_courses}
 
@@ -56,7 +60,6 @@ Output Schema:
         self.chain = self.prompt | llm | self.parser
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
-        
         previous_attempts = list(state.previous_attempts)
         step_outputs = list(state.step_outputs)
         
@@ -64,20 +67,32 @@ Output Schema:
             previous_attempts.extend(step_outputs)
             step_outputs = []
 
-        previous_attempts_serialized = [h.model_dump() for h in previous_attempts]
+        # Formats
+        previous_attempts_formatted = "\n\n".join([format_step_output(h) for h in previous_attempts]) if previous_attempts else "No previous attempts."
+        previous_steps_outputs_formatted = format_nested_step_outputs(state.previous_steps_outputs)
+        messages_history_formatted = format_messages_history(state.messages_history)
         
         reflection_feedback = ""
         if state.reflection_decision and state.reflection_decision.decision == "replan":
             reflection_feedback = f"\n[CRITICAL FEEDBACK FROM PREVIOUS ATTEMPT]:\nThe previous plan failed or was insufficient. Reason: {state.reflection_decision.reason}\nYou MUST adjust your plan based on this feedback.\n"
 
+        logger.debug(
+            "PlannerNode invoked. Query: %s | Previous Attempts: %s | Previous Steps: %s",
+            state.user_query,
+            previous_attempts_formatted,
+            previous_steps_outputs_formatted,
+        )
+
         planner_output = await self.chain.ainvoke({
             "user_query": state.user_query,
-            "previous_attempts": previous_attempts_serialized,
-            "chat_history": state.chat_history,
-            "previous_steps_outputs": state.previous_steps_outputs,
+            "previous_attempts": previous_attempts_formatted,
+            "messages_history": messages_history_formatted,
+            "previous_steps_outputs": previous_steps_outputs_formatted,
             "reflection_feedback": reflection_feedback,
             "student_courses": state.student_courses
         })
+
+        logger.debug("PlannerNode output status: %s", planner_output.status)
         
         return {
             "planner_output": planner_output,

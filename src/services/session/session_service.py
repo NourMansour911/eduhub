@@ -19,7 +19,7 @@ from schemas.session_schema import SessionEndResponse, SessionRequest, SessionSt
 from services.embedding import ChunkEmbeddingService, get_chunk_embedding_service
 from .session_exceptions import SessionNotFoundError, SessionProcessingError, SessionValidationError
 from services.vdb_service import VDBService, get_vdb_service
-from .session_chain import build_session_summary_chain
+
 
 logger = get_logger(__name__)
 
@@ -30,7 +30,6 @@ class SessionService:
     def __init__(
         self,
         redis_provider: RedisProvider,
-        summary_llm: ChatOpenAI,
         embedding_service: ChunkEmbeddingService,
         vdb_service: VDBService,
         student_persona_repo: StudentPersonaRepo,
@@ -39,7 +38,7 @@ class SessionService:
         self.embedding_service = embedding_service
         self.vdb_service = vdb_service
         self.student_persona_repo = student_persona_repo
-        self.summary_chain = build_session_summary_chain(summary_llm)
+
 
     async def start_session(self, request: SessionRequest) -> SessionStartResponse:
         user_id = request.user_id
@@ -74,31 +73,10 @@ class SessionService:
                 details={"user_id": user_id, "session_id": session_id},
             )
 
-        session_text = self._build_session_text(messages)
-        summary_text = session_text
-
-        if message_count > 1:
-            try:
-                summary_text = await self.summary_chain.ainvoke(
-                    {"messages": session_text},
-                    config={
-                        "run_name": "session_summary_run",
-                        "metadata": {
-                            "user_id": user_id,
-                            "session_id": session_id,
-                            "messages_count": message_count,
-                        },
-                    },
-                )
-            except Exception as exc:
-                raise SessionProcessingError(
-                    message="Failed to generate session summary",
-                    details={
-                        "user_id": user_id,
-                        "session_id": session_id,
-                        "error": str(exc),
-                    },
-                ) from exc
+        summary_text = collection.summary
+        if not summary_text:
+            logger.debug("Running summary not found in Redis, falling back to build_session_text.")
+            summary_text = self._build_session_text(messages)
 
         archive_metadata = SessionArchiveMetadataDTO(
             chunk_id=f"session:{user_id}:{session_id}",
@@ -131,7 +109,6 @@ class SessionService:
                 ],
             )
         except Exception as exc:
-            
             raise SessionProcessingError(
                 message="Failed to archive session into Qdrant",
                 details={
@@ -140,6 +117,13 @@ class SessionService:
                     "error": str(exc),
                 },
             ) from exc
+
+        if collection.persona:
+            try:
+                await self.student_persona_repo.upsert_persona(user_id, collection.persona)
+                logger.debug("Persona upserted to MongoDB for student_id: %s", user_id)
+            except Exception as exc:
+                logger.warning("Failed to upsert persona to MongoDB for student_id=%s: %s", user_id, exc)
 
         await self.redis_provider.clear_session_collection(user_id=user_id, session_id=session_id)
 
@@ -165,21 +149,14 @@ class SessionService:
 
 def get_session_service(
     redis_provider: RedisProvider = Depends(get_redis_provider),
-    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
     embedding_service: ChunkEmbeddingService = Depends(get_chunk_embedding_service),
     vdb_service: VDBService = Depends(get_vdb_service),
     student_persona_repo: StudentPersonaRepo = Depends(get_student_persona_repo),
-    settings: Settings = Depends(get_settings),
 ) -> SessionService:
-    summary_llm = lc_openai_client.get_langchain_llm(
-        model=settings.GENERATION_MODEL_ID,
-        temperature=0.1,
-        top_p=0.85,
-    )
+
 
     return SessionService(
         redis_provider=redis_provider,
-        summary_llm=summary_llm,
         embedding_service=embedding_service,
         vdb_service=vdb_service,
         student_persona_repo=student_persona_repo,
