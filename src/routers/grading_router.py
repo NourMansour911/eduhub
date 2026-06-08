@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends
 
-from helpers import get_logger
+from helpers.logger import get_logger
 from schemas import RefGradingRequest, RefGradingResponse, BatchGradingRequest, BatchGradingResponse
-from services.grading import (
-    SetReferenceService,
-    SetScoreService,
-    get_set_reference_service,
-    get_set_score_service,
-)
+from services.grading.set_reference import SetReferenceService
+from services.grading.set_score import SetScoreService
+from core.request_dependencies import get_set_reference_service, get_set_score_service
+
 
 logger = get_logger(__name__)
 

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import Depends
 
 from core.request_dependencies import get_embedding_client
-from helpers import get_logger
+from helpers.logger import get_logger
 from integrations.llm import LLMInterface
 from dtos.vdb_payload_dto import VDBChunkPayload
 

@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, ReflectionDecision
-from helpers import get_logger
+from helpers.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -46,7 +46,7 @@ Your "reason" field must explain your thought process:
         
         step_outputs_formatted = "\n\n".join([format_step_output(out) for out in step_outputs]) if step_outputs else "No step outputs."
 
-        logger.debug(
+        logger.info(
             "ReflectionNode invoked. Query: %s | Step Outputs: %s",
             user_query,
             step_outputs_formatted,
@@ -58,7 +58,7 @@ Your "reason" field must explain your thought process:
             "format_instructions": self.parser.get_format_instructions()
         })
 
-        logger.debug("ReflectionNode decision: %s | Reason: %s", decision.decision, decision.reason)
+        logger.info("ReflectionNode decision: %s | Reason: %s", decision.decision, decision.reason)
 
         result = {
             "reflection_decision": decision

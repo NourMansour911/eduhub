@@ -1,13 +1,13 @@
-from fastapi import Depends
 from models import LectureModel
 from schemas import LectureStoreRequest, LectureStoreResponse
-from services.lectures.lecture_service import LectureService, get_lecture_service
-from services.summarize.summarize_service import get_summarize_service, SummarizeService
-from services.chunking.chunking_service import ChunkingService, get_chunking_service
-from services.embedding.embedding_service import ChunkEmbeddingService, get_chunk_embedding_service
-from services.vdb_service.vectordb_service import VDBService, get_vdb_service
+from services.lectures.lecture_service import LectureService
+from services.summarize.summarize_service import SummarizeService
+from services.chunking.chunking_service import ChunkingService
+from services.embedding.embedding_service import ChunkEmbeddingService
+from services.vdb_service.vectordb_service import VDBService
 from services.service_exceptions import ProcessingError, ServiceException
-from helpers import get_logger
+from integrations.llm import LLMInterface
+from helpers.logger import get_logger
 from helpers.utils import serialize_content
 import json
 from pathlib import Path
@@ -16,20 +16,20 @@ logger = get_logger(__name__)
 
 class LectureOrchestrator:
 
-    
+
     def __init__(
         self,
         lecture_service: LectureService,
         summarize_service: SummarizeService,
-        chunking_service: ChunkingService,
         vdb_service: VDBService,
-        embedding_service: ChunkEmbeddingService,
+        embedding_client: LLMInterface,
     ):
         self.lecture_service = lecture_service
         self.summarize_service = summarize_service
-        self.chunking_service = chunking_service
+        self.chunking_service = ChunkingService()
         self.vdb_service = vdb_service
-        self.embedding_service = embedding_service
+        self.embedding_service = ChunkEmbeddingService(embedding_client=embedding_client)
+
 
     async def store_lecture_with_summaries(self, payload: LectureStoreRequest) -> LectureStoreResponse:
 
@@ -123,18 +123,3 @@ class LectureOrchestrator:
         
         return LectureStoreResponse(status="success", lecture_id=lecture.lecture_id)
 
-
-def get_lecture_orchestrator(
-    lecture_service: LectureService = Depends(get_lecture_service),
-    summarize_service: SummarizeService = Depends(get_summarize_service),
-    chunking_service: ChunkingService = Depends(get_chunking_service),
-    vdb_service: VDBService = Depends(get_vdb_service),
-    embedding_service: ChunkEmbeddingService = Depends(get_chunk_embedding_service),
-) -> LectureOrchestrator:
-    return LectureOrchestrator(
-        lecture_service=lecture_service,
-        summarize_service=summarize_service,
-        chunking_service=chunking_service,
-        vdb_service=vdb_service,
-        embedding_service=embedding_service,
-    )

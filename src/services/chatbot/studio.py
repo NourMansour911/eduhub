@@ -32,15 +32,16 @@ from core import get_settings
 from integrations.llm import LCOpenAI, LLMFactory
 from integrations.vector_db import VectorDBFactory
 from motor.motor_asyncio import AsyncIOMotorClient
-from repositories import LectureRepo, StudentPersonaRepo
-from services.lectures import LectureService
-from services.summarize import SummarizeService
+from repositories.lecture_repo import LectureRepo
+from repositories.student_persona_repo import StudentPersonaRepo
+from services.lectures.lecture_service import LectureService
+from services.summarize.summarize_service import SummarizeService
 from services.vdb_service.vectordb_service import VDBService
 from services.chatbot.agents.rag.retrieving.vdb.search_service import SearchService
 from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
-from services.chatbot.agents.rag import build_rag_subgraph
+from services.chatbot.agents.rag.builder import build_rag_subgraph
 from services.chatbot.builder import build_chatbot_graph
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
@@ -99,7 +100,7 @@ mongodb_tools = MongoDBTools(
 
 sql_tools = SQLTools(embedding_client=embedding_client)
 
-# ── LLM map for the main chatbot graph ──────────────────────────────────────
+
 chatbot_llm_map = {
     "orchestrator": lc_openai_client.get_langchain_llm(
         model=settings.GENERATION_MODEL_ID, temperature=0.0
@@ -115,7 +116,7 @@ chatbot_llm_map = {
     ),
 }
 
-# ── RAG subgraph (lc_client passed in; builds its own rag_llm_map internally)
+
 rag_subgraph = build_rag_subgraph(
     lc_openai_client=lc_openai_client,
     settings=settings,
@@ -125,7 +126,7 @@ rag_subgraph = build_rag_subgraph(
     redis_provider=MockRedisProvider(),
 )
 
-# ── Main chatbot graph ───────────────────────────────────────────────────────
+
 graph = build_chatbot_graph(
     llm_map=chatbot_llm_map,
     rag_subgraph=rag_subgraph,

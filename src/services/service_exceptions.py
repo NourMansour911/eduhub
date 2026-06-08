@@ -1,5 +1,5 @@
 from core.app_exceptions import AppException
-from helpers import get_logger
+from helpers.logger import get_logger
 
 logger = get_logger(__name__)
 

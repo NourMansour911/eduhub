@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, Path
 
-from helpers import get_logger
+from helpers.logger import get_logger
 from schemas.session_schema import SessionEndResponse, SessionRequest, SessionStartResponse
-from services.session import SessionService, get_session_service
+from services.session.session_service import SessionService
+from core.request_dependencies import get_session_service
 
 logger = get_logger(__name__)
 
 session_route = APIRouter(
-    prefix="/session",
+    prefix="/session/{user_id}/{session_id}",
     tags=["Sessions"],
 )
 
 
 @session_route.post(
-    "/start/{user_id}/{session_id}",
+    "/start",
     summary="Start session",
     description="Starts a session for a user and session identifier.",
     response_description="Session start payload.",
@@ -24,15 +25,13 @@ async def start_session(
     session_id: str = Path(..., description="Session identifier."),
     session_service: SessionService = Depends(get_session_service),
 ):
-    logger.info("Starting session user_id=%s session_id=%s", user_id, session_id)
-
     return await session_service.start_session(
         request=SessionRequest(user_id=user_id, session_id=session_id),
     )
 
 
 @session_route.post(
-    "/end/{user_id}/{session_id}",
+    "/end",
     summary="End session",
     description="Ends a session for a user and session identifier.",
     response_description="Session end payload.",
@@ -43,9 +42,8 @@ async def end_session(
     session_id: str = Path(..., description="Session identifier."),
     session_service: SessionService = Depends(get_session_service),
 ):
-    logger.info("Ending session user_id=%s session_id=%s", user_id, session_id)
-
     return await session_service.end_session(
         request=SessionRequest(user_id=user_id, session_id=session_id),
     )
+
 

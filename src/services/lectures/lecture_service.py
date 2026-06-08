@@ -2,29 +2,20 @@ import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends
 from langchain_openai import ChatOpenAI
 from pymongo.errors import DuplicateKeyError
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat,AnalyzeResult
-from integrations.llm import LCOpenAI
 from integrations.vector_db import VectorDBInterface
-from core.request_dependencies import (
-    get_lecture_repo,
-    get_doc_intelligence_client,
-    get_langchain_client,
-    get_vdb_client,
-)
-from core import Settings, get_settings
 from models import LectureModel
-from repositories import LectureRepo
+from repositories.lecture_repo import LectureRepo
 from schemas import (
     DeleteLectureResponse,
     DeleteLectureByIdRequest,
     DeleteLectureBycourseIdRequest,
     LectureListResponse,
 )
-from helpers import get_logger
+from helpers.logger import get_logger
 
 from .lecture_exceptions import (
     LectureConflictError,
@@ -32,9 +23,10 @@ from .lecture_exceptions import (
     LectureServiceException,
 )
 
-from services.vdb_service.vectordb_service import VDBService, get_vdb_service
+from services.vdb_service.vectordb_service import VDBService
 
 logger = get_logger(__name__)
+
 
 
 class LectureService:
@@ -159,27 +151,4 @@ class LectureService:
 
     
 
-
-def get_lecture_service(
-    lecture_repo: LectureRepo = Depends(get_lecture_repo),
-    doc_intelligence_client: DocumentIntelligenceClient = Depends(get_doc_intelligence_client),
-    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
-    vdb_client: VectorDBInterface = Depends(get_vdb_client),
-    vdb_service: VDBService = Depends(get_vdb_service),
-    settings: Settings = Depends(get_settings),
-) -> LectureService:
-    
-
-    summary_llm = lc_openai_client.get_langchain_llm(
-        model=settings.GENERATION_MODEL_ID,
-        temperature=0.1,
-        top_p=0.85,
-    )
-
-    return LectureService(
-        lecture_repo=lecture_repo,
-        doc_intelligence_client=doc_intelligence_client,
-        summary_llm=summary_llm,
-        vdb_client=vdb_client,
-        vdb_service=vdb_service,
-    )
+

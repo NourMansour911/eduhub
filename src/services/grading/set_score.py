@@ -1,21 +1,18 @@
-from fastapi import Depends
 from langchain_openai import ChatOpenAI
 from typing import List, Dict, Any, Optional
 from langchain_core.runnables import Runnable, RunnableConfig
-from bson.errors import InvalidId
 
-from core.request_dependencies import get_answer_repo
-from repositories import AnswerRepo
-from schemas import GradingRequest, GradingResponse, BatchGradingRequest, BatchGradingResponse
+from repositories.answer_repo import AnswerRepo
+from schemas import  GradingResponse, BatchGradingRequest, BatchGradingResponse
 from services.grading.grading_exceptions import (
-    InvalidStudentAnswerError,
     ReferenceAnswerNotFoundError,
     GradingProcessingError,
 )
 from services.grading.grading_chain import build_requery_chain, GradingOutput
 from models import AnswerModel
 from integrations.llm import LCOpenAI
-from core import Settings, get_langchain_client, get_settings
+from core import Settings
+
 
 class SetScoreService:
     def __init__(self, answer_repo: AnswerRepo, settings: Settings, lc_openai_client: LCOpenAI) -> None:
@@ -84,12 +81,4 @@ class SetScoreService:
                 details={"error": str(e)}
             )
         
-        return BatchGradingResponse(results=results)
-
-
-def get_set_score_service(
-    answer_repo: AnswerRepo = Depends(get_answer_repo),
-    settings: Settings = Depends(get_settings),
-    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
-) -> SetScoreService:
-    return SetScoreService(answer_repo=answer_repo, settings=settings, lc_openai_client=lc_openai_client)
+        return BatchGradingResponse(results=results)

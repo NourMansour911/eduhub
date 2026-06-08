@@ -1,10 +1,10 @@
 from typing import Any, Dict
 from ..states import ChatbotState
 from services.chatbot.agents.rag.states import RAGSubgraphOutput
-from helpers import get_logger
+from helpers.logger import get_chatbot_logger
 from langchain_core.runnables import Runnable
 
-logger = get_logger(__name__)
+logger = get_chatbot_logger(__name__)
 
 
 class RAGNode:
@@ -23,7 +23,7 @@ class RAGNode:
                     turn_serialized.append(out)
             serialized_prev.append(turn_serialized)
 
-        logger.debug("RAGNode invoking subgraph with %d previous turns.", len(serialized_prev))
+        logger.info("RAGNode invoking subgraph with %d previous turns.", len(serialized_prev))
 
         subgraph_result = await self.rag_subgraph.ainvoke({
             "user_query": state.user_query,

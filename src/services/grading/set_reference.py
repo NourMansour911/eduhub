@@ -1,8 +1,5 @@
-from fastapi import Depends
-
-from core.request_dependencies import get_answer_repo
 from models import AnswerModel
-from repositories import AnswerRepo
+from repositories.answer_repo import AnswerRepo
 from schemas import RefGradingRequest, RefGradingResponse
 from services.grading.grading_exceptions import InvalidReferenceAnswerError
 
@@ -25,6 +22,3 @@ class SetReferenceService:
         inserted_id = await self.answer_repo.add_answer(answer_model)
         return RefGradingResponse(question_id=str(inserted_id))
 
-
-def get_set_reference_service(answer_repo: AnswerRepo = Depends(get_answer_repo)) -> SetReferenceService:
-    return SetReferenceService(answer_repo=answer_repo)

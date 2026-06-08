@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Optional
 import redis.asyncio as redis
 
 from dtos.redis_session_dto import RedisSessionDTO
-from helpers.logger import get_logger
+from helpers.logger import get_integrations_logger
 
-logger = get_logger(__name__)
+logger = get_integrations_logger(__name__)
 
 
 class RedisProvider:
@@ -44,26 +44,6 @@ class RedisProvider:
     async def delete(self, key: str) -> None:
         await self._ensure_client().delete(key)
 
-    async def hset(self, key: str, mapping: Dict[str, Any]) -> None:
-        await self._ensure_client().hset(key, mapping=mapping)
-
-    async def hgetall(self, key: str) -> Dict[str, Any]:
-        return await self._ensure_client().hgetall(key)
-
-    async def push(self, key: str, value: str) -> None:
-        await self._ensure_client().rpush(key, value)
-
-    async def pop(self, key: str) -> Optional[str]:
-        return await self._ensure_client().lpop(key)
-
-    async def get_list(self, key: str) -> List[str]:
-        return await self._ensure_client().lrange(key, 0, -1)
-
-    async def add_to_set(self, key: str, value: str) -> None:
-        await self._ensure_client().sadd(key, value)
-
-    async def get_set(self, key: str) -> List[str]:
-        return list(await self._ensure_client().smembers(key))
 
     def build_collection_key(self, user_id: str, session_id: str) -> str:
         return f"user:{user_id}:session:{session_id}"

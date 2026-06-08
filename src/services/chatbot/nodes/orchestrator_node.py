@@ -4,10 +4,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 
-from helpers import get_logger
+from helpers.logger import get_chatbot_logger
 from ..states import ChatbotState
 
-logger = get_logger(__name__)
+logger = get_chatbot_logger(__name__)
 
 
 class RouteDecision(BaseModel):
@@ -29,7 +29,6 @@ User Query:
 """
 
     def __init__(self, llm: ChatOpenAI):
-        # Route Chain
         self.route_parser = PydanticOutputParser(pydantic_object=RouteDecision)
         self.route_prompt = ChatPromptTemplate.from_template(self.ROUTE_PROMPT).partial(
             format_instructions=self.route_parser.get_format_instructions()
@@ -37,13 +36,13 @@ User Query:
         self.route_chain = self.route_prompt | llm | self.route_parser
 
     async def __call__(self, state: ChatbotState) -> Dict[str, Any]:
-        logger.debug("Orchestrator routing query: %s", state.user_query)
+        logger.info("Orchestrator routing query: %s", state.user_query)
 
         decision: RouteDecision = await self.route_chain.ainvoke({
             "user_query": state.user_query,
         })
 
-        logger.debug("Orchestrator route decision result: %s", decision.decision)
+        logger.info("Orchestrator route decision result: %s", decision.decision)
 
         return {
             "rag_status": "retrieve" if decision.decision == "retrieve" else "direct",

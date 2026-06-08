@@ -1,6 +1,6 @@
 from .providers import  HuggingFaceProvider
 
-from helpers import get_logger
+from helpers.logger import get_logger
 from typing import Optional
 logger = get_logger(__name__)
 class LLMFactory:

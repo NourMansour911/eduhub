@@ -2,9 +2,9 @@
 from qdrant_client import models, AsyncQdrantClient
 from ..vdb_interface import VectorDBInterface
 from typing import List, Optional, Dict, Any, Type
-from helpers.logger import get_logger
+from helpers.logger import get_integrations_logger
 
-logger = get_logger(__name__)
+logger = get_integrations_logger(__name__)
 
 
 from .bm25 import BM25Encoder

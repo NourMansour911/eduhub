@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from helpers import get_logger
+from helpers.logger import get_logger
 from schemas import (
     DeleteLectureResponse,
     LectureStoreRequest,
@@ -10,8 +10,10 @@ from schemas import (
     LectureStoreResponse,
 )
 from models import LectureModel
-from services.lectures import lecture_service
-from orchestrators import LectureOrchestrator, get_lecture_orchestrator
+from services.lectures.lecture_service import LectureService
+from orchestrators import LectureOrchestrator
+from core.request_dependencies import get_lecture_service, get_lecture_orchestrator
+
 
 logger = get_logger(__name__)
 
@@ -41,7 +43,7 @@ async def store_lecture(
 )
 async def get_lecture(
     lecture_id: str,
-    service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
+    service: LectureService = Depends(get_lecture_service),
 ) -> LectureModel:
     return await service.get_lecture(lecture_id)
 
@@ -54,7 +56,7 @@ async def get_lecture(
 )
 async def get_lectures_by_course(
     course_id: str,
-    service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
+    service: LectureService = Depends(get_lecture_service),
 ) -> LectureListResponse:
     return await service.get_lectures_by_course(course_id)
 
@@ -67,7 +69,7 @@ async def get_lectures_by_course(
 )
 async def delete_lecture(
     lecture_id: str,
-    service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
+    service: LectureService = Depends(get_lecture_service),
 ) -> DeleteLectureResponse:
     return await service.delete_lecture(DeleteLectureByIdRequest(lecture_id=lecture_id))
 
@@ -80,6 +82,7 @@ async def delete_lecture(
 )
 async def delete_lectures_by_course(
     course_id: str,
-    service: lecture_service.LectureService = Depends(lecture_service.get_lecture_service),
+    service: LectureService = Depends(get_lecture_service),
 ) -> DeleteLectureResponse:
     return await service.delete_lectures_by_course(DeleteLectureBycourseIdRequest(course_id=course_id))
+

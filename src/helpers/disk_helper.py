@@ -26,7 +26,7 @@ def get_project_path(tenant_id: str, project_id: str, stage: str = "raw") -> str
     project_path = os.path.join(base_path, tenant_id, project_id, stage)
     os.makedirs(project_path, exist_ok=True)
 
-    logger.debug(f"Project {stage} path: {project_path}")
+    logger.info(f"Project {stage} path: {project_path}")
     return project_path
 
 

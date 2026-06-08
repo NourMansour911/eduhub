@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 
 from .tools_registry import get_default_tools_registry
 from ..states import PlannerOutput, RAGSubgraphState
-from helpers import get_logger
+from helpers.logger import get_logger
 from services.chatbot.utils import format_step_output, format_nested_step_outputs, format_messages_history
 
 logger = get_logger(__name__)
@@ -76,7 +76,7 @@ Output Schema:
         if state.reflection_decision and state.reflection_decision.decision == "replan":
             reflection_feedback = f"\n[CRITICAL FEEDBACK FROM PREVIOUS ATTEMPT]:\nThe previous plan failed or was insufficient. Reason: {state.reflection_decision.reason}\nYou MUST adjust your plan based on this feedback.\n"
 
-        logger.debug(
+        logger.info(
             "PlannerNode invoked. Query: %s | Previous Attempts: %s | Previous Steps: %s",
             state.user_query,
             previous_attempts_formatted,
@@ -92,7 +92,7 @@ Output Schema:
             "student_courses": state.student_courses
         })
 
-        logger.debug("PlannerNode output status: %s", planner_output.status)
+        logger.info("PlannerNode output status: %s", planner_output.status)
         
         return {
             "planner_output": planner_output,

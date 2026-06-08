@@ -7,7 +7,7 @@ from core.request_dependencies import (
 	get_vdb_client,
 )
 from fastapi import Depends
-from helpers.logger import get_logger
+from helpers.logger import get_chatbot_logger
 from integrations.llm import LCOpenAI, LLMInterface
 from integrations.vector_db import VectorDBInterface
 
@@ -21,7 +21,7 @@ from .reranker import Reranker
 from .retrieval import Retrieval
 
 
-logger = get_logger("chatbot_retrieval_search_service")
+logger = get_chatbot_logger("chatbot_retrieval_search_service")
 
 
 class SearchService:

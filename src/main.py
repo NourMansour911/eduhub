@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -7,12 +6,25 @@ from core import app_exception_handler,get_settings
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
-from repositories import AnswerRepo, LectureRepo, LLMJudgeRepo, StudentPersonaRepo
+from repositories.answer_repo import AnswerRepo
+from repositories.lecture_repo import LectureRepo
+from repositories.llm_judge_repo import LLMJudgeRepo
+from repositories.student_persona_repo import StudentPersonaRepo
 from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, session_router, vectordb_router,assistant_router
-from integrations import RedisProvider
+from integrations.redis_provider import RedisProvider
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
+
+# Service & orchestrator imports
+from services.vdb_service.vectordb_service import VDBService
+from services.lectures.lecture_service import LectureService
+from services.summarize.summarize_service import SummarizeService
+from services.session.session_service import SessionService
+from services.grading.set_reference import SetReferenceService
+from services.grading.set_score import SetScoreService
+from orchestrators.lecture_orchestrator import LectureOrchestrator
+from services.chatbot.chatbot_service import ChatbotService
 
 import os
 
@@ -34,7 +46,7 @@ async def lifespan(app: FastAPI):
   vdb_provider_factory = VectorDBFactory(settings)
   app.state.vdb_client = vdb_provider_factory.create(provider=settings.VECTOR_DB_BACKEND)
   app.state.vdb_client.connect()
-  collections = app.state.vdb_client.list_all_collections()
+  collections = await app.state.vdb_client.list_all_collections()
   logger.info(f"VectorDB client loaded successfully")
   logger.info(f"VectorDB Collections: {collections}")
   
@@ -76,6 +88,63 @@ async def lifespan(app: FastAPI):
   )
   logger.info("Azure Document Intelligence client loaded successfully")
 
+  # Instantiate all main services and store them in app.state
+  
+  app.state.vdb_service = VDBService(vdb_client=app.state.vdb_client)
+
+  summary_llm = app.state.langchain_client.get_langchain_llm(
+      model=settings.GENERATION_MODEL_ID,
+      temperature=0.1,
+      top_p=0.85,
+  )
+  app.state.lecture_service = LectureService(
+      lecture_repo=app.state.lecture_repo,
+      doc_intelligence_client=app.state.doc_intelligence_client,
+      summary_llm=summary_llm,
+      vdb_client=app.state.vdb_client,
+      vdb_service=app.state.vdb_service,
+  )
+
+  app.state.summarize_service = SummarizeService(
+      lecture_repo=app.state.lecture_repo,
+      summary_llm=summary_llm,
+  )
+
+  app.state.session_service = SessionService(
+      redis_provider=app.state.redis_provider,
+      embedding_client=app.state.embedding_client,
+      vdb_service=app.state.vdb_service,
+      student_persona_repo=app.state.student_persona_repo,
+  )
+
+  app.state.set_reference_service = SetReferenceService(
+      answer_repo=app.state.answer_repo,
+  )
+
+  app.state.set_score_service = SetScoreService(
+      answer_repo=app.state.answer_repo,
+      settings=settings,
+      lc_openai_client=app.state.langchain_client,
+  )
+
+  app.state.lecture_orchestrator = LectureOrchestrator(
+      lecture_service=app.state.lecture_service,
+      summarize_service=app.state.summarize_service,
+      vdb_service=app.state.vdb_service,
+      embedding_client=app.state.embedding_client,
+  )
+
+  app.state.chatbot_service = ChatbotService(
+      lc_openai_client=app.state.langchain_client,
+      settings=settings,
+      vdb_client=app.state.vdb_client,
+      embedding_client=app.state.embedding_client,
+      lecture_service=app.state.lecture_service,
+      summarize_service=app.state.summarize_service,
+      redis_provider=app.state.redis_provider,
+      llm_judge_repo=app.state.llm_judge_repo,
+  )
+  logger.info("All services and orchestrators loaded successfully")
 
   yield
   app.state.vdb_client.disconnect()

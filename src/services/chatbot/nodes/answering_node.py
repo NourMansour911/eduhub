@@ -2,15 +2,15 @@ from typing import Any, Dict
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
-from helpers import get_logger
-from integrations import RedisProvider
+from helpers.logger import get_chatbot_logger
+from integrations.redis_provider import RedisProvider
 from ..states import ChatbotState
 from ..utils import format_nested_step_outputs, format_messages_history
 from ..chains.summary_chain import build_summary_chain
 from ..chains.persona_chain import build_persona_chain
 from ..tools.agent_tools import create_update_persona_tool, create_update_summary_tool
 
-logger = get_logger(__name__)
+logger = get_chatbot_logger(__name__)
 
 
 class AnsweringNode:
@@ -18,10 +18,10 @@ class AnsweringNode:
 You are Luma, a supportive, encouraging, and clear AI Tutor Chatbot. Your goal is to guide students and answer queries.
 
 IMPORTANT Rules:
-1. If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations, you must politely respond stating that you are Luma, an AI Tutor, and you can only assist with academic and course-related queries.
+1. If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations (excluding polite greetings, introductions, sharing their name, or sharing their learning preferences), you must politely respond stating that you are Luma, an AI Tutor, and you can only assist with academic and course-related queries.
 2. If the query is within scope, answer it based on the messages history, student persona, session summary, and retrieved context. Adapt your response to match the student's persona.
 3. You have access to tools to update the student's persona profile and update the session summary. Call them when appropriate (e.g. when the student shares preferences or when summarizing the latest turn).
-
+4. Respond only in user's preferred, never use emojis, and keep responses concise and strictly instruction-following.
 Student Persona:
 {user_persona}
 
@@ -60,7 +60,7 @@ Conversation History (last 4 messages):
         session_summary_str = state.session_summary or "No session summary."
         prev_steps_str = format_nested_step_outputs(state.previous_steps_outputs)
 
-        logger.debug(
+        logger.info(
             "AnsweringNode Luma run. Query: %s | Persona: %s | Summary: %s",
             state.user_query,
             state.user_persona,
@@ -73,7 +73,7 @@ Conversation History (last 4 messages):
         }
 
         async def update_persona_callback(new_persona: str):
-            logger.debug("Persona update tool callback triggered with: %s", new_persona)
+            logger.info("Persona update tool callback triggered with: %s", new_persona)
             updated_state["user_persona"] = new_persona
             collection = await self.redis_provider.get_collection(user_id=state.student_id, session_id=state.session_id)
             if collection:
@@ -81,7 +81,7 @@ Conversation History (last 4 messages):
                 await self.redis_provider.save_collection(collection, session_id=state.session_id)
 
         async def update_summary_callback(new_summary: str):
-            logger.debug("Summary update tool callback triggered with: %s", new_summary)
+            logger.info("Summary update tool callback triggered with: %s", new_summary)
             updated_state["session_summary"] = new_summary
             collection = await self.redis_provider.get_collection(user_id=state.student_id, session_id=state.session_id)
             if collection:
@@ -122,14 +122,14 @@ Conversation History (last 4 messages):
         messages.append(response)
 
         while response.tool_calls:
-            logger.debug("Luma generated tool calls: %s", response.tool_calls)
+            logger.info("Luma generated tool calls: %s", response.tool_calls)
             for tool_call in response.tool_calls:
                 tool_name = tool_call["name"]
                 tool_args = tool_call["args"]
                 tool_id = tool_call["id"]
 
                 if tool_name in tools_dict:
-                    logger.debug("Executing tool: %s with args: %s", tool_name, tool_args)
+                    logger.info("Executing tool: %s with args: %s", tool_name, tool_args)
                     tool_output = await tools_dict[tool_name].ainvoke(tool_args)
                     messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_id))
                 else:
@@ -139,7 +139,7 @@ Conversation History (last 4 messages):
             messages.append(response)
 
         final_response_text = str(response.content).strip()
-        logger.debug("Luma final answer: %s", final_response_text)
+        logger.info("Luma final answer: %s", final_response_text)
 
         return {
             "response": final_response_text,

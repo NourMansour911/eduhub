@@ -1,14 +1,14 @@
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from helpers.logger import get_logger
+from helpers.logger import get_chatbot_logger
 from integrations.llm import LLMInterface
 from integrations.vector_db import VectorDBInterface
 
 from services.vdb_service.vdb_exceptions import VectorizationError
 
 
-logger = get_logger(__name__, level="error")
+logger = get_chatbot_logger(__name__)
 
 
 class Retrieval:

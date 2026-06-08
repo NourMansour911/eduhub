@@ -1,19 +1,15 @@
-from fastapi import Depends
 from typing import Dict
 from langchain_openai import ChatOpenAI
 import re
 import asyncio
-from core.request_dependencies import get_lecture_repo, get_langchain_client
-from core import Settings, get_settings
-from repositories import LectureRepo
+from repositories.lecture_repo import LectureRepo
 from services.summarize.summarize_chain import build_summarize_chain
-from helpers.utils import serialize_content
 from services.summarize.summarize_exceptions import (
     SummarizeNotFoundError,
     SummarizeProcessingError,
 )
-from integrations.llm import LCOpenAI
-from helpers import get_logger
+from helpers.logger import get_logger
+
 
 
 logger = get_logger(__name__)
@@ -132,18 +128,4 @@ class SummarizeService:
         # Final cleanup
         md = re.sub(r"\n{3,}", "\n\n", md)
 
-        return md.strip()
-
-
-def get_summarize_service(
-    lecture_repo: LectureRepo = Depends(get_lecture_repo),
-    lc_openai_client: LCOpenAI = Depends(get_langchain_client),
-    settings: Settings = Depends(get_settings),
-) -> SummarizeService:
-    summary_llm = lc_openai_client.get_langchain_llm(
-        model=settings.GENERATION_MODEL_ID,
-        temperature=0.1,
-        top_p=0.85,
-    )
-
-    return SummarizeService(lecture_repo=lecture_repo, summary_llm=summary_llm)
+        return md.strip()

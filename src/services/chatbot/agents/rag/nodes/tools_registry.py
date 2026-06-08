@@ -1,5 +1,3 @@
-from typing import Any, Dict, List
-
 
 def get_default_tools_registry():
     return [

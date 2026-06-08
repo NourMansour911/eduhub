@@ -1,24 +1,16 @@
-from datetime import datetime, timezone
 from typing import Any, Dict, List
-
-from fastapi import Depends
-from langchain_openai import ChatOpenAI
-
-from core import Settings, get_settings
-from core.request_dependencies import (
-    get_langchain_client,
-    get_redis_provider,
-    get_student_persona_repo,
-)
-from repositories import StudentPersonaRepo
-from dtos import RedisSessionDTO, SessionArchiveMetadataDTO, VDBChunkPayload
-from helpers import get_logger
-from integrations import RedisProvider
-from integrations.llm import LCOpenAI
+import uuid
+from repositories.student_persona_repo import StudentPersonaRepo
+from dtos.redis_session_dto import RedisSessionDTO
+from dtos.session_archive_metadata_dto import SessionArchiveMetadataDTO
+from dtos.vdb_payload_dto import VDBChunkPayload
+from helpers.logger import get_logger
+from integrations.redis_provider import RedisProvider
+from integrations.llm import LLMInterface
 from schemas.session_schema import SessionEndResponse, SessionRequest, SessionStartResponse
-from services.embedding import ChunkEmbeddingService, get_chunk_embedding_service
+from services.embedding.embedding_service import ChunkEmbeddingService
 from .session_exceptions import SessionNotFoundError, SessionProcessingError, SessionValidationError
-from services.vdb_service import VDBService, get_vdb_service
+from services.vdb_service.vectordb_service import VDBService
 
 
 logger = get_logger(__name__)
@@ -30,12 +22,12 @@ class SessionService:
     def __init__(
         self,
         redis_provider: RedisProvider,
-        embedding_service: ChunkEmbeddingService,
+        embedding_client: LLMInterface,
         vdb_service: VDBService,
         student_persona_repo: StudentPersonaRepo,
     ):
         self.redis_provider = redis_provider
-        self.embedding_service = embedding_service
+        self.embedding_service = ChunkEmbeddingService(embedding_client=embedding_client)
         self.vdb_service = vdb_service
         self.student_persona_repo = student_persona_repo
 
@@ -75,11 +67,11 @@ class SessionService:
 
         summary_text = collection.summary
         if not summary_text:
-            logger.debug("Running summary not found in Redis, falling back to build_session_text.")
+            logger.info("Running summary not found in Redis, falling back to build_session_text.")
             summary_text = self._build_session_text(messages)
 
         archive_metadata = SessionArchiveMetadataDTO(
-            chunk_id=f"session:{user_id}:{session_id}",
+            chunk_id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"session:{user_id}:{session_id}")),
             user_id=user_id,
             session_id=session_id,
         )
@@ -121,7 +113,7 @@ class SessionService:
         if collection.persona:
             try:
                 await self.student_persona_repo.upsert_persona(user_id, collection.persona)
-                logger.debug("Persona upserted to MongoDB for student_id: %s", user_id)
+                logger.info("Persona upserted to MongoDB for student_id: %s", user_id)
             except Exception as exc:
                 logger.warning("Failed to upsert persona to MongoDB for student_id=%s: %s", user_id, exc)
 
@@ -145,19 +137,3 @@ class SessionService:
             rendered_messages.append(f"{index}. {role}: {content}")
 
         return "\n".join(rendered_messages)
-
-
-def get_session_service(
-    redis_provider: RedisProvider = Depends(get_redis_provider),
-    embedding_service: ChunkEmbeddingService = Depends(get_chunk_embedding_service),
-    vdb_service: VDBService = Depends(get_vdb_service),
-    student_persona_repo: StudentPersonaRepo = Depends(get_student_persona_repo),
-) -> SessionService:
-
-
-    return SessionService(
-        redis_provider=redis_provider,
-        embedding_service=embedding_service,
-        vdb_service=vdb_service,
-        student_persona_repo=student_persona_repo,
-    )

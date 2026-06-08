@@ -1,5 +1,5 @@
 from .providers import QdrantDBProvider
-from helpers import get_logger
+from helpers.logger import get_logger
 from core.settings import Settings
 
 logger = get_logger(__name__)

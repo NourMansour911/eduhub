@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Path
 
-from helpers import get_logger
+from helpers.logger import get_logger
 from schemas import SummarizeRequest, SummarizeResponse
-from services.summarize import get_summarize_service, SummarizeService
+from services.summarize.summarize_service import  SummarizeService
 from schemas import ChatRequest
 from schemas.assistant_schema import ChatResponse
-from services.chatbot import ChatbotService, get_chatbot_service
+from services.chatbot.chatbot_service import ChatbotService
+from core.request_dependencies import get_chatbot_service,get_summarize_service
 
 logger = get_logger(__name__)
 

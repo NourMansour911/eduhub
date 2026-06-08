@@ -2,12 +2,12 @@ from typing import List
 
 from fastapi import Depends
 
-from dtos import VDBSearchResultPayload
+from dtos.vdb_payload_dto import VDBSearchResultPayload
 from ...states import StepOutput, FailureInfo
 from .search_service import SearchService, get_search_service
-from helpers import get_logger
+from helpers.logger import get_chatbot_logger
 
-logger = get_logger(__name__)
+logger = get_chatbot_logger(__name__)
 
 
 class VDBTools:
@@ -22,7 +22,7 @@ class VDBTools:
 		query: str,
 		threshold: float = 0.35,
 	) -> StepOutput:
-		logger.debug(
+		logger.info(
 			"Tool ask_in_specific_lecture_by_lecture_id started. step_id: %s, lecture_id: %s, query: %s",
 			step_id,
 			lecture_id,
@@ -45,7 +45,7 @@ class VDBTools:
 			if (item.relevance_score or 0) >= threshold
 		]
 
-		logger.debug(
+		logger.info(
 			"Tool ask_in_specific_lecture_by_lecture_id search completed. Found %d items, %d items passed threshold (%f)",
 			len(payload),
 			len(filtered_payload),
@@ -84,7 +84,7 @@ class VDBTools:
 		query: str,
 		threshold: float = 0.35,
 	) -> StepOutput:
-		logger.debug(
+		logger.info(
 			"Tool ask_in_the_whole_course_by_course_id started. step_id: %s, course_id: %s, query: %s",
 			step_id,
 			course_id,
@@ -107,7 +107,7 @@ class VDBTools:
 			if (item.relevance_score or 0) >= threshold
 		]
 
-		logger.debug(
+		logger.info(
 			"Tool ask_in_the_whole_course_by_course_id search completed. Found %d items, %d items passed threshold (%f)",
 			len(payload),
 			len(filtered_payload),
@@ -146,7 +146,7 @@ class VDBTools:
 		query: str,
 		threshold: float = 0.2,
 	) -> StepOutput:
-		logger.debug(
+		logger.info(
 			"Tool search_in_sessions_history started. step_id: %s, student_id: %s, query: %s",
 			step_id,
 			student_id,
@@ -169,7 +169,7 @@ class VDBTools:
 			if (item.relevance_score or 0) >= threshold
 		]
 
-		logger.debug(
+		logger.info(
 			"Tool search_in_sessions_history completed. Found %d items, %d items passed threshold (%f)",
 			len(payload),
 			len(filtered_payload),
@@ -207,7 +207,7 @@ class VDBTools:
 		query: str,
 		threshold: float = 0.4,
 	) -> StepOutput:
-		logger.debug(
+		logger.info(
 			"Tool ask_in_legal_regulations started. step_id: %s, query: %s",
 			step_id,
 			query,
@@ -229,7 +229,7 @@ class VDBTools:
 			if (item.relevance_score or 0) >= threshold
 		]
 
-		logger.debug(
+		logger.info(
 			"Tool ask_in_legal_regulations completed. Found %d items, %d items passed threshold (%f)",
 			len(payload),
 			len(filtered_payload),

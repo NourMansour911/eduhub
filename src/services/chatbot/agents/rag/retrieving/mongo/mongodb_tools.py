@@ -1,9 +1,9 @@
 from fastapi import Depends
 
 from ...states import StepOutput, FailureInfo
-from services.lectures import LectureService, get_lecture_service
-from services.summarize import SummarizeService, get_summarize_service
-
+from services.lectures.lecture_service import LectureService
+from services.summarize.summarize_service import SummarizeService
+from core.request_dependencies import get_lecture_service, get_summarize_service
 
 class MongoDBTools:
 	def __init__(

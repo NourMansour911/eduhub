@@ -4,7 +4,7 @@ import asyncio
 from sentence_transformers import SentenceTransformer
 
 from ..llm_interface import LLMInterface
-from helpers import get_logger
+from helpers.logger import get_logger
 
 logger = get_logger(__name__)
 

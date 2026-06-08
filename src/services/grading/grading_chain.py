@@ -1,7 +1,6 @@
-import logging
-from typing import Dict, Any, List
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from typing import Dict, Any    
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, Runnable
 from langchain_core.output_parsers import PydanticOutputParser
 

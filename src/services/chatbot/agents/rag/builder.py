@@ -1,9 +1,9 @@
 import json
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, Literal
 from langgraph.graph import StateGraph, END, START
 from langchain_openai import ChatOpenAI
 from integrations.llm import LCOpenAI
-from integrations import RedisProvider
+from integrations.redis_provider import RedisProvider
 
 from .states import RAGSubgraphState, RAGSubgraphOutput
 from .nodes.planner import PlannerNode

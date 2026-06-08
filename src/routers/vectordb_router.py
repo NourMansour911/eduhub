@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Path
 
-from helpers import get_logger
-from services.vdb_service import VDBService, get_vdb_service
+from helpers.logger import get_logger
+from services.vdb_service.vectordb_service import VDBService
+from core.request_dependencies import get_vdb_service
 from schemas.vectordb_schema import (
     CollectionChunksResponse,
     ChunksQuerySchema,
@@ -9,6 +10,7 @@ from schemas.vectordb_schema import (
     VDBSearchRequest,
     VDBSearchResponse,
 )
+
 
 logger = get_logger(__name__)
 

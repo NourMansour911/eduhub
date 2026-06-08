@@ -1,9 +1,7 @@
-from fastapi import Depends
 from helpers.logger import get_logger
 from integrations.vector_db import VectorDBInterface
 from schemas.vectordb_schema import CollectionChunksResponse, ChunkResponse
 from typing import Optional, List, Dict, Type, Any
-from core.request_dependencies import get_vdb_client
 import json
 
 
@@ -27,7 +25,6 @@ class VDBService:
         self.vdb_client = vdb_client
         
 
-        logger.info("Vector DB Push Service initialized")
 
     async def get_collection_info(
         self,
@@ -183,11 +180,5 @@ class VDBService:
             )
 
 
-def get_vdb_service(
-    vdb_client: VectorDBInterface = Depends(get_vdb_client),
-) -> VDBService:
-    return VDBService(
-        vdb_client=vdb_client,
-    )
 
     
