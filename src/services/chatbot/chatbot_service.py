@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Any
 from langchain_core.runnables import Runnable
 
@@ -157,7 +158,10 @@ class ChatbotService:
         collection.contexts.append(run_step_outputs)
 
         await self.redis_provider.save_collection(collection, session_id=session_id)
-        logger.info("Redis session collection saved. Current Redis State:\n%s", collection.model_dump())
+        logger.info(
+            "Redis session collection saved. Current Redis State:\n%s",
+            json.dumps(collection.model_dump(), indent=2, ensure_ascii=False, default=str),
+        )
 
         asyncio.create_task(self._push_llm_judge(
             user_query=payload.message,

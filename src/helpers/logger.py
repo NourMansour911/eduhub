@@ -101,16 +101,16 @@ def _setup_logger(logger_name: str, file_path: str, console_level: int = logging
     return logger
 
 
-def get_logger(name: str, level: str="debug") -> logging.Logger:
+def get_logger(name: str) -> logging.Logger:
     # General logger for the application (writes to app.log, console level is INFO)
     return _setup_logger(name, LOG_FILE, console_level=logging.INFO)
 
 
-def get_chatbot_logger(name: str, level: str="debug") -> logging.Logger:
+def get_chatbot_logger(name: str) -> logging.Logger:
     # Chatbot logger (writes to chatbot.log, console level is WARNING to prevent clutter)
-    return _setup_logger(f"chatbot.{name}", CHATBOT_LOG_FILE, console_level=logging.WARNING)
+    return _setup_logger(f"chatbot.{name}", CHATBOT_LOG_FILE, console_level=logging.INFO)
 
 
-def get_integrations_logger(name: str, level: str="debug") -> logging.Logger:
+def get_integrations_logger(name: str) -> logging.Logger:
     # Integrations logger (writes to integrations.log, console level is WARNING to prevent clutter)
-    return _setup_logger(f"integrations.{name}", INTEGRATIONS_LOG_FILE, console_level=logging.WARNING)
+    return _setup_logger(f"integrations.{name}", INTEGRATIONS_LOG_FILE, console_level=logging.INFO)

@@ -58,17 +58,23 @@ class SessionService:
             )
 
         messages = collection.messages or []
-        message_count = len(messages)
-        if message_count == 0:
-            raise SessionValidationError(
-                message="Session has no messages to archive",
-                details={"user_id": user_id, "session_id": session_id},
+        if not messages:
+            logger.info("No messages found in session. Skipping VDB archival.")
+            
+            await self.redis_provider.clear_session_collection(
+                user_id=user_id,
+                session_id=session_id
             )
 
+            return SessionEndResponse(
+                summary="No messages to summarize.",
+                vdb_record_id=None,
+            )
+            
         summary_text = collection.summary
         if not summary_text:
             logger.info("Running summary not found in Redis, falling back to build_session_text.")
-            summary_text = self._build_session_text(messages)
+            summary_text =  self._build_session_text(messages)
 
         archive_metadata = SessionArchiveMetadataDTO(
             chunk_id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"session:{user_id}:{session_id}")),
