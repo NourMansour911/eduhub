@@ -23,6 +23,8 @@ from .agents.rag.builder import build_rag_subgraph
 from .builder import build_chatbot_graph
 from .chatbot_exceptions import ChatbotExternalError, ChatbotProcessingError, ChatbotValidationError
 
+from services.chatbot.agents.rag.retrieving.sql.sql_server_calling import SqlServerCalling
+
 logger = get_chatbot_logger(__name__)
 
 
@@ -38,7 +40,8 @@ class ChatbotService:
         redis_provider: RedisProvider,
         llm_judge_repo: LLMJudgeRepo,
     ) -> None:
-        self.sql_tools = SQLTools(embedding_client=embedding_client)
+        sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
+        self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
         self.redis_provider = redis_provider
         self.llm_judge_repo = llm_judge_repo
 

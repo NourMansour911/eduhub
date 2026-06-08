@@ -20,11 +20,13 @@ from routers.lecture_router import lecture_route
 from routers.assistant_router import assistant_route
 from routers.grading_router import grading_route
 from routers.vectordb_router import vectordb_route
+from routers.session_router import session_route
 from orchestrators import get_lecture_orchestrator
 from services.lectures import lecture_service
 from services.summarize import get_summarize_service
 from services.grading import get_set_reference_service, get_set_score_service
 from services.vdb_service import get_vdb_service
+from core.request_dependencies import get_chatbot_service, get_session_service
 
 TEST_course_ID = "test_course"
 TEST_LECTURE_ID = "test_lecture"
@@ -163,6 +165,39 @@ def mock_vdb_service():
 
 
 @pytest.fixture
+def mock_chatbot_service():
+    """Create a mock ChatbotService."""
+    mock = AsyncMock()
+    mock.chat = AsyncMock(
+        return_value={
+            "ai_response": "Test AI response",
+        }
+    )
+    return mock
+
+
+@pytest.fixture
+def mock_session_service():
+    """Create a mock SessionService."""
+    mock = AsyncMock()
+    mock.start_session = AsyncMock(
+        return_value={
+            "status": "session started",
+            "user_id": TEST_USER_ID,
+            "session_id": TEST_SESSION_ID,
+        }
+    )
+    mock.end_session = AsyncMock(
+        return_value={
+            "status": "session ended",
+            "user_id": TEST_USER_ID,
+            "session_id": TEST_SESSION_ID,
+        }
+    )
+    return mock
+
+
+@pytest.fixture
 def client(
     mock_lecture_orchestrator,
     mock_lecture_service,
@@ -170,6 +205,8 @@ def client(
     mock_set_reference_service,
     mock_set_score_service,
     mock_vdb_service,
+    mock_chatbot_service,
+    mock_session_service,
 ) -> TestClient:
     """Create a test client with mocked dependencies."""
     app = FastAPI()
@@ -178,6 +215,7 @@ def client(
     app.include_router(assistant_route)
     app.include_router(grading_route)
     app.include_router(vectordb_route)
+    app.include_router(session_route)
 
     app.dependency_overrides[get_settings] = lambda: _DummySettings()
     app.dependency_overrides[get_lecture_orchestrator] = lambda: mock_lecture_orchestrator
@@ -186,6 +224,8 @@ def client(
     app.dependency_overrides[get_set_reference_service] = lambda: mock_set_reference_service
     app.dependency_overrides[get_set_score_service] = lambda: mock_set_score_service
     app.dependency_overrides[get_vdb_service] = lambda: mock_vdb_service
+    app.dependency_overrides[get_chatbot_service] = lambda: mock_chatbot_service
+    app.dependency_overrides[get_session_service] = lambda: mock_session_service
 
     return TestClient(app)
 

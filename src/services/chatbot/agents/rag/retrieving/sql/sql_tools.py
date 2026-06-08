@@ -11,10 +11,10 @@ from .sql_server_calling import SqlServerCalling
 
 
 class SQLTools:
-	def __init__(self, embedding_client: LLMInterface):
+	def __init__(self, embedding_client: LLMInterface, sql_server_calling: SqlServerCalling):
 		self.embedding_client = embedding_client
 		self.name_resolver = NameResolver(embedding_client)
-		self.sql_server_calling = SqlServerCalling()
+		self.sql_server_calling = sql_server_calling
 		self.source = "sql_server"
 
 	async def get_course_id_by_course_name(
@@ -24,7 +24,7 @@ class SQLTools:
 		course_name: str,
 	) -> StepOutput:
 
-		courses = self.sql_server_calling.get_student_courses(student_id)
+		courses = await self.sql_server_calling.get_student_courses(student_id)
 
 		resolved_course = await self.name_resolver.resolve_best_match_with_threshold(
 			items=courses,
@@ -67,7 +67,7 @@ class SQLTools:
 		lecture_name: str,
 	) -> StepOutput:
 
-		lectures = self.sql_server_calling.get_course_lectures(course_id)
+		lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
 		resolved_lecture = await self.name_resolver.resolve_best_match_with_threshold(
 			items=lectures,
@@ -109,7 +109,7 @@ class SQLTools:
 		course_id: str,
 	) -> StepOutput:
 
-		course_details = self.sql_server_calling.get_course_details(course_id)
+		course_details = await self.sql_server_calling.get_course_details(course_id)
 
 		if not course_details:
 			failure_info = FailureInfo(
@@ -140,7 +140,7 @@ class SQLTools:
 	) -> StepOutput:
 
 		courses: list[dict[str, Any]] = (
-			self.sql_server_calling.get_student_courses(student_id)
+			await self.sql_server_calling.get_student_courses(student_id)
 		)
 
 		if not courses:
@@ -173,7 +173,7 @@ class SQLTools:
 		course_id: str,
 	) -> StepOutput:
 
-		lectures = self.sql_server_calling.get_course_lectures(course_id)
+		lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
 		if not lectures:
 			failure_info = FailureInfo(

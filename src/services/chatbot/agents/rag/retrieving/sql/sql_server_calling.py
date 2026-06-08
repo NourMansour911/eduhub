@@ -3,33 +3,47 @@
 from typing import Any
 
 
+import httpx
+from helpers.logger import get_logger
+
+logger = get_logger(__name__)
+
 class SqlServerCalling:
-     
-	@staticmethod
-	def get_course_details(course_id: str) -> dict[str, Any]:
-		return {
-			"course_id": course_id,
-			"doctor_name": "Doctor One",
-			"hours": 4,
-			"price": 1500,
-		}
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip("/")
 
-	@staticmethod
-	def get_student_courses(student_id: str) -> list[dict[str, Any]]:
-		return [
-			{"course_id": "IS422P", "name": "Data Mining"},
-			{"course_id": "HCI_T01", "name": "Human Computer Interaction"},
-		]
+    async def get_course_details(self, course_id: str) -> dict[str, Any]:
+        url = f"{self.base_url}/get_course_details.php"
+        params = {"course_id": course_id}
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Error fetching course details: {e}")
+            return {}
 
-	@staticmethod
-	def get_course_lectures(course_id: str) -> list[dict[str, Any]]:
-		return [
-			{
-				"id": "1RYCZiRS0DsISSz-o_0heUrKFTDcvIOxZ",
-				"title": "Usability",
-			},
-			{
-				"id": "1wYJY2YK3_xH36iaPZIcXdUHm_eemDWtc",
-				"title": "Navigation,Signposts, and Wayfinding",
-			},
-		]
+    async def get_student_courses(self, student_id: str) -> list[dict[str, Any]]:
+        url = f"{self.base_url}/get_student_courses.php"
+        params = {"student_id": student_id}
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Error fetching student courses: {e}")
+            return []
+
+    async def get_course_lectures(self, course_id: str) -> list[dict[str, Any]]:
+        url = f"{self.base_url}/get_course_lectures.php"
+        params = {"course_id": course_id}
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Error fetching course lectures: {e}")
+            return []
