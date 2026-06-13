@@ -58,9 +58,6 @@ class ChatbotService:
         )
 
         llm_map = {
-            "orchestrator": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0
-            ),
             "answering": lc_openai_client.get_langchain_llm(
                 model=settings.GENERATION_MODEL_ID, temperature=0.7
             ),
@@ -122,15 +119,15 @@ class ChatbotService:
         else:
             logger.info("Using cached student_courses from Redis: %s", collection.student_courses)
 
-        previous_steps_outputs = collection.contexts[-3:]
+        previous_steps_outputs = collection.contexts[-2:]
         logger.info("Retrieved last %d turns of step outputs.", len(previous_steps_outputs))
 
         raw_history = collection.messages or []
-        last_4_messages = []
-        for msg in raw_history[-4:]:
+        last_2_messages = []
+        for msg in raw_history[-2:]:
             role = "Human" if msg.get("role") == "user" else "AI"
-            last_4_messages.append({"role": role, "content": msg.get("content", "")})
-        logger.info("Formatted last 4 messages of chat history: %s", last_4_messages)
+            last_2_messages.append({"role": role, "content": msg.get("content", "")})
+        logger.info("Formatted last 2 messages of chat history: %s", last_2_messages)
 
         try:
             graph_result = await self.chatbot_graph.ainvoke({
@@ -138,7 +135,7 @@ class ChatbotService:
                 "student_id": student_id,
                 "session_id": session_id,
                 "student_courses": collection.student_courses,
-                "messages_history": last_4_messages,
+                "messages_history": last_2_messages,
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
                 "previous_steps_outputs": previous_steps_outputs,
@@ -157,8 +154,27 @@ class ChatbotService:
         collection.persona = graph_result.get("user_persona")
         collection.summary = graph_result.get("session_summary")
 
+        # Deduplicate step outputs so we only store newly executed, unique step outputs
+        existing_step_keys = set()
+        for turn_outputs in (collection.contexts or []):
+            for out in turn_outputs:
+                t_name = out.get("tool_name") if isinstance(out, dict) else getattr(out, "tool_name", "")
+                t_args = out.get("tool_args") if isinstance(out, dict) else getattr(out, "tool_args", {})
+                t_args_str = json.dumps(t_args, sort_keys=True) if isinstance(t_args, dict) else str(t_args)
+                existing_step_keys.add((t_name, t_args_str))
+
         run_step_outputs = graph_result.get("run_step_outputs") or []
-        collection.contexts.append(run_step_outputs)
+        new_step_outputs = []
+        for out in run_step_outputs:
+            t_name = out.get("tool_name") if isinstance(out, dict) else getattr(out, "tool_name", "")
+            t_args = out.get("tool_args") if isinstance(out, dict) else getattr(out, "tool_args", {})
+            t_args_str = json.dumps(t_args, sort_keys=True) if isinstance(t_args, dict) else str(t_args)
+            if (t_name, t_args_str) not in existing_step_keys:
+                new_step_outputs.append(out)
+
+        # Only append to collection.contexts if we actually generated new, unique steps in this turn
+        if new_step_outputs:
+            collection.contexts.append(new_step_outputs)
 
         await self.redis_provider.save_collection(collection, session_id=session_id)
         logger.info(

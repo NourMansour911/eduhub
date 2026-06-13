@@ -1,11 +1,10 @@
-from typing import  Dict, Literal
+from typing import  Dict
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.state import CompiledStateGraph
 from integrations.redis_provider import RedisProvider
 
 from .states import ChatbotState
-from .nodes.orchestrator_node import OrchestratorNode
 from .nodes.rag_node import RAGNode
 from .nodes.answering_node import AnsweringNode
 
@@ -17,7 +16,6 @@ class ChatbotGraph:
         rag_subgraph: CompiledStateGraph,
         redis_provider: RedisProvider,
     ):
-        self.orchestrator = OrchestratorNode(llm_map["orchestrator"])
         self.rag_node = RAGNode(rag_subgraph)
         self.answering_node = AnsweringNode(
             llm_map=llm_map,
@@ -29,28 +27,15 @@ class ChatbotGraph:
     def _build_graph(self):
         workflow = StateGraph(ChatbotState)
 
-        workflow.add_node("orchestrator", self.orchestrator)
         workflow.add_node("rag_node", self.rag_node)
         workflow.add_node("answering", self.answering_node)
 
-        workflow.add_edge(START, "orchestrator")
-        workflow.add_conditional_edges(
-            "orchestrator",
-            self._route_after_orchestrator,
-            {
-                "rag_node": "rag_node",
-                "answering": "answering",
-            },
-        )
+        workflow.add_edge(START, "rag_node")
         workflow.add_edge("rag_node", "answering")
         workflow.add_edge("answering", END)
 
         return workflow.compile()
 
-    def _route_after_orchestrator(self, state: ChatbotState) -> Literal["rag_node", "answering"]:
-        if state.rag_status == "retrieve":
-            return "rag_node"
-        return "answering"
 
 
 def build_chatbot_graph(

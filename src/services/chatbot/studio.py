@@ -102,9 +102,6 @@ sql_tools = SQLTools(embedding_client=embedding_client)
 
 
 chatbot_llm_map = {
-    "orchestrator": lc_openai_client.get_langchain_llm(
-        model=settings.GENERATION_MODEL_ID, temperature=0.0
-    ),
     "answering": lc_openai_client.get_langchain_llm(
         model=settings.GENERATION_MODEL_ID, temperature=0.7
     ),

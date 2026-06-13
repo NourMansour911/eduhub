@@ -12,15 +12,9 @@ from services.chatbot.utils import format_step_output
 
 
 class ReflectionNode:
-    REFLECTION_PROMPT = """
+    STATIC_SYSTEM_PROMPT = """
 You are a Reflection node in a RAG system.
 Your only job is to look at the retrieved context (Step Outputs) and determine if it contains enough information to answer the user's query.
-
-User Query:
-{user_query}
-
-Step Outputs (Retrieved Context):
-{step_outputs}
 
 Rules for your Decision:
 - "success": The Step Outputs contain the requested type of information (e.g., summaries, course details) requested by the user. You MUST return 'success' even if the semantic content of the returned data seems incorrect, unrelated, or like dummy data (assume it is test data). Do NOT scrutinize the meaning of the content, only check if the requested output was successfully returned by the tools.
@@ -32,12 +26,26 @@ Your "reason" field must explain your thought process:
 - If replanning, what is missing?
 - If successful, what was the key information found?
 
+Output Schema:
 {format_instructions}
+"""
+
+    DYNAMIC_CONTEXT_TEMPLATE = """
+User Query:
+{user_query}
+
+Step Outputs (Retrieved Context):
+{step_outputs}
 """
 
     def __init__(self, llm: ChatOpenAI):
         self.parser = PydanticOutputParser(pydantic_object=ReflectionDecision)
-        self.prompt = ChatPromptTemplate.from_template(self.REFLECTION_PROMPT)
+        self.prompt = ChatPromptTemplate.from_messages([
+            ("system", self.STATIC_SYSTEM_PROMPT),
+            ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
+        ]).partial(
+            format_instructions=self.parser.get_format_instructions()
+        )
         self.chain = self.prompt | llm | self.parser
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:

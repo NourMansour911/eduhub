@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
 from helpers.logger import get_chatbot_logger
@@ -14,28 +14,32 @@ logger = get_chatbot_logger(__name__)
 
 
 class AnsweringNode:
-    SYSTEM_PROMPT = """\
-You are Luma, a supportive, encouraging, and clear AI Tutor Chatbot. Your goal is to guide students and answer queries.
+    STATIC_SYSTEM_PROMPT = """
+You are Luma, an enthusiastic, warm, and Socratic educational mentor. Your goal is to guide students, facilitate their learning, and answer their academic queries. 
+
+As a Socratic mentor:
+- Do not just dump dry facts or short answers. Encourage understanding, use helpful real-world analogies where appropriate, and break down complex concepts step-by-step.
+- Conclude your response with a friendly, interactive follow-up question that prompts the student to verify their understanding or expand on the topic.
 
 IMPORTANT Rules:
-1. If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations (excluding polite greetings, introductions, sharing their name, or sharing their learning preferences), you must politely respond stating that you are Luma, an AI Tutor, and you can only assist with academic and course-related queries.
-2. If the query is within scope, answer it based on the messages history, student persona, session summary, and retrieved context. Adapt your response to match the student's persona.
-3. You have access to tools to update the student's persona profile and update the session summary. Call them when appropriate (e.g. when the student shares preferences or when summarizing the latest turn).
-4. Respond only in user's preferred, never use emojis, and keep responses concise and strictly instruction-following.
+1. Scope Control: If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations (excluding greetings or sharing learning preferences), you must politely decline.
+2. Context Quoting (CRITICAL): When answering a query based on the retrieved context, you MUST first quote the exact relevant snippet(s) of the retrieved text from which you extracted the information. Quote them exactly as they appear in the source context, verbatim, and do not modify or translate them. Under a clear section called "Reference Context:", list these raw verbatim snippets (even if they are in a language different from the student's language, such as Arabic).
+3. Student Language: After citing the verbatim reference context, proceed to explain, elaborate, and answer the student's query in their preferred language (e.g. if the student asks in Arabic, answer and explain in Arabic; if they ask in English, answer and explain in English).
+4. Tool Usage: You have access to tools to update the student's persona profile and update the session summary. Call them when appropriate (e.g. when the student shares preferences or when summarizing the latest turn).
+"""
+
+    DYNAMIC_CONTEXT_TEMPLATE = """
 Student Persona:
 {user_persona}
 
 Session Summary:
 {session_summary}
 
-Retrieved Context:
+Retrieved Context (Verbatim Sources):
 {retrieved_context}
 
 Previous Turns Step Outputs:
 {previous_steps_outputs}
-
-Conversation History (last 4 messages):
-{messages_history}
 """
 
     def __init__(
@@ -105,18 +109,31 @@ Conversation History (last 4 messages):
         tools_dict = {t.name: t for t in tools}
         llm_with_tools = self.llm.bind_tools(tools)
 
-        system_content = self.SYSTEM_PROMPT.format(
+        static_system_content = self.STATIC_SYSTEM_PROMPT
+        dynamic_context_content = self.DYNAMIC_CONTEXT_TEMPLATE.format(
             user_persona=state.user_persona or "General friendly student.",
             session_summary=session_summary_str,
             retrieved_context=state.retrieved_context or "No retrieved context.",
             previous_steps_outputs=prev_steps_str,
-            messages_history=messages_history_str,
         )
 
         messages = [
-            SystemMessage(content=system_content),
-            HumanMessage(content=state.user_query),
+            SystemMessage(content=static_system_content)
         ]
+
+        # Add message history (last 2 messages, since messages_history has already been limited in chatbot_service)
+        for msg in state.messages_history:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if role == "Human":
+                messages.append(HumanMessage(content=content))
+            elif role == "AI":
+                messages.append(AIMessage(content=content))
+
+        # Add the dynamic retrieved context and session data
+        messages.append(SystemMessage(content=dynamic_context_content))
+        # Add the current user query
+        messages.append(HumanMessage(content=state.user_query))
 
         response = await llm_with_tools.ainvoke(messages)
         messages.append(response)

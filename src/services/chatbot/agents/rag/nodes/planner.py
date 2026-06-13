@@ -14,10 +14,29 @@ logger = get_logger(__name__)
 
 
 class PlannerNode:
-    SYSTEM_PROMPT = """
+    STATIC_SYSTEM_PROMPT = """
 You are a DAG planner. Convert the user request to a tool plan DAG (status="plan") or clarification (status="clarification").
 
-{reflection_feedback}
+Rules:
+1. NEVER ask for student_id, course_id, or lecture_id.
+2. The student_id is implicitly "$student_id".
+3. Match course names in the user query to IDs listed in the 'Enrolled Courses' context (e.g., "Data Mining(ID: IS422P)" -> course_id="IS422P"). Do not guess or invent IDs; clarify if missing or ambiguous.
+4. Pass data between steps using "$step_id.output_key". Use the EXACT "returns" schema defined in the Tools Registry to form your path. For example, if a tool returns {{"lectures": [{{"id": "str"}}]}}, reference the ID as "$step_1.lectures[0].id". NEVER use generic outputs like "$step_1[0]" or "$step_1.output".
+5. Use exact tool names and arguments from the Tools Registry.
+6. The "query" argument in search tools should represent the core concept to retrieve.
+7. Adapt based on History: change strategy on failures; use user clarification answers to refine.
+8. The student is ONLY allowed to ask questions related to their enrolled courses. If the user's query asks about topics, lectures, or courses outside of 'Enrolled Courses', you MUST output status='clarification' and politely clarify that you can only assist with their enrolled courses.
+9. If the user query is a simple greeting (e.g., "hello", "hi"), a polite thank-you, or general chit-chat that does not require retrieving external database/course information, you MUST output status="plan" with an empty steps list (steps=[]). Do not trigger any tools or ask for clarification for simple greetings.
+
+Tools Registry:
+{tools_registry}
+
+Output Schema:
+{format_instructions}
+"""
+
+    DYNAMIC_CONTEXT_TEMPLATE = """
+Enrolled Courses: {student_courses}
 
 Execution History of the current message (use to adjust strategy & avoid repeated failures):
 {previous_attempts}
@@ -28,30 +47,16 @@ Recent Conversation Chat History:
 Steps Outputs of Previous Messages:
 {previous_steps_outputs}
 
-Rules:
-1. NEVER ask for student_id, course_id, or lecture_id.
-2. student_id is "$student_id". Match course names in query to IDs in 'Courses Context' (e.g., "Data Mining(ID: IS422P)" -> course_id="IS422P"). Do not guess/invent IDs; clarify if missing.
-3. Pass data between steps using "$step_id.output_key". Use the EXACT "returns" schema defined in the Tools Registry to form your path. For example, if a tool returns {{"lectures": [{{"id": "str"}}]}}, reference the ID as "$step_1.lectures[0].id". NEVER use generic outputs like "$step_1[0]" or "$step_1.output".
-4. Prefer planning. Only clarify if no tools can help progress.
-5. Use exact tool names and args from the Tools Registry.
-6. The "query" field should represent the core concept to retrieve.
-7. Adapt based on History: change strategy on failures; use user clarification answers to refine.
-8. The user is ONLY allowed to ask questions related to their enrolled courses listed in 'Courses Context'. If the user's query asks about topics, lectures, or courses outside of 'Courses Context', you MUST output status='clarification' and politely clarify that you can only assist with their enrolled courses.
+{reflection_feedback}
 
-Courses Context: {student_courses}
-
-Tools Registry:
-{tools_registry}
-
-Output Schema:
-{format_instructions}
+Current User Query: {user_query}
 """
 
     def __init__(self, llm: ChatOpenAI):
         self.parser = PydanticOutputParser(pydantic_object=PlannerOutput)
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.SYSTEM_PROMPT),
-            ("human", "User Query: {user_query}"),
+            ("system", self.STATIC_SYSTEM_PROMPT),
+            ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
         ]).partial(
             format_instructions=self.parser.get_format_instructions(),
             tools_registry=lambda: json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2)

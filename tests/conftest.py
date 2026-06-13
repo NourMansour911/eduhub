@@ -26,6 +26,7 @@ os.environ.setdefault("VECTOR_DB_BACKEND", "QDRANT")
 os.environ.setdefault("VECTOR_DB_DISTANCE_METHOD", "Cosine")
 os.environ.setdefault("AZURE_DOC_ENDPOINT", "https://test.cognitiveservices.azure.com/")
 os.environ.setdefault("AZURE_DOC_KEY", "test-azure-key")
+os.environ.setdefault("DB_BASE_URL", "http://eduhub.onlinewebshop.net")
 
 for path in (ROOT_DIR, SRC_DIR):
     if str(path) not in sys.path:
