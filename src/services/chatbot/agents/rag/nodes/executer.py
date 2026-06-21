@@ -108,7 +108,7 @@ class ExecutorNode:
         if not planner_output or planner_output.status != "plan" or not planner_output.steps:
             return {}
 
-        step_outputs = list(state.step_outputs)
+        step_outputs = list(state.current_attempt_tool_outputs)
         step_outputs_dict = {out.step_id: out for out in step_outputs}
         runtime_vars = {"student_id": state.student_id}
         
@@ -128,7 +128,7 @@ class ExecutorNode:
             
             if not ready_steps: 
                 break
-
+ 
             results: List[StepOutput] = await asyncio.gather(*[
                 self._execute_step(step, step_outputs_dict, runtime_vars, session_id=state.session_id) for step in ready_steps
             ])
@@ -156,5 +156,5 @@ class ExecutorNode:
         )
 
         return {
-            "step_outputs": step_outputs
+            "current_attempt_tool_outputs": step_outputs
         }

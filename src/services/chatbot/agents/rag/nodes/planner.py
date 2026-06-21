@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, PlannerOutput
 from .tools_registry import get_default_tools_registry
 from helpers.logger import get_chatbot_logger
-from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration
+from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration, deduplicate_tool_outputs
 
 logger = get_chatbot_logger(__name__)
 
@@ -35,10 +35,10 @@ Output Schema:
 Enrolled Courses: {student_courses}
 
 Execution History of the current message (use to adjust strategy & avoid repeated failures):
-{previous_attempts}
+{past_attempts_tool_outputs}
 
 Steps Outputs of Previous Messages:
-{previous_steps_outputs}
+{past_messages_tool_outputs}
 
 {reflection_feedback}
 
@@ -58,16 +58,17 @@ Current User Query: {user_query}
         self.chain = self.prompt | llm | self.parser
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
-        previous_attempts = list(state.previous_attempts)
-        step_outputs = list(state.step_outputs)
+        past_attempts = list(state.past_attempts_tool_outputs)
+        current_attempt = list(state.current_attempt_tool_outputs)
         
-        if step_outputs:
-            previous_attempts.extend(step_outputs)
-            step_outputs = []
 
-        # Formats
-        previous_attempts_formatted = "\n\n".join([format_step_output(h) for h in previous_attempts]) if previous_attempts else "No previous attempts."
-        previous_steps_outputs_formatted = format_nested_step_outputs(state.previous_steps_outputs)
+        if current_attempt:
+            past_attempts = deduplicate_tool_outputs(past_attempts + current_attempt)
+            current_attempt = []
+
+        
+        past_attempts_formatted = "\n\n".join([format_step_output(h, for_planning=True) for h in past_attempts]) if past_attempts else "No previous attempts."
+        past_messages_formatted = format_nested_step_outputs(state.past_messages_tool_outputs, for_planning=True)
         
         reflection_feedback = ""
         if state.reflection_decision and state.reflection_decision.decision == "replan":
@@ -77,19 +78,20 @@ Current User Query: {user_query}
             "\n" + "="*80 + "\n"
             "[PLANNER NODE] STARTING EVALUATION\n"
             f"Session ID: {state.session_id}\n"
+            f"Plan Attempt Number: {state.plan_attempts_count}\n"
             f"User Query: {state.user_query}\n"
             f"Enrolled Courses: {state.student_courses}\n"
-            f"Previous Attempts: {previous_attempts_formatted}\n"
-            f"Previous Messages Step Outputs: {previous_steps_outputs_formatted}\n"
+            f"Past Attempts: {past_attempts_formatted}\n"
+            f"Past Messages Step Outputs: {past_messages_formatted}\n"
             f"Reflection Feedback: {reflection_feedback.strip() if reflection_feedback else 'None'}\n"
             + "="*80
         )
 
-        async with log_duration(logger, "Planner Node Chain Call", session_id=state.session_id):
+        async with log_duration(logger, f"Planner Node Chain Call (Attempt {state.plan_attempts_count})", session_id=state.session_id):
             planner_output = await self.chain.ainvoke({
                 "user_query": state.user_query,
-                "previous_attempts": previous_attempts_formatted,
-                "previous_steps_outputs": previous_steps_outputs_formatted,
+                "past_attempts_tool_outputs": past_attempts_formatted,
+                "past_messages_tool_outputs": past_messages_formatted,
                 "reflection_feedback": reflection_feedback,
                 "student_courses": state.student_courses
             })
@@ -111,5 +113,6 @@ Current User Query: {user_query}
         
         return {
             "planner_output": planner_output,
+            "past_attempts_tool_outputs": past_attempts,
+            "current_attempt_tool_outputs": current_attempt
         }
-

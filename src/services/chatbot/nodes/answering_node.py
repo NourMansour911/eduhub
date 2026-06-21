@@ -5,7 +5,7 @@ from langchain_openai import ChatOpenAI
 from helpers.logger import get_chatbot_logger
 from integrations.redis_provider import RedisProvider
 from ..states import ChatbotState
-from ..utils import format_nested_step_outputs, format_messages_history
+
 
 logger = get_chatbot_logger(__name__)
 
@@ -36,9 +36,6 @@ Enrolled Courses:
 
 Retrieved Context (Verbatim Sources):
 {retrieved_context}
-
-Previous Turns Step Outputs:
-{previous_steps_outputs}
 """
 
     def __init__(
@@ -57,9 +54,7 @@ Previous Turns Step Outputs:
         if state.rag_status == "clarification":
             return {"response": state.rag_clarification_question}
 
-        messages_history_str = format_messages_history(state.messages_history)
         session_summary_str = state.session_summary or "No session summary."
-        prev_steps_str = format_nested_step_outputs(state.previous_steps_outputs)
 
         logger.info(
             "AnsweringNode Luma run. Query: %s | Persona: %s | Summary: %s",
@@ -74,14 +69,12 @@ Previous Turns Step Outputs:
             session_summary=session_summary_str,
             student_courses=state.student_courses or "No enrolled courses.",
             retrieved_context=state.retrieved_context or "No retrieved context.",
-            previous_steps_outputs=prev_steps_str,
         )
 
         messages = [
             SystemMessage(content=static_system_content)
         ]
 
-        # Add message history
         for msg in state.messages_history:
             role = msg.get("role")
             content = msg.get("content", "")
@@ -90,9 +83,7 @@ Previous Turns Step Outputs:
             elif role == "AI":
                 messages.append(AIMessage(content=content))
 
-        # Add the dynamic retrieved context and session data
         messages.append(SystemMessage(content=dynamic_context_content))
-        # Add the current user query
         messages.append(HumanMessage(content=state.user_query))
 
         response = await self.llm.ainvoke(messages)

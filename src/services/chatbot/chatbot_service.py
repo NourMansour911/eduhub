@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any
+from typing import Any, List, Dict
 from langchain_core.runnables import Runnable
 
 from core import Settings
@@ -26,6 +26,7 @@ from .chains.summary_chain import build_summary_chain
 from .chains.persona_chain import build_persona_chain
 
 from services.chatbot.agents.rag.retrieving.sql.sql_server_calling import SqlServerCalling
+from services.chatbot.utils import format_student_courses, format_chat_history_for_graph, deduplicate_tool_outputs
 
 logger = get_chatbot_logger(__name__)
 
@@ -61,16 +62,16 @@ class ChatbotService:
 
         llm_map = {
             "orchestrator": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0
+                model=settings.GENERATION_MODEL_ID, temperature=0.0, max_tokens=150
             ),
             "answering": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.7
+                model=settings.GENERATION_MODEL_ID, temperature=0.7, max_tokens=1500
             ),
             "summary": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.2
+                model=settings.GENERATION_MODEL_ID, temperature=0.2, max_tokens=300
             ),
             "persona": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.1
+                model=settings.GENERATION_MODEL_ID, temperature=0.1, max_tokens=250
             ),
         }
 
@@ -90,7 +91,37 @@ class ChatbotService:
         self.summary_chain = build_summary_chain(llm_map["summary"])
         self.persona_chain = build_persona_chain(llm_map["persona"])
 
+    async def _get_and_cache_student_courses(self, student_id: str, collection: RedisSessionDTO) -> str:
+        if collection.student_courses:
+            logger.info("Using cached student_courses from Redis: %s", collection.student_courses)
+            return collection.student_courses
+
+        logger.info("student_courses not found in Redis, retrieving from SQL server for student_id: %s", student_id)
+        try:
+            courses = await self.sql_tools.sql_server_calling.get_student_courses(student_id)
+            courses_str = format_student_courses(courses)
+        except Exception as exc:
+            logger.warning("Failed to retrieve student courses from SQL. Error: %s. Falling back to placeholder.", exc)
+            courses_str = "Information temporarily unavailable"
+        
+        collection.student_courses = courses_str
+        logger.info("Cached formatted student_courses: %s", courses_str)
+        return courses_str
+
+    def _update_session_contexts(self, collection: RedisSessionDTO, run_step_outputs: List[Any]) -> None:
+        if run_step_outputs:
+            collection.contexts.append(run_step_outputs)
+            logger.debug("Appended %d run step outputs to Redis session contexts.", len(run_step_outputs))
+
     async def chat(self, payload: ChatRequest, student_id: str, session_id: str) -> ChatResponse:
+        user_query = (payload.message or "").strip()
+        query_len = len(user_query)
+        if query_len > 1000:
+            raise ChatbotValidationError(
+                message=f"Query is too long ({query_len} characters). Maximum allowed length is 1000 characters.",
+                details={"query_len": query_len, "max_limit": 1000}
+            )
+
         student_id = (student_id or "").strip()
         if not student_id:
             raise ChatbotValidationError(
@@ -111,43 +142,34 @@ class ChatbotService:
         if collection is None:
             collection = RedisSessionDTO(user_id=student_id)
 
-        if not collection.student_courses:
-            logger.info("student_courses not found in Redis, retrieving from SQL server for student_id: %s", student_id)
-            try:
-                courses = await self.sql_tools.sql_server_calling.get_student_courses(student_id)
-                courses_str = ", ".join([f"{c.get('name', 'Unknown')}(ID:{c.get('course_id', 'Unknown')})" for c in courses])
-                if not courses_str:
-                    courses_str = "No enrolled courses"
-            except Exception as exc:
-                logger.warning("Failed to retrieve student courses from SQL. Error: %s. Falling back to placeholder.", exc)
-                courses_str = "Information temporarily unavailable"
-            
-            collection.student_courses = courses_str
-            logger.info("Cached formatted student_courses: %s", courses_str)
-        else:
-            logger.info("Using cached student_courses from Redis: %s", collection.student_courses)
+        student_courses = await self._get_and_cache_student_courses(student_id, collection)
 
-        previous_steps_outputs = collection.contexts[-2:]
-        logger.info("Retrieved last %d turns of step outputs.", len(previous_steps_outputs))
+        
+        raw_past = collection.contexts[-3:] if collection.contexts else []
+        flattened_past = []
+        for turn in raw_past:
+            if isinstance(turn, list):
+                flattened_past.extend(turn)
+            else:
+                flattened_past.append(turn)
 
-        raw_history = collection.messages or []
-        last_messages = []
-        for msg in raw_history[-6:]:
-            role = "Human" if msg.get("role") == "user" else "AI"
-            content = msg.get("content", "")
-            last_messages.append({"role": role, "content": content})
+        past_messages_tool_outputs = deduplicate_tool_outputs(flattened_past)
+
+        logger.info("Retrieved last %d turns of step outputs. Flattened/deduplicated to %d past outputs.", len(raw_past), len(past_messages_tool_outputs))
+
+        last_messages = format_chat_history_for_graph(collection.messages or [], limit=6)
         logger.info("Formatted last messages of chat history: %s", last_messages)
 
         try:
             graph_result = await self.chatbot_graph.ainvoke({
-                "user_query": payload.message,
+                "user_query": user_query,
                 "student_id": student_id,
                 "session_id": session_id,
-                "student_courses": collection.student_courses,
+                "student_courses": student_courses,
                 "messages_history": last_messages,
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
-                "previous_steps_outputs": previous_steps_outputs,
+                "past_messages_tool_outputs": past_messages_tool_outputs,
             })
         except Exception as exc:
             raise ChatbotProcessingError(
@@ -158,30 +180,11 @@ class ChatbotService:
         ai_reply = graph_result.get("response") or "I'm sorry, I could not generate a response."
         logger.info("Chatbot graph result response: %s", ai_reply)
 
-        collection.messages.append({"role": "user", "content": payload.message})
+        collection.messages.append({"role": "user", "content": user_query})
         collection.messages.append({"role": "assistant", "content": ai_reply})
 
-        # Deduplicate step outputs so we only store newly executed, unique step outputs
-        existing_step_keys = set()
-        for turn_outputs in (collection.contexts or []):
-            for out in turn_outputs:
-                t_name = out.get("tool_name") if isinstance(out, dict) else getattr(out, "tool_name", "")
-                t_args = out.get("tool_args") if isinstance(out, dict) else getattr(out, "tool_args", {})
-                t_args_str = json.dumps(t_args, sort_keys=True) if isinstance(t_args, dict) else str(t_args)
-                existing_step_keys.add((t_name, t_args_str))
-
         run_step_outputs = graph_result.get("run_step_outputs") or []
-        new_step_outputs = []
-        for out in run_step_outputs:
-            t_name = out.get("tool_name") if isinstance(out, dict) else getattr(out, "tool_name", "")
-            t_args = out.get("tool_args") if isinstance(out, dict) else getattr(out, "tool_args", {})
-            t_args_str = json.dumps(t_args, sort_keys=True) if isinstance(t_args, dict) else str(t_args)
-            if (t_name, t_args_str) not in existing_step_keys:
-                new_step_outputs.append(out)
-
-        # Only append to collection.contexts if we actually generated new, unique steps in this turn
-        if new_step_outputs:
-            collection.contexts.append(new_step_outputs)
+        self._update_session_contexts(collection, run_step_outputs)
 
         await self.redis_provider.save_collection(collection, session_id=session_id)
         logger.info(
@@ -190,7 +193,7 @@ class ChatbotService:
         )
 
         asyncio.create_task(self._push_llm_judge(
-            user_query=payload.message,
+            user_query=user_query,
             context=graph_result.get("retrieved_context") or "",
             answer=ai_reply,
         ))
@@ -207,7 +210,7 @@ class ChatbotService:
             asyncio.create_task(self._update_persona_and_summary_background(
                 student_id=student_id,
                 session_id=session_id,
-                user_query=payload.message,
+                user_query=user_query,
                 batch_history_str=batch_history_str,
                 current_persona=collection.persona,
                 current_summary=collection.summary,

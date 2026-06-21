@@ -8,7 +8,7 @@ from helpers.logger import get_chatbot_logger
 logger = get_chatbot_logger(__name__)
 
 
-from services.chatbot.utils import format_step_output, log_duration
+from services.chatbot.utils import format_step_output, log_duration, format_nested_step_outputs
 
 
 class ReflectionNode:
@@ -28,8 +28,11 @@ Output Schema:
 User Query:
 {user_query}
 
-Step Outputs (Retrieved Context):
-{step_outputs}
+Current Attempt Step Outputs:
+{current_attempt_tool_outputs}
+
+Step Outputs of Previous Messages:
+{past_messages_tool_outputs}
 """
 
     def __init__(self, llm: ChatOpenAI):
@@ -44,23 +47,27 @@ Step Outputs (Retrieved Context):
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         user_query = state.user_query
-        step_outputs = state.step_outputs
+        current_attempt = state.current_attempt_tool_outputs
         
-        step_outputs_formatted = "\n\n".join([format_step_output(out) for out in step_outputs]) if step_outputs else "No step outputs."
+        current_attempt_formatted = "\n\n".join([format_step_output(out, for_planning=True) for out in current_attempt]) if current_attempt else "No step outputs."
+        past_messages_formatted = format_nested_step_outputs(state.past_messages_tool_outputs, for_planning=True)
 
         logger.info(
             "\n" + "="*80 + "\n"
             "[REFLECTION NODE] EVALUATING RETRIEVED CONTEXT\n"
             f"Session ID: {state.session_id}\n"
+            f"Plan Attempt: {state.plan_attempts_count}\n"
             f"User Query: {user_query}\n"
-            f"Step Outputs:\n{step_outputs_formatted}\n"
+            f"Current Attempt Step Outputs:\n{current_attempt_formatted}\n"
+            f"Past Messages Step Outputs:\n{past_messages_formatted}\n"
             + "="*80
         )
 
-        async with log_duration(logger, "Reflection Node Chain Call", session_id=state.session_id):
+        async with log_duration(logger, f"Reflection Node Chain Call (Attempt {state.plan_attempts_count})", session_id=state.session_id):
             decision: ReflectionDecision = await self.chain.ainvoke({
                 "user_query": user_query,
-                "step_outputs": step_outputs_formatted,
+                "current_attempt_tool_outputs": current_attempt_formatted,
+                "past_messages_tool_outputs": past_messages_formatted,
                 "format_instructions": self.parser.get_format_instructions()
             })
 
@@ -78,6 +85,6 @@ Step Outputs (Retrieved Context):
             "reflection_decision": decision
         }
         if decision.decision == "replan":
-            result["replan_count"] = state.replan_count + 1
+            result["plan_attempts_count"] = state.plan_attempts_count + 1
 
         return result

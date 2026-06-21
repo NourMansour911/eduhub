@@ -14,27 +14,9 @@ from core import Settings
 from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
+from services.chatbot.utils import extract_clean_content_text, get_chatbot_logger, deduplicate_tool_outputs
 
-
-def _extract_content_text(content: Dict[str, Any]) -> str:
-    if not content:
-        return ""
-    if "chunks" in content and isinstance(content["chunks"], list):
-        parts = []
-        for i, chunk in enumerate(content["chunks"], start=1):
-            if not isinstance(chunk, dict):
-                parts.append(str(chunk))
-                continue
-            text = chunk.get("text", "")
-            meta = {k: v for k, v in chunk.items() if k != "text"}
-            meta_str = ", ".join(f"{k}: {v}" for k, v in meta.items()) if meta else ""
-            header = f"[Chunk {i}]" + (f" ({meta_str})" if meta_str else "")
-            parts.append(f"{header}\n{text}")
-        return "\n\n".join(parts)
-    for key in ("summary", "text", "content"):
-        if key in content:
-            return str(content[key])
-    return json.dumps(content, ensure_ascii=False)
+logger = get_chatbot_logger(__name__)
 
 
 class RAGSubgraph:
@@ -52,11 +34,11 @@ class RAGSubgraph:
         rag_llm_map: Dict[str, ChatOpenAI] = {
             # Planner needs to reason and generate structured DAG plans — slightly creative
             "planner": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.1
+                model=settings.GENERATION_MODEL_ID, temperature=0.1, max_tokens=1000
             ),
             # Reflection is a binary classifier — deterministic
             "reflection": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0
+                model=settings.GENERATION_MODEL_ID, temperature=0.0, max_tokens=200
             ),
         }
 
@@ -85,7 +67,7 @@ class RAGSubgraph:
         workflow.add_node("planner", self.planner_node)
         workflow.add_node("executor", self.executor_node)
         workflow.add_node("reflection", self.reflection_node)
-        workflow.add_node("finalize", self._finalize_node)
+        workflow.add_node("finalize_and_aggregate", self._finalize_node)
 
         workflow.add_edge(START, "planner")
 
@@ -94,7 +76,7 @@ class RAGSubgraph:
             self._route_after_planner,
             {
                 "executor": "executor",
-                "end_clarification": "finalize",
+                "route_to_clarification": "finalize_and_aggregate",
             },
         )
 
@@ -105,66 +87,79 @@ class RAGSubgraph:
             self._route_after_reflection,
             {
                 "planner": "planner",
-                "end_success": "finalize",
-                "end_clarification": "finalize",
+                "route_to_success": "finalize_and_aggregate",
+                "route_to_clarification": "finalize_and_aggregate",
             },
         )
 
-        workflow.add_edge("finalize", END)
+        workflow.add_edge("finalize_and_aggregate", END)
 
         return workflow.compile()
 
-    def _route_after_planner(self, state: RAGSubgraphState) -> Literal["executor", "end_clarification"]:
+    def _route_after_planner(self, state: RAGSubgraphState) -> Literal["executor", "route_to_clarification"]:
         if not state.planner_output or state.planner_output.status == "clarification":
-            return "end_clarification"
+            return "route_to_clarification"
         return "executor"
 
-    def _route_after_reflection(self, state: RAGSubgraphState) -> Literal["planner", "end_success", "end_clarification"]:
+    def _route_after_reflection(self, state: RAGSubgraphState) -> Literal["planner", "route_to_success", "route_to_clarification"]:
         if not state.reflection_decision:
-            return "end_success"
+            return "route_to_success"
 
         decision = state.reflection_decision.decision
         if decision == "replan":
-            return "planner" if state.replan_count < 2 else "end_success"
+            return "planner" if state.plan_attempts_count < 3 else "route_to_success"
         if decision == "clarification":
-            return "end_clarification"
-        return "end_success"
+            return "route_to_clarification"
+        return "route_to_success"
 
     async def _finalize_node(self, state: RAGSubgraphState) -> Dict[str, Any]:
         status = "success"
         clarification_question = None
         error_message = None
 
-        all_raw = list(state.previous_attempts) + list(state.step_outputs)
+        
+        all_raw = []
+        all_raw.extend(state.past_messages_tool_outputs)
+        all_raw.extend(state.past_attempts_tool_outputs)
+        all_raw.extend(state.current_attempt_tool_outputs)
+
         filtered_contexts = [
             ctx for ctx in all_raw
             if ctx.failure_info is None or ctx.failure_info.clarification_message is not None
         ]
 
+        
+        unique_contexts = deduplicate_tool_outputs(filtered_contexts)
+
         retrieved_context_parts = []
-        for ctx in filtered_contexts:
-            text = _extract_content_text(ctx.content)
+        for ctx in unique_contexts:
+            text = extract_clean_content_text(ctx.content)
             if text:
                 retrieved_context_parts.append(
                     f"### Source: {ctx.source} (Tool: {ctx.tool_name or 'Unknown'})\n{text}"
                 )
         retrieved_context = "\n\n".join(retrieved_context_parts)
 
-        if state.replan_count >= 2 and state.reflection_decision and state.reflection_decision.decision == "replan":
+        if state.plan_attempts_count >= 3 and state.reflection_decision and state.reflection_decision.decision == "replan":
             status = "failed"
-            error_message = "Exceeded the maximum number of replan attempts (2) without finding a satisfactory answer."
+            error_message = "Exceeded the maximum number of plan attempts (3) without finding a satisfactory answer."
+            logger.warning("RAG Subgraph failed: %s", error_message)
         elif state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
             clarification_question = state.reflection_decision.clarification_question
+            logger.info("RAG Subgraph requested clarification from reflection: %s", clarification_question)
         elif state.planner_output and state.planner_output.status == "clarification":
             status = "clarification"
             clarification_question = state.planner_output.clarification_question
+            logger.info("RAG Subgraph requested clarification from planner: %s", clarification_question)
+
+        logger.info("RAG Subgraph execution concluded. Status: %s | Deduplicated sources: %d", status, len(unique_contexts))
 
         return {
             "retriving_results": RAGSubgraphOutput(
                 status=status,
                 retrieved_context=retrieved_context,
-                run_step_outputs=filtered_contexts,
+                run_step_outputs=unique_contexts,
                 clarification_question=clarification_question,
                 error_message=error_message,
             )

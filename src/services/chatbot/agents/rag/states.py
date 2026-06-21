@@ -30,7 +30,6 @@ class PlannerOutput(BaseModel):
     clarification_question: Optional[str] = Field(default=None, description="The question if status is 'clarification'")
 
 
-
 class ReflectionDecision(BaseModel):
     decision: Literal["success", "replan", "clarification"] = Field(
         ...,
@@ -61,11 +60,11 @@ class RAGSubgraphState(BaseModel):
     student_id: str
     session_id: str = Field(default="", description="ID of the chat session")
     student_courses: str = Field(default="", description="Compact string of student courses")
-    previous_attempts: List[StepOutput] = Field(default_factory=list, description="Step outputs of previous attempts in the current run")
+    past_attempts_tool_outputs: List[StepOutput] = Field(default_factory=list, description="Step outputs of previous attempts in the current run")
     messages_history: List[Any] = Field(default_factory=list, description="Recent messages from the conversation history")
-    previous_steps_outputs: List[List[StepOutput]] = Field(default_factory=list, description="Step outputs from previous messages/turns")
+    past_messages_tool_outputs: List[StepOutput] = Field(default_factory=list, description="Step outputs from previous messages/turns")
     planner_output: Optional[PlannerOutput] = None 
-    step_outputs: List[StepOutput] = Field(default_factory=list)
+    current_attempt_tool_outputs: List[StepOutput] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None
     retriving_results: Optional[RAGSubgraphOutput] = None
-    replan_count: int = Field(default=0, description="Tracks how many times replanning occurred")
+    plan_attempts_count: int = Field(default=1, description="Tracks the planning attempt number (1 to 3)")

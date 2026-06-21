@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - eduhub_api_data:/app/storage
+      - ../storage:/app/storage
     networks:
       - backend
     restart: always
@@ -83,5 +83,4 @@ networks:
 volumes:
   eduhub_qdrant_data:
   eduhub_mongodata:
-  eduhub_api_data:
   eduhub_redis_data:
