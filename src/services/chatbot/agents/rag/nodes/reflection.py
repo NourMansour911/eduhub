@@ -3,28 +3,22 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, ReflectionDecision
-from helpers.logger import get_logger
+from helpers.logger import get_chatbot_logger
 
-logger = get_logger(__name__)
+logger = get_chatbot_logger(__name__)
 
 
-from services.chatbot.utils import format_step_output
+from services.chatbot.utils import format_step_output, log_duration
 
 
 class ReflectionNode:
     STATIC_SYSTEM_PROMPT = """
 You are a Reflection node in a RAG system.
-Your only job is to look at the retrieved context (Step Outputs) and determine if it contains enough information to answer the user's query.
+Look at the retrieved context (Step Outputs) and determine if it contains enough information to answer the user's query.
 
-Rules for your Decision:
-- "success": The Step Outputs contain the requested type of information (e.g., summaries, course details) requested by the user. You MUST return 'success' even if the semantic content of the returned data seems incorrect, unrelated, or like dummy data (assume it is test data). Do NOT scrutinize the meaning of the content, only check if the requested output was successfully returned by the tools.
-- "replan": The Step Outputs are missing the requested entities, or the tools failed to return the required output, and we should try retrieving again or using a different tool.
-- "clarification": The context is ambiguous or impossible to answer without asking the user for more clarification.
-
-Your "reason" field must explain your thought process:
-- Why did you choose this decision?
-- If replanning, what is missing?
-- If successful, what was the key information found?
+Rules:
+1. Do NOT scrutinize the semantic meaning/correctness of the returned data. Only check if the requested type of output (e.g. summaries, course details) was successfully returned.
+2. Return 'success' even if the data seems incorrect, unrelated, or like dummy test data.
 
 Output Schema:
 {format_instructions}
@@ -55,18 +49,30 @@ Step Outputs (Retrieved Context):
         step_outputs_formatted = "\n\n".join([format_step_output(out) for out in step_outputs]) if step_outputs else "No step outputs."
 
         logger.info(
-            "ReflectionNode invoked. Query: %s | Step Outputs: %s",
-            user_query,
-            step_outputs_formatted,
+            "\n" + "="*80 + "\n"
+            "[REFLECTION NODE] EVALUATING RETRIEVED CONTEXT\n"
+            f"Session ID: {state.session_id}\n"
+            f"User Query: {user_query}\n"
+            f"Step Outputs:\n{step_outputs_formatted}\n"
+            + "="*80
         )
 
-        decision: ReflectionDecision = await self.chain.ainvoke({
-            "user_query": user_query,
-            "step_outputs": step_outputs_formatted,
-            "format_instructions": self.parser.get_format_instructions()
-        })
+        async with log_duration(logger, "Reflection Node Chain Call", session_id=state.session_id):
+            decision: ReflectionDecision = await self.chain.ainvoke({
+                "user_query": user_query,
+                "step_outputs": step_outputs_formatted,
+                "format_instructions": self.parser.get_format_instructions()
+            })
 
-        logger.info("ReflectionNode decision: %s | Reason: %s", decision.decision, decision.reason)
+        logger.info(
+            "\n" + "-"*80 + "\n"
+            "[REFLECTION NODE] DECISION RENDERED\n"
+            f"Session ID: {state.session_id}\n"
+            f"Decision: {decision.decision.upper()}\n"
+            f"Reason: {decision.reason}\n"
+            f"Clarification Question: {decision.clarification_question or 'None'}\n"
+            + "-"*80
+        )
 
         result = {
             "reflection_decision": decision

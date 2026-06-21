@@ -38,12 +38,6 @@ def get_default_tools_registry():
             "returns": {"course_id": "str", "doctor_name": "str", "hours": "int", "price": "int"}
         },
         {
-            "name": "get_lecture_whole_content_by_lecture_id",
-            "desc": "Retrieves the complete, raw content of a lecture.",
-            "args": {"lecture_id": "str"},
-            "returns": {"lecture_content": "str"}
-        },
-        {
             "name": "get_lecture_summary_by_lecture_id",
             "desc": "Retrieves a summarized version of a lecture.",
             "args": {"lecture_id": "str"},

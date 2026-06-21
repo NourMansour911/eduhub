@@ -24,29 +24,37 @@ class SQLTools:
 		course_name: str,
 	) -> StepOutput:
 
-		courses = await self.sql_server_calling.get_student_courses(student_id)
+		try:
+			courses = await self.sql_server_calling.get_student_courses(student_id)
 
-		resolved_course = await self.name_resolver.resolve_best_match_with_threshold(
-			items=courses,
-			query_name=course_name,
-			name_key="name",
-			id_key="course_id",
-			threshold=0.3,
-		)
+			resolved_course = await self.name_resolver.resolve_best_match_with_threshold(
+				items=courses,
+				query_name=course_name,
+				name_key="name",
+				id_key="course_id",
+				threshold=0.3,
+			)
 
-		if resolved_course is None:
+			if resolved_course is None:
+				failure_info = FailureInfo(
+					message="No matching course was found.",
+					clarification_message="Please provide the course name more accurately.",
+					explanation="The requested course could not be matched against the student's enrolled courses.",
+				)
+				content = {}
+			else:
+				failure_info = None
+				content = {
+					"course_id": resolved_course["id"],
+					"course_name": resolved_course["name"],
+				}
+		except Exception as exc:
 			failure_info = FailureInfo(
-				message="No matching course was found.",
-				clarification_message="Please provide the course name more accurately.",
-				explanation="The requested course could not be matched against the student's enrolled courses.",
+				message="Database temporarily down.",
+				clarification_message="We cannot check your enrolled courses right now. Please try again later.",
+				explanation=str(exc),
 			)
 			content = {}
-		else:
-			failure_info = None
-			content = {
-				"course_id": resolved_course["id"],
-				"course_name": resolved_course["name"],
-			}
 
 		return StepOutput(
 			step_id=step_id,
@@ -67,29 +75,37 @@ class SQLTools:
 		lecture_name: str,
 	) -> StepOutput:
 
-		lectures = await self.sql_server_calling.get_course_lectures(course_id)
+		try:
+			lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
-		resolved_lecture = await self.name_resolver.resolve_best_match_with_threshold(
-			items=lectures,
-			query_name=lecture_name,
-			name_key="title",
-			id_key="id",
-			threshold=0.3,
-		)
+			resolved_lecture = await self.name_resolver.resolve_best_match_with_threshold(
+				items=lectures,
+				query_name=lecture_name,
+				name_key="title",
+				id_key="id",
+				threshold=0.3,
+			)
 
-		if resolved_lecture is None:
+			if resolved_lecture is None:
+				failure_info = FailureInfo(
+					message="No matching lecture was found.",
+					clarification_message="Please provide the lecture name more accurately.",
+					explanation="The requested lecture could not be matched against the lectures available in the course.",
+				)
+				content = {}
+			else:
+				failure_info = None
+				content = {
+					"lecture_id": resolved_lecture["id"],
+					"lecture_name": resolved_lecture["title"],
+				}
+		except Exception as exc:
 			failure_info = FailureInfo(
-				message="No matching lecture was found.",
-				clarification_message="Please provide the lecture name more accurately.",
-				explanation="The requested lecture could not be matched against the lectures available in the course.",
+				message="Database temporarily down.",
+				clarification_message="We cannot check lectures right now. Please try again later.",
+				explanation=str(exc),
 			)
 			content = {}
-		else:
-			failure_info = None
-			content = {
-				"lecture_id": resolved_lecture["id"],
-				"lecture_name": resolved_lecture["title"],
-			}
 
 		return StepOutput(
 			step_id=step_id,
@@ -109,18 +125,26 @@ class SQLTools:
 		course_id: str,
 	) -> StepOutput:
 
-		course_details = await self.sql_server_calling.get_course_details(course_id)
+		try:
+			course_details = await self.sql_server_calling.get_course_details(course_id)
 
-		if not course_details:
+			if not course_details:
+				failure_info = FailureInfo(
+					message="Course details were not found.",
+					clarification_message="Please verify the course identifier.",
+					explanation="No course record exists for the provided course ID.",
+				)
+				content = {}
+			else:
+				failure_info = None
+				content = course_details
+		except Exception as exc:
 			failure_info = FailureInfo(
-				message="Course details were not found.",
-				clarification_message="Please verify the course identifier.",
-				explanation="No course record exists for the provided course ID.",
+				message="Database temporarily down.",
+				clarification_message="We cannot check course details right now. Please try again later.",
+				explanation=str(exc),
 			)
 			content = {}
-		else:
-			failure_info = None
-			content = course_details
 
 		return StepOutput(
 			step_id=step_id,
@@ -139,22 +163,30 @@ class SQLTools:
 		student_id: str,
 	) -> StepOutput:
 
-		courses: list[dict[str, Any]] = (
-			await self.sql_server_calling.get_student_courses(student_id)
-		)
+		try:
+			courses: list[dict[str, Any]] = (
+				await self.sql_server_calling.get_student_courses(student_id)
+			)
 
-		if not courses:
+			if not courses:
+				failure_info = FailureInfo(
+					message="No courses were found for this student.",
+					clarification_message="Please verify the student identifier.",
+					explanation="The student is not enrolled in any courses or the student record was not found.",
+				)
+				content = {}
+			else:
+				failure_info = None
+				content = {
+					"courses": courses,
+				}
+		except Exception as exc:
 			failure_info = FailureInfo(
-				message="No courses were found for this student.",
-				clarification_message="Please verify the student identifier.",
-				explanation="The student is not enrolled in any courses or the student record was not found.",
+				message="Database temporarily down.",
+				clarification_message="We cannot retrieve your courses right now. Please try again later.",
+				explanation=str(exc),
 			)
 			content = {}
-		else:
-			failure_info = None
-			content = {
-				"courses": courses,
-			}
 
 		return StepOutput(
 			step_id=step_id,
@@ -173,20 +205,28 @@ class SQLTools:
 		course_id: str,
 	) -> StepOutput:
 
-		lectures = await self.sql_server_calling.get_course_lectures(course_id)
+		try:
+			lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
-		if not lectures:
+			if not lectures:
+				failure_info = FailureInfo(
+					message="No lectures were found for this course.",
+					clarification_message="Please verify the course identifier.",
+					explanation="No lectures exist for the given course ID.",
+				)
+				content = {}
+			else:
+				failure_info = None
+				content = {
+					"lectures": lectures, 
+				}
+		except Exception as exc:
 			failure_info = FailureInfo(
-				message="No lectures were found for this course.",
-				clarification_message="Please verify the course identifier.",
-				explanation="No lectures exist for the given course ID.",
+				message="Database temporarily down.",
+				clarification_message="We cannot retrieve lectures right now. Please try again later.",
+				explanation=str(exc),
 			)
 			content = {}
-		else:
-			failure_info = None
-			content = {
-				"lectures": lectures, 
-			}
 
 		return StepOutput(
 			step_id=step_id,

@@ -1,4 +1,17 @@
-from typing import Any, List
+import time
+import contextlib
+from typing import Any, List, AsyncGenerator
+
+@contextlib.asynccontextmanager
+async def log_duration(logger: Any, action_name: str, session_id: str = "Unknown") -> AsyncGenerator[None, None]:
+    start_time = time.time()
+    logger.info(f"[Session: {session_id}] Starting {action_name}")
+    try:
+        yield
+    finally:
+        duration = time.time() - start_time
+        logger.info(f"[Session: {session_id}] {action_name} completed in {duration:.2f}s")
+
 
 
 def format_step_output(out: Any) -> str:

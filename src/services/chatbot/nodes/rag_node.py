@@ -26,8 +26,9 @@ class RAGNode:
         logger.info("RAGNode invoking subgraph with %d previous turns.", len(serialized_prev))
 
         subgraph_result = await self.rag_subgraph.ainvoke({
-            "user_query": state.user_query,
+            "user_query": state.standalone_query or state.user_query,
             "student_id": state.student_id,
+            "session_id": state.session_id,
             "student_courses": state.student_courses,
             "messages_history": state.messages_history,
             "previous_steps_outputs": serialized_prev,

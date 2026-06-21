@@ -19,10 +19,10 @@ class SqlServerCalling:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
-                return response.json()
+                return response.json()["data"]
         except httpx.HTTPError as e:
             logger.error(f"Error fetching course details: {e}")
-            return {}
+            raise e
 
     async def get_student_courses(self, student_id: str) -> list[dict[str, Any]]:
         url = f"{self.base_url}/get_student_courses.php"
@@ -31,10 +31,10 @@ class SqlServerCalling:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
-                return response.json()
+                return response.json()["data"]
         except httpx.HTTPError as e:
             logger.error(f"Error fetching student courses: {e}")
-            return []
+            raise e
 
     async def get_course_lectures(self, course_id: str) -> list[dict[str, Any]]:
         url = f"{self.base_url}/get_course_lectures.php"
@@ -43,7 +43,7 @@ class SqlServerCalling:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
-                return response.json()
+                return response.json()["data"]
         except httpx.HTTPError as e:
             logger.error(f"Error fetching course lectures: {e}")
-            return []
+            raise e

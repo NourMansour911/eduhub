@@ -66,7 +66,6 @@ class RAGSubgraph:
             "search_in_sessions_history": vdb_tools.search_in_sessions_history,
             "ask_in_legal_regulations": vdb_tools.ask_in_legal_regulations,
 
-            "get_lecture_whole_content_by_lecture_id": mongodb_tools.get_lecture_whole_content_by_lecture_id,
             "get_lecture_summary_by_lecture_id": mongodb_tools.get_lecture_summary_by_lecture_id,
 
             "get_lecture_id_by_lecture_name": sql_tools.get_lecture_id_by_lecture_name,

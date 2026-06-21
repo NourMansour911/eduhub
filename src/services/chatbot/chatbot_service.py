@@ -22,6 +22,8 @@ from services.summarize.summarize_service import SummarizeService
 from .agents.rag.builder import build_rag_subgraph
 from .builder import build_chatbot_graph
 from .chatbot_exceptions import ChatbotExternalError, ChatbotProcessingError, ChatbotValidationError
+from .chains.summary_chain import build_summary_chain
+from .chains.persona_chain import build_persona_chain
 
 from services.chatbot.agents.rag.retrieving.sql.sql_server_calling import SqlServerCalling
 
@@ -58,6 +60,9 @@ class ChatbotService:
         )
 
         llm_map = {
+            "orchestrator": lc_openai_client.get_langchain_llm(
+                model=settings.GENERATION_MODEL_ID, temperature=0.0
+            ),
             "answering": lc_openai_client.get_langchain_llm(
                 model=settings.GENERATION_MODEL_ID, temperature=0.7
             ),
@@ -82,6 +87,8 @@ class ChatbotService:
             rag_subgraph=self.rag_subgraph,
             redis_provider=self.redis_provider,
         )
+        self.summary_chain = build_summary_chain(llm_map["summary"])
+        self.persona_chain = build_persona_chain(llm_map["persona"])
 
     async def chat(self, payload: ChatRequest, student_id: str, session_id: str) -> ChatResponse:
         student_id = (student_id or "").strip()
@@ -107,13 +114,14 @@ class ChatbotService:
         if not collection.student_courses:
             logger.info("student_courses not found in Redis, retrieving from SQL server for student_id: %s", student_id)
             try:
-                courses = self.sql_tools.sql_server_calling.get_student_courses(student_id)
+                courses = await self.sql_tools.sql_server_calling.get_student_courses(student_id)
+                courses_str = ", ".join([f"{c.get('name', 'Unknown')}(ID:{c.get('course_id', 'Unknown')})" for c in courses])
+                if not courses_str:
+                    courses_str = "No enrolled courses"
             except Exception as exc:
-                raise ChatbotExternalError(
-                    message="Failed to retrieve student courses from SQL",
-                    details={"student_id": student_id, "error": str(exc)},
-                ) from exc
-            courses_str = ", ".join([f"{c.get('name', 'Unknown')}(ID:{c.get('course_id', 'Unknown')})" for c in courses])
+                logger.warning("Failed to retrieve student courses from SQL. Error: %s. Falling back to placeholder.", exc)
+                courses_str = "Information temporarily unavailable"
+            
             collection.student_courses = courses_str
             logger.info("Cached formatted student_courses: %s", courses_str)
         else:
@@ -123,11 +131,12 @@ class ChatbotService:
         logger.info("Retrieved last %d turns of step outputs.", len(previous_steps_outputs))
 
         raw_history = collection.messages or []
-        last_2_messages = []
-        for msg in raw_history[-2:]:
+        last_messages = []
+        for msg in raw_history[-6:]:
             role = "Human" if msg.get("role") == "user" else "AI"
-            last_2_messages.append({"role": role, "content": msg.get("content", "")})
-        logger.info("Formatted last 2 messages of chat history: %s", last_2_messages)
+            content = msg.get("content", "")
+            last_messages.append({"role": role, "content": content})
+        logger.info("Formatted last messages of chat history: %s", last_messages)
 
         try:
             graph_result = await self.chatbot_graph.ainvoke({
@@ -135,7 +144,7 @@ class ChatbotService:
                 "student_id": student_id,
                 "session_id": session_id,
                 "student_courses": collection.student_courses,
-                "messages_history": last_2_messages,
+                "messages_history": last_messages,
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
                 "previous_steps_outputs": previous_steps_outputs,
@@ -151,8 +160,6 @@ class ChatbotService:
 
         collection.messages.append({"role": "user", "content": payload.message})
         collection.messages.append({"role": "assistant", "content": ai_reply})
-        collection.persona = graph_result.get("user_persona")
-        collection.summary = graph_result.get("session_summary")
 
         # Deduplicate step outputs so we only store newly executed, unique step outputs
         existing_step_keys = set()
@@ -188,7 +195,66 @@ class ChatbotService:
             answer=ai_reply,
         ))
 
+        needs_persona_update = graph_result.get("needs_persona_update", False)
+        needs_summary_update = graph_result.get("needs_summary_update", False)
+
+        if needs_persona_update or needs_summary_update:
+            batch_history_str = ""
+            for msg in collection.messages[-8:]:
+                role = "User" if msg.get("role") == "user" else "AI"
+                batch_history_str += f"{role}: {msg.get('content', '')}\n"
+
+            asyncio.create_task(self._update_persona_and_summary_background(
+                student_id=student_id,
+                session_id=session_id,
+                user_query=payload.message,
+                batch_history_str=batch_history_str,
+                current_persona=collection.persona,
+                current_summary=collection.summary,
+                run_persona=needs_persona_update,
+                run_summary=needs_summary_update
+            ))
+
         return ChatResponse(ai_response=ai_reply)
+
+    async def _update_persona_and_summary_background(
+        self, student_id: str, session_id: str, user_query: str,
+        batch_history_str: str, current_persona: str, current_summary: str,
+        run_persona: bool, run_summary: bool
+    ) -> None:
+        try:
+            logger.info("Starting background update for persona/summary (dynamic mode). run_persona=%s, run_summary=%s", run_persona, run_summary)
+            
+            tasks = []
+            if run_summary:
+                tasks.append(self.summary_chain.ainvoke({
+                    "old_summary": current_summary,
+                    "new_messages": batch_history_str,
+                }))
+            else:
+                tasks.append(asyncio.sleep(0))
+                
+            if run_persona:
+                tasks.append(self.persona_chain.ainvoke({
+                    "user_persona": current_persona,
+                    "messages_history": batch_history_str,
+                    "user_query": user_query,
+                }))
+            else:
+                tasks.append(asyncio.sleep(0))
+            
+            new_summary, persona_decision = await asyncio.gather(*tasks)
+            
+            collection = await self.redis_provider.get_collection(user_id=student_id, session_id=session_id)
+            if collection:
+                if run_summary and new_summary:
+                    collection.summary = new_summary
+                if run_persona and persona_decision and persona_decision.should_update and persona_decision.updated_persona:
+                    collection.persona = persona_decision.updated_persona
+                await self.redis_provider.save_collection(collection, session_id=session_id)
+                logger.info("Background update for persona/summary completed successfully.")
+        except Exception as exc:
+            logger.error("Failed background update for persona and summary: %s", exc, exc_info=True)
 
     async def _push_llm_judge(self, user_query: str, context: str, answer: str) -> None:
         try:

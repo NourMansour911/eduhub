@@ -1,0 +1,7 @@
+project-includes = ["**/*.py"]
+
+search-path = [
+  "C:\\Users\\nourm\\miniconda3\\envs\\agentic\\Lib\\site-packages"
+]
+preset = "basic"
+python = "C:\\Users\\nourm\\miniconda3\\envs\\agentic\\python.exe"

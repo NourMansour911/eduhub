@@ -10,8 +10,9 @@ class ChatbotState(BaseModel):
     student_courses: str = ""
     user_persona: Optional[str] = None
     session_summary: Optional[str] = None
-    should_update_persona: bool = False
-    should_update_summary: bool = False
+    standalone_query: Optional[str] = None
+    needs_persona_update: bool = False
+    needs_summary_update: bool = False
     messages_history: List[Any] = Field(default_factory=list)
     previous_steps_outputs: List[List[StepOutput]] = Field(default_factory=list)
     retrieved_context: Optional[str] = None

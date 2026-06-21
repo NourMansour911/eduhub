@@ -32,9 +32,20 @@ class PlannerOutput(BaseModel):
 
 
 class ReflectionDecision(BaseModel):
-    decision: Literal["success", "replan", "clarification"]
-    reason: str
-    clarification_question: Optional[str] = None
+    decision: Literal["success", "replan", "clarification"] = Field(
+        ...,
+        description="'success' if the requested type of data was successfully returned (even if dummy/test data); "
+                    "'replan' if key entities are missing or tools failed; "
+                    "'clarification' if context is too ambiguous to decide."
+    )
+    reason: str = Field(
+        ...,
+        description="Explanation of the choice, detailing what key info was found or what is missing if replanning."
+    )
+    clarification_question: Optional[str] = Field(
+        default=None,
+        description="Question to ask the user if decision is 'clarification'."
+    )
 
 
 class RAGSubgraphOutput(BaseModel):
@@ -48,6 +59,7 @@ class RAGSubgraphOutput(BaseModel):
 class RAGSubgraphState(BaseModel):
     user_query: str
     student_id: str
+    session_id: str = Field(default="", description="ID of the chat session")
     student_courses: str = Field(default="", description="Compact string of student courses")
     previous_attempts: List[StepOutput] = Field(default_factory=list, description="Step outputs of previous attempts in the current run")
     messages_history: List[Any] = Field(default_factory=list, description="Recent messages from the conversation history")
