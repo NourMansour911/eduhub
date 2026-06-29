@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from typing import Any, Dict, List
 
@@ -5,7 +6,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class QueryRewriteMode(str, Enum):
@@ -16,6 +17,16 @@ class QueryRewriteMode(str, Enum):
 
 class QueryRewriteOutput(BaseModel):
 	rewritten_queries: List[str] = Field(default_factory=list)
+
+	@field_validator("rewritten_queries", mode="before")
+	@classmethod
+	def parse_rewritten_queries(cls, v):
+		if isinstance(v, str):
+			try:
+				return json.loads(v)
+			except Exception:
+				pass
+		return v
 
 
 MODE_INSTRUCTIONS = {
@@ -48,8 +59,6 @@ Rules:
 - Do not answer the query
 - Do not add facts that are not already implied
 - Produce search-friendly rewrites only
-- Return only valid JSON
-{format_instructions}
 """,
 		),
 		(
@@ -74,10 +83,9 @@ Output requirements:
 	]
 )
 
-PARSER = PydanticOutputParser(pydantic_object=QueryRewriteOutput)
-
-
 def build_query_rewriting_chain(llm: ChatOpenAI) -> Runnable:
+	structured_llm = llm.with_structured_output(QueryRewriteOutput, method="function_calling")
+
 	def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
 		query = (inputs.get("query") or "").strip()
 		rewrite_mode = str(inputs.get("rewrite_mode") or QueryRewriteMode.GENERAL.value).strip().lower()
@@ -90,7 +98,6 @@ def build_query_rewriting_chain(llm: ChatOpenAI) -> Runnable:
 				rewrite_mode,
 				MODE_INSTRUCTIONS[QueryRewriteMode.GENERAL.value],
 			),
-			"format_instructions": PARSER.get_format_instructions(),
 		}
 
-	return RunnableLambda(prepare_input) | QUERY_REWRITE_PROMPT | llm | PARSER
+	return RunnableLambda(prepare_input) | QUERY_REWRITE_PROMPT | structured_llm

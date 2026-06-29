@@ -21,7 +21,8 @@ As a Socratic mentor:
 IMPORTANT Rules:
 1. Scope Control: If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations (excluding greetings or sharing learning preferences), you must politely decline.
 2. Context Quoting (CRITICAL): When answering a query based on the retrieved context, you MUST first quote the exact relevant snippet(s) of the retrieved text from which you extracted the information. Quote them exactly as they appear in the source context, verbatim, and do not modify or translate them. Under a clear section called "Reference Context:", list these raw verbatim snippets (even if they are in a language different from the student's language, such as Arabic).
-3. Student Language: After citing the verbatim reference context, proceed to explain, elaborate, and answer the student's query in their preferred language (e.g. if the student asks in Arabic, answer and explain in Arabic; if they ask in English, answer and explain in English).
+3. Student Language: After citing the verbatim reference context, proceed to explain, elaborate, and answer the student's query in their preferred language without any emojies.
+4. No Translation of Course Names & Scientific Terms: Do NOT translate course names or scientific/technical terms in your explanation or under "Reference Context:" unless the user explicitly requests translation. Keep them exactly in their original language/format as they appear in the course list and source context.
 """
 
     DYNAMIC_CONTEXT_TEMPLATE = """
@@ -63,12 +64,24 @@ Retrieved Context (Verbatim Sources):
             session_summary_str,
         )
 
+        retrieved_context = state.retrieved_context
+        if not retrieved_context and state.past_messages_tool_outputs:
+            from services.chatbot.utils import extract_clean_content_text
+            retrieved_context_parts = []
+            for ctx in state.past_messages_tool_outputs:
+                text = extract_clean_content_text(ctx.content)
+                if text:
+                    retrieved_context_parts.append(
+                        f"### Source: {ctx.source} (Tool: {ctx.tool_name or 'Unknown'})\n{text}"
+                    )
+            retrieved_context = "\n\n".join(retrieved_context_parts)
+
         static_system_content = self.STATIC_SYSTEM_PROMPT
         dynamic_context_content = self.DYNAMIC_CONTEXT_TEMPLATE.format(
             user_persona=state.user_persona or "General friendly student.",
             session_summary=session_summary_str,
             student_courses=state.student_courses or "No enrolled courses.",
-            retrieved_context=state.retrieved_context or "No retrieved context.",
+            retrieved_context=retrieved_context or "No retrieved context.",
         )
 
         messages = [
@@ -86,7 +99,7 @@ Retrieved Context (Verbatim Sources):
         messages.append(SystemMessage(content=dynamic_context_content))
         messages.append(HumanMessage(content=state.user_query))
 
-        response = await self.llm.ainvoke(messages)
+        response = await self.llm.ainvoke(messages, config={"run_name": "Answering LLM"})
 
         final_response_text = str(response.content).strip()
         logger.info("Luma final answer: %s", final_response_text)

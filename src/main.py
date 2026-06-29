@@ -27,6 +27,8 @@ from orchestrators.lecture_orchestrator import LectureOrchestrator
 from services.chatbot.chatbot_service import ChatbotService
 
 import os
+if "SSL_CERT_FILE" in os.environ and not os.path.exists(os.environ["SSL_CERT_FILE"]):
+    del os.environ["SSL_CERT_FILE"]
 
 settings = get_settings()
 os.environ["LANGCHAIN_TRACING_V2"] = "true"

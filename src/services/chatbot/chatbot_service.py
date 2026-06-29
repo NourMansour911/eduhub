@@ -21,6 +21,7 @@ from services.summarize.summarize_service import SummarizeService
 
 from .agents.rag.builder import build_rag_subgraph
 from .builder import build_chatbot_graph
+from services.session.session_exceptions import SessionNotFoundError
 from .chatbot_exceptions import ChatbotExternalError, ChatbotProcessingError, ChatbotValidationError
 from .chains.summary_chain import build_summary_chain
 from .chains.persona_chain import build_persona_chain
@@ -62,16 +63,16 @@ class ChatbotService:
 
         llm_map = {
             "orchestrator": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0, max_tokens=150
+                model=settings.GENERATION_MODEL_ID, temperature=0.0
             ),
             "answering": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.7, max_tokens=1500
+                model=settings.GENERATION_MODEL_ID, temperature=0.7
             ),
             "summary": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.2, max_tokens=300
+                model=settings.GENERATION_MODEL_ID, temperature=0.2
             ),
             "persona": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.1, max_tokens=250
+                model=settings.GENERATION_MODEL_ID, temperature=0.1
             ),
         }
 
@@ -140,7 +141,10 @@ class ChatbotService:
 
         collection = await self.redis_provider.get_collection(user_id=student_id, session_id=session_id)
         if collection is None:
-            collection = RedisSessionDTO(user_id=student_id)
+            raise SessionNotFoundError(
+                message="Active session not found. Please start a session before chatting.",
+                details={"student_id": student_id, "session_id": session_id}
+            )
 
         student_courses = await self._get_and_cache_student_courses(student_id, collection)
 
@@ -170,8 +174,9 @@ class ChatbotService:
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
                 "past_messages_tool_outputs": past_messages_tool_outputs,
-            })
+            }, config={"run_name": "Chatbot Graph Main Run"})
         except Exception as exc:
+            logger.exception("Chatbot graph invocation failed")
             raise ChatbotProcessingError(
                 message="Chatbot graph execution failed",
                 details={"student_id": student_id, "session_id": session_id, "error": str(exc)},
@@ -180,8 +185,12 @@ class ChatbotService:
         ai_reply = graph_result.get("response") or "I'm sorry, I could not generate a response."
         logger.info("Chatbot graph result response: %s", ai_reply)
 
+        # Validate and clean the response via Pydantic model validation
+        response_obj = ChatResponse(ai_response=ai_reply)
+        cleaned_reply = response_obj.ai_response
+
         collection.messages.append({"role": "user", "content": user_query})
-        collection.messages.append({"role": "assistant", "content": ai_reply})
+        collection.messages.append({"role": "assistant", "content": cleaned_reply})
 
         run_step_outputs = graph_result.get("run_step_outputs") or []
         self._update_session_contexts(collection, run_step_outputs)
@@ -195,7 +204,7 @@ class ChatbotService:
         asyncio.create_task(self._push_llm_judge(
             user_query=user_query,
             context=graph_result.get("retrieved_context") or "",
-            answer=ai_reply,
+            answer=cleaned_reply,
         ))
 
         needs_persona_update = graph_result.get("needs_persona_update", False)
@@ -218,7 +227,7 @@ class ChatbotService:
                 run_summary=needs_summary_update
             ))
 
-        return ChatResponse(ai_response=ai_reply)
+        return response_obj
 
     async def _update_persona_and_summary_background(
         self, student_id: str, session_id: str, user_query: str,
@@ -233,7 +242,7 @@ class ChatbotService:
                 tasks.append(self.summary_chain.ainvoke({
                     "old_summary": current_summary,
                     "new_messages": batch_history_str,
-                }))
+                }, config={"run_name": "Update Session Summary Chain"}))
             else:
                 tasks.append(asyncio.sleep(0))
                 
@@ -242,7 +251,7 @@ class ChatbotService:
                     "user_persona": current_persona,
                     "messages_history": batch_history_str,
                     "user_query": user_query,
-                }))
+                }, config={"run_name": "Update Student Persona Chain"}))
             else:
                 tasks.append(asyncio.sleep(0))
             

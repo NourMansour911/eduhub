@@ -25,6 +25,7 @@ class RedisProvider:
     async def disconnect(self) -> None:
         if self.client:
             await self.client.close()
+            await self.client.connection_pool.disconnect()
         self.client = None
 
     def _ensure_client(self) -> redis.Redis:

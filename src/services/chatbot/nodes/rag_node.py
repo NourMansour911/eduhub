@@ -28,7 +28,7 @@ class RAGNode:
             "student_courses": state.student_courses,
             "messages_history": state.messages_history,
             "past_messages_tool_outputs": serialized_prev,
-        })
+        }, config={"run_name": "RAG Subgraph Run"})
 
         retriving_results: RAGSubgraphOutput = subgraph_result.get("retriving_results")
         if not retriving_results:

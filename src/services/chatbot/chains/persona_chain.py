@@ -21,16 +21,14 @@ Conversation History (last 4 messages):
 {messages_history}
 
 Latest User Query: {user_query}
-
-{format_instructions}
 """
 
 PROMPT = ChatPromptTemplate.from_template(SYSTEM_TMPL)
 
 
 def build_persona_chain(llm: ChatOpenAI) -> Runnable:
-    parser = PydanticOutputParser(pydantic_object=PersonaUpdateDecision)
-    prompt = PROMPT.partial(format_instructions=parser.get_format_instructions())
+    structured_llm = llm.with_structured_output(PersonaUpdateDecision, method="function_calling")
+    prompt = PROMPT
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         user_persona = (inputs.get("user_persona") or "General friendly student.").strip()
@@ -42,4 +40,4 @@ def build_persona_chain(llm: ChatOpenAI) -> Runnable:
             "user_query": user_query,
         }
 
-    return RunnableLambda(prepare_input) | prompt | llm | parser
+    return RunnableLambda(prepare_input) | prompt | structured_llm

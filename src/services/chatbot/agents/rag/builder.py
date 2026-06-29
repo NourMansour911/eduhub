@@ -10,11 +10,11 @@ from .nodes.planner import PlannerNode
 from .nodes.executer import ExecutorNode
 from .nodes.reflection import ReflectionNode
 from core import Settings
-
+from helpers.logger import get_chatbot_logger
 from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
-from services.chatbot.utils import extract_clean_content_text, get_chatbot_logger, deduplicate_tool_outputs
+from services.chatbot.utils import extract_clean_content_text,  deduplicate_tool_outputs
 
 logger = get_chatbot_logger(__name__)
 
@@ -94,7 +94,7 @@ class RAGSubgraph:
 
         workflow.add_edge("finalize_and_aggregate", END)
 
-        return workflow.compile()
+        return workflow.compile(name="RAGSubgraph")
 
     def _route_after_planner(self, state: RAGSubgraphState) -> Literal["executor", "route_to_clarification"]:
         if not state.planner_output or state.planner_output.status == "clarification":
@@ -127,8 +127,6 @@ class RAGSubgraph:
             ctx for ctx in all_raw
             if ctx.failure_info is None or ctx.failure_info.clarification_message is not None
         ]
-
-        
         unique_contexts = deduplicate_tool_outputs(filtered_contexts)
 
         retrieved_context_parts = []
@@ -140,6 +138,16 @@ class RAGSubgraph:
                 )
         retrieved_context = "\n\n".join(retrieved_context_parts)
 
+        
+        current_run_raw = []
+        current_run_raw.extend(state.past_attempts_tool_outputs)
+        current_run_raw.extend(state.current_attempt_tool_outputs)
+        current_run_filtered = [
+            ctx for ctx in current_run_raw
+            if ctx.failure_info is None or ctx.failure_info.clarification_message is not None
+        ]
+        current_run_unique = deduplicate_tool_outputs(current_run_filtered)
+
         if state.plan_attempts_count >= 3 and state.reflection_decision and state.reflection_decision.decision == "replan":
             status = "failed"
             error_message = "Exceeded the maximum number of plan attempts (3) without finding a satisfactory answer."
@@ -147,10 +155,14 @@ class RAGSubgraph:
         elif state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
             clarification_question = state.reflection_decision.clarification_question
+            if not clarification_question:
+                clarification_question = "Could you please clarify your question or provide more details?"
             logger.info("RAG Subgraph requested clarification from reflection: %s", clarification_question)
         elif state.planner_output and state.planner_output.status == "clarification":
             status = "clarification"
             clarification_question = state.planner_output.clarification_question
+            if not clarification_question:
+                clarification_question = f"Could you please specify which course or topic you are referring to? (Your enrolled courses are: {state.student_courses})"
             logger.info("RAG Subgraph requested clarification from planner: %s", clarification_question)
 
         logger.info("RAG Subgraph execution concluded. Status: %s | Deduplicated sources: %d", status, len(unique_contexts))
@@ -159,7 +171,7 @@ class RAGSubgraph:
             "retriving_results": RAGSubgraphOutput(
                 status=status,
                 retrieved_context=retrieved_context,
-                run_step_outputs=unique_contexts,
+                run_step_outputs=current_run_unique,
                 clarification_question=clarification_question,
                 error_message=error_message,
             )

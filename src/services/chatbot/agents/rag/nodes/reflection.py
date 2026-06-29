@@ -19,9 +19,6 @@ Look at the retrieved context (Step Outputs) and determine if it contains enough
 Rules:
 1. Do NOT scrutinize the semantic meaning/correctness of the returned data. Only check if the requested type of output (e.g. summaries, course details) was successfully returned.
 2. Return 'success' even if the data seems incorrect, unrelated, or like dummy test data.
-
-Output Schema:
-{format_instructions}
 """
 
     DYNAMIC_CONTEXT_TEMPLATE = """
@@ -36,21 +33,18 @@ Step Outputs of Previous Messages:
 """
 
     def __init__(self, llm: ChatOpenAI):
-        self.parser = PydanticOutputParser(pydantic_object=ReflectionDecision)
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
-        ]).partial(
-            format_instructions=self.parser.get_format_instructions()
-        )
-        self.chain = self.prompt | llm | self.parser
+        ])
+        self.chain = self.prompt | llm.with_structured_output(ReflectionDecision, method="function_calling")
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         user_query = state.user_query
         current_attempt = state.current_attempt_tool_outputs
         
-        current_attempt_formatted = "\n\n".join([format_step_output(out, for_planning=True) for out in current_attempt]) if current_attempt else "No step outputs."
-        past_messages_formatted = format_nested_step_outputs(state.past_messages_tool_outputs, for_planning=True)
+        current_attempt_formatted = "\n\n".join([format_step_output(out, for_planning=False) for out in current_attempt]) if current_attempt else "No step outputs."
+        past_messages_formatted = format_nested_step_outputs(state.past_messages_tool_outputs, for_planning=False)
 
         logger.info(
             "\n" + "="*80 + "\n"
@@ -68,8 +62,7 @@ Step Outputs of Previous Messages:
                 "user_query": user_query,
                 "current_attempt_tool_outputs": current_attempt_formatted,
                 "past_messages_tool_outputs": past_messages_formatted,
-                "format_instructions": self.parser.get_format_instructions()
-            })
+            }, config={"run_name": f"Reflection Chain Run (Attempt {state.plan_attempts_count})"})
 
         logger.info(
             "\n" + "-"*80 + "\n"

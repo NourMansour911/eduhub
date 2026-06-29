@@ -8,7 +8,7 @@ SRC_DIR = ROOT_DIR / "src"
 
 os.environ.setdefault("APP_NAME", "test_eduhub")
 os.environ.setdefault("APP_VERSION", "test_0.0.0")
-os.environ.setdefault("STORAGE_PATH", str(ROOT_DIR / "storage"))
+os.environ.setdefault("STORAGE_PATH", str(SRC_DIR / "storage"))
 os.environ.setdefault("MONGODB_URL", "mongodb://localhost:27017")
 os.environ.setdefault("MONGO_DB_NAME", "test_eduhub")
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")

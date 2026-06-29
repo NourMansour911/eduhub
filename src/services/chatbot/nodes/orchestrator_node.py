@@ -13,7 +13,7 @@ from ..utils import format_messages_history
 logger = get_chatbot_logger(__name__)
 
 class RouteDecision(BaseModel):
-    needs_retrieval: bool = Field(..., description="True if the query requires fetching details about academic subjects, courses, lectures, documents, or history search. False for greetings, chit-chat, or questions fully answered by the enrolled courses list.")
+    needs_retrieval: bool = Field(..., description="True if the query requires fetching new details from the database about academic subjects, courses, lectures, documents, or history. False for greetings, chit-chat, follow-up questions on already discussed/retrieved topics, or questions fully answered by the enrolled courses list.")
     standalone_query: str = Field(..., description="Context-resolved version of the query with pronouns replaced by actual subjects.")
     needs_persona_update: bool = Field(..., description="True if the user shares learning preferences, background, or goals.")
     needs_summary_update: bool = Field(..., description="True if a new topic is introduced or a milestone is reached.")
@@ -21,14 +21,12 @@ class RouteDecision(BaseModel):
 class OrchestratorNode:
     STATIC_SYSTEM_PROMPT = """
 You are a Router and Query Rewriter for an educational chatbot system.
-Analyze the query, session summary, and conversation history, and return a JSON conforming to the schema.
+Analyze the query, session summary, and conversation history.
 
 Guidelines:
 1. Set needs_retrieval=False if the query only lists, counts, or checks enrolled courses (already available downstream).
 2. Resolve pronouns in the standalone_query.
-
-Output Schema:
-{format_instructions}
+3. Set needs_retrieval=False if the query is a follow-up question (e.g. asking for clarification, explanation, translation, or more examples) about a topic/concept that has already been discussed in the conversation history.
 """
 
     DYNAMIC_CONTEXT_TEMPLATE = """
@@ -41,14 +39,11 @@ Current User Query: {user_query}
 """
 
     def __init__(self, llm: ChatOpenAI):
-        self.parser = PydanticOutputParser(pydantic_object=RouteDecision)
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
-        ]).partial(
-            format_instructions=self.parser.get_format_instructions()
-        )
-        self.chain = self.prompt | llm | self.parser
+        ])
+        self.chain = self.prompt | llm.with_structured_output(RouteDecision, method="function_calling")
 
     async def __call__(self, state: ChatbotState) -> Dict[str, Any]:
         logger.info("OrchestratorNode invoked. Query: %s", state.user_query)

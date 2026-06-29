@@ -1,5 +1,6 @@
+import json
 from typing import Any, Dict, List, Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class FailureInfo(BaseModel):
@@ -23,11 +24,31 @@ class PlanStep(BaseModel):
     args: Dict[str, Any] = Field(default_factory=dict)
     depends_on: List[str] = Field(default_factory=list, description="IDs of steps this step depends on")
 
+    @field_validator("args", "depends_on", mode="before")
+    @classmethod
+    def parse_json_fields(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                pass
+        return v
+
 
 class PlannerOutput(BaseModel):
     status: Literal["plan", "clarification"] = Field(..., description="Whether a plan was generated or clarification is needed")
     steps: Optional[List[PlanStep]] = Field(default=None, description="The list of steps if status is 'plan'")
     clarification_question: Optional[str] = Field(default=None, description="The question if status is 'clarification'")
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def parse_steps(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                pass
+        return v
 
 
 class ReflectionDecision(BaseModel):

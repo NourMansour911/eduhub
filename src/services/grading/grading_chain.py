@@ -78,10 +78,6 @@ CRITICAL RULES:
 - Partial answers must not be over-scored
 
 ---------------------------------------
-
-Output rules:
-- Return ONLY valid JSON
-{format_instructions}
 """
 ),
 (
@@ -100,24 +96,20 @@ STUDENT ANSWER:
 ]
 )
 
-parser = PydanticOutputParser(pydantic_object=GradingOutput)
-
 def build_requery_chain(llm: ChatOpenAI) -> Runnable:
+    structured_llm = llm.with_structured_output(GradingOutput, method="function_calling")
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "question": inputs["question"],
             "reference_answer": inputs["reference_answer"],
             "student_answer": inputs["student_answer"],
-            "format_instructions": parser.get_format_instructions()
         }
 
     chain = (
         RunnableLambda(prepare_input)
         | GRADING_PROMPT
-        | llm
-        | parser
-
+        | structured_llm
     )
 
     return chain

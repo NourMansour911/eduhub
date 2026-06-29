@@ -33,17 +33,17 @@ LEVEL_INSTRUCTIONS = {
 Level: Quick Revision Notes
 
 Purpose:
-Ultra-compressed recall notes for final exam revision.
+Ultra-compressed recall notes for final exam revision. Must be extremely short.
 
 Requirements:
-- Bullet points only
-- Each bullet captures one complete key concept
-- Keep bullets concise but meaningful
-- Preserve technical precision
+- Bullet points only (strictly between 3 to 5 bullet points in total)
+- Ultra-short: Total summary must be under 80 words
+- Each bullet captures one complete key concept in a single concise sentence
 - Remove examples, side details, repetition, and elaboration
 - Prioritize definitions, formulas, relationships, and classifications
 
 Do NOT:
+- Exceed 5 bullet points or 80 words in total
 - Output isolated keywords
 - Break meaning through over-compression
 - Explain beyond recall-level detail

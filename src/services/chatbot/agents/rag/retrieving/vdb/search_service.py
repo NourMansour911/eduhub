@@ -165,7 +165,7 @@ class SearchService:
 		for item in results or []:
 			payload = VDBSearchResultPayload(
 				id=str(item.get("id", "")),
-				relevance_score=item.get("score"),
+				relevance_score=round(item.get("score"), 2),
 				text=str(item.get("text", "")),
 				metadata=item.get("metadata", {}) if isinstance(item.get("metadata", {}), dict) else {},
 			)
@@ -203,7 +203,8 @@ class SearchService:
 					"query": query,
 					"rewrite_mode": mode_key,
 					"rewrite_count": rewrite_count,
-				}
+				},
+				config={"run_name": f"Query Rewriting Chain Run ({mode_key})"}
 			)
 			generated = getattr(response, "rewritten_queries", []) or []
 		except Exception as exc:

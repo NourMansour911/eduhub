@@ -18,17 +18,14 @@ You are a DAG planner. Convert the user request to a tool plan DAG or clarificat
 
 Rules:
 1. Student ID is implicitly "$student_id"; never ask for it.
-2. Match course names in the query to IDs in 'Enrolled Courses' (e.g., "Data Mining" -> course_id="IS422P"). Do not guess; clarify if ambiguous.
+2. Match course names in the query to IDs in 'Enrolled Courses' (e.g., "Data Mining" -> course_id="IS422P"). Do not guess; clarify if ambiguous by setting status="clarification" and providing a clear question in 'clarification_question' asking the student which enrolled course they mean.
 3. Pass data between steps using "$step_id.output_key" (matching the exact returns schema in Tools Registry, e.g. "$step_1.lectures[0].id").
-4. Only assist with topics/courses in 'Enrolled Courses'. If user asks outside of these, output status="clarification" with a polite response.
+4. Only assist with topics/courses in 'Enrolled Courses'. If user asks outside of these, output status="clarification" and provide a polite decline response in 'clarification_question'.
 5. Simple greetings/chit-chat require no tools; output status="plan" with steps=[].
 6. Adjust plan based on execution history/failures.
 
 Tools Registry:
 {tools_registry}
-
-Output Schema:
-{format_instructions}
 """
 
     DYNAMIC_CONTEXT_TEMPLATE = """
@@ -46,16 +43,14 @@ Current User Query: {user_query}
 """
 
     def __init__(self, llm: ChatOpenAI):
-        self.parser = PydanticOutputParser(pydantic_object=PlannerOutput)
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
         ]).partial(
-            format_instructions=self.parser.get_format_instructions(),
             tools_registry=lambda: json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2)
         )
         
-        self.chain = self.prompt | llm | self.parser
+        self.chain = self.prompt | llm.with_structured_output(PlannerOutput, method="function_calling")
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         past_attempts = list(state.past_attempts_tool_outputs)
@@ -94,7 +89,7 @@ Current User Query: {user_query}
                 "past_messages_tool_outputs": past_messages_formatted,
                 "reflection_feedback": reflection_feedback,
                 "student_courses": state.student_courses
-            })
+            }, config={"run_name": f"Planner Chain Run (Attempt {state.plan_attempts_count})"})
 
         steps_logged = []
         if planner_output.steps:

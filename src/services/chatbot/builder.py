@@ -52,7 +52,7 @@ class ChatbotGraph:
         workflow.add_edge("rag_node", "answering")
         workflow.add_edge("answering", END)
 
-        return workflow.compile()
+        return workflow.compile(name="ChatbotGraph")
 
 
 

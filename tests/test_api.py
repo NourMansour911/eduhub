@@ -21,12 +21,17 @@ from routers.assistant_router import assistant_route
 from routers.grading_router import grading_route
 from routers.vectordb_router import vectordb_route
 from routers.session_router import session_route
-from orchestrators import get_lecture_orchestrator
 from services.lectures import lecture_service
-from services.summarize import get_summarize_service
-from services.grading import get_set_reference_service, get_set_score_service
-from services.vdb_service import get_vdb_service
-from core.request_dependencies import get_chatbot_service, get_session_service
+from core.request_dependencies import (
+    get_chatbot_service,
+    get_session_service,
+    get_lecture_orchestrator,
+    get_summarize_service,
+    get_set_reference_service,
+    get_set_score_service,
+    get_vdb_service,
+    get_lecture_service,
+)
 
 TEST_course_ID = "test_course"
 TEST_LECTURE_ID = "test_lecture"
@@ -219,7 +224,7 @@ def client(
 
     app.dependency_overrides[get_settings] = lambda: _DummySettings()
     app.dependency_overrides[get_lecture_orchestrator] = lambda: mock_lecture_orchestrator
-    app.dependency_overrides[lecture_service.get_lecture_service] = lambda: mock_lecture_service
+    app.dependency_overrides[get_lecture_service] = lambda: mock_lecture_service
     app.dependency_overrides[get_summarize_service] = lambda: mock_summarize_service
     app.dependency_overrides[get_set_reference_service] = lambda: mock_set_reference_service
     app.dependency_overrides[get_set_score_service] = lambda: mock_set_score_service
@@ -361,10 +366,7 @@ class TestAssistantEndpoints:
             "length": 0,
         }
         response = client.post("/assistant/summarize", json=payload)
-        data = response.json()
-        
-        assert "summary" in data
-        assert isinstance(data["summary"], str)
+        assert response.text == "This is a test summary."
 
     def test_post_chat_returns_200(self, client):
         """Test that chat endpoint returns 200 status."""
@@ -382,9 +384,7 @@ class TestAssistantEndpoints:
             f"/assistant/chat/{TEST_USER_ID}/{TEST_SESSION_ID}",
             json=payload
         )
-        data = response.json()
-        
-        assert "ai_response" in data
+        assert response.text == "Test AI response"
 
 
 class TestGradingEndpoints:
