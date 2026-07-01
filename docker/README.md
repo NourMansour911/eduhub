@@ -1,6 +1,6 @@
 # Docker Setup for EduHub
 
-This directory contains the Docker setup for the EduHub project with a pre-built image and all required services (API, MongoDB, Qdrant, Redis, Nginx).
+This directory contains the Docker setup for the EduHub project with a pre-built image and all required services (API, MongoDB, Qdrant, Redis).
 
 ---
 
@@ -31,8 +31,7 @@ The `docker-compose.example.yml` sets up these services:
 
 | Service | Image | Purpose | Port |
 |---------|-------|---------|------|
-| **API** | `nourmansour41/eduhub:latest` | FastAPI backend with Uvicorn | 8000 |
-| **Nginx** | `nginx:latest` | Reverse proxy & load balancer | 80 |
+| **API** | `nourmansour41/eduhub:latest` | FastAPI backend with Uvicorn | 81 |
 | **MongoDB** | `mongo:7.0` | Document database | 27017 |
 | **Qdrant** | `qdrant/qdrant:latest` | Vector database for embeddings | 6333 |
 | **Redis** | `redis:7-alpine` | Cache & session store | 6379 |
@@ -43,9 +42,8 @@ All services run on the `eduhub-network` bridge network and persist data using n
 
 Once running, access your services here:
 
-- **API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Nginx (Root)**: http://localhost
+- **API**: http://localhost:81
+- **API Documentation**: http://localhost:81/docs
 - **Qdrant Dashboard**: http://localhost:6333/dashboard
 - **MongoDB**: `mongodb://localhost:27017` (credentials from `.env.mongodb`)
 - **Redis**: `redis://localhost:6379` (password from `.env.redis`)
@@ -111,8 +109,6 @@ services:
 
 ### Build & Run
 
-### Build & Run
-
 From the project root run (recommended):
 
 ```bash
@@ -133,7 +129,7 @@ docker compose up --build -d
 To start only core services:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d api nginx mongodb qdrant redis
+docker compose -f docker/docker-compose.yml up -d api mongodb qdrant redis
 ```
 
 If you run into dependency/startup ordering issues, start databases first then the app:
@@ -143,8 +139,8 @@ If you run into dependency/startup ordering issues, start databases first then t
 docker compose -f docker/docker-compose.yml up -d mongodb qdrant redis
 # Wait for readiness (adjust sleep as needed)
 sleep 20
-# Start API and proxy
-docker compose -f docker/docker-compose.yml up -d --build api nginx
+# Start API
+docker compose -f docker/docker-compose.yml up -d --build api
 ```
 
 ### Development Workflow
@@ -213,13 +209,3 @@ docker compose -f docker/docker-compose.yml logs --tail=200 redis
 ```bash
 docker compose -f docker/docker-compose.yml down -v --remove-orphans
 ```
-
----
-
-## Notes
-
-If you want, I can:
-
-- add small healthchecks to the `docker-compose.yml` for mongodb/qdrant/redis;
-- add a simple `wait-for` script in the API image to block startup until DBs are reachable;
-- run a local `docker compose up --build` here and report build logs (if you permit running commands).

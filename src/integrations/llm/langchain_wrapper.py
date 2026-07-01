@@ -13,6 +13,7 @@ class LCOpenAI:
         model: str,
         temperature: float = 0.2,
         max_tokens: int = None,
+        max_retries: int = 3,
         top_p: float = None,
         
     ) -> ChatOpenAI:
@@ -21,6 +22,7 @@ class LCOpenAI:
             model=model,
             api_key=self.api_key,
             base_url=self.api_url,
+            max_retries=max_retries,
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
