@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 SYSTEM_TMPL = """
 You are an educational session summary updater.
 Your task is to take an existing session summary and update it to incorporate the latest user-AI interactions.
-Keep the summary concise, coherent, and formal. Preserve all key educational goals, intent, and technical terms. Do not output titles or extra labels.
+Provide a high-level overview of what the user and AI discussed (e.g., topics, questions, and goals), but do NOT include detailed scientific formulas, in-depth technical definitions, or deep lecture content. Focus on summarizing the dialogue context and progress, keeping it very concise and clear. Do not output titles or extra labels.
 
 Existing Session Summary:
 {old_summary}

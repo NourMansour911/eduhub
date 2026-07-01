@@ -56,8 +56,8 @@ async def chat(
     "/persona/{user_id}",
     summary="Delete student persona",
     description=(
-        "Deletes the stored persona for a given user from MongoDB. "
-        "This operation is blocked if the user has any active session in Redis — "
+        "Deletes the stored persona for a given user from the database. "
+        "This operation is blocked if the user has any active session — "
         "you must end all sessions first before deleting the persona."
     ),
     response_model=DeletePersonaResponse,

@@ -49,10 +49,10 @@ async def end_session(
 
 @session_route.delete(
     "/delete",
-    summary="Delete session from Qdrant",
+    summary="Delete session from vector database",
     description=(
-        "Deletes the archived session vectors from Qdrant vector database. "
-        "Blocked if the session is currently active in Redis."
+        "Deletes the archived session vectors from the vector database. "
+        "Blocked if the session is currently active."
     ),
     response_model=DeleteSessionResponse,
 )
@@ -66,7 +66,7 @@ async def delete_session(
         user_id=user_id,
         session_id=session_id,
         deleted=True,
-        message=f"Session '{session_id}' vectors have been successfully deleted from Qdrant."
+        message=f"Session '{session_id}' vectors have been successfully deleted from the vector database."
     )
 
 

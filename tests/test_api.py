@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from unittest.mock import AsyncMock, MagicMock
 
-# Setup path before imports
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
@@ -76,7 +76,7 @@ def mock_lecture_service():
             "lecture_name": "Test Lecture",
             "course_id": TEST_course_ID,
             "course_name": "Test course",
-            "content": {"pages": []},
+            "content": "Test lecture content",
             "summaries": {},
         }
     )
@@ -142,14 +142,14 @@ def mock_vdb_service():
             "chunks": [],
         }
     )
-    mock.get_collection_info = MagicMock(
+    mock.get_collection_info = AsyncMock(
         return_value={
             "collection_name": TEST_COLLECTION_NAME,
             "vector_size": 768,
             "chunk_count": 0,
         }
     )
-    mock.get_chunks = MagicMock(
+    mock.get_chunks = AsyncMock(
         return_value={
             "collection_name": TEST_COLLECTION_NAME,
             "page": 1,
@@ -160,7 +160,7 @@ def mock_vdb_service():
             "chunks": [],
         }
     )
-    mock.delete_collection = MagicMock(
+    mock.delete_collection = AsyncMock(
         return_value={
             "collection_name": TEST_COLLECTION_NAME,
             "deleted": True,
@@ -197,6 +197,13 @@ def mock_session_service():
             "status": "session ended",
             "user_id": TEST_USER_ID,
             "session_id": TEST_SESSION_ID,
+        }
+    )
+    mock.delete_session = AsyncMock(
+        return_value={
+            "collection_name": "sessions",
+            "deleted": True,
+            "result": {"status": "completed"}
         }
     )
     return mock
@@ -366,7 +373,7 @@ class TestAssistantEndpoints:
             "length": 0,
         }
         response = client.post("/assistant/summarize", json=payload)
-        assert response.text == "This is a test summary."
+        assert response.json()["summary"] == "This is a test summary."
 
     def test_post_chat_returns_200(self, client):
         """Test that chat endpoint returns 200 status."""
@@ -384,7 +391,7 @@ class TestAssistantEndpoints:
             f"/assistant/chat/{TEST_USER_ID}/{TEST_SESSION_ID}",
             json=payload
         )
-        assert response.text == "Test AI response"
+        assert response.json()["ai_response"] == "Test AI response"
 
 
 class TestGradingEndpoints:
@@ -495,3 +502,30 @@ class TestVectorDBEndpoints:
         
         assert "collection_name" in data
         assert "deleted" in data
+
+
+class TestSessionEndpoints:
+    """Test suite for session management endpoints."""
+
+    def test_post_start_session_returns_200(self, client, mock_session_service):
+        mock_session_service.start_session.return_value = {"cache_key": "session:test_user:test_session"}
+        response = client.post(f"/session/{TEST_USER_ID}/{TEST_SESSION_ID}/start")
+        assert response.status_code == 200
+
+    def test_post_end_session_returns_200(self, client, mock_session_service):
+        mock_session_service.end_session.return_value = {
+            "summary": "Session ended summary",
+            "vdb_record_id": "vdb_1"
+        }
+        response = client.post(f"/session/{TEST_USER_ID}/{TEST_SESSION_ID}/end")
+        assert response.status_code == 200
+
+    def test_delete_session_returns_200(self, client, mock_session_service):
+        mock_session_service.delete_session.return_value = {
+            "collection_name": "sessions",
+            "deleted": True,
+            "result": {"status": "completed"}
+        }
+        response = client.delete(f"/session/{TEST_USER_ID}/{TEST_SESSION_ID}/delete")
+        assert response.status_code == 200
+        assert response.json()["deleted"] is True

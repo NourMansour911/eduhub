@@ -7,7 +7,7 @@ class SessionRequest(BaseModel):
     session_id: str = Field(..., description="Unique identifier for the session being started.")
 
 class SessionStartResponse(BaseModel):
-    cache_key: str = Field(..., description="Key for the session data stored in Redis.")
+    cache_key: str = Field(..., description="Key for the session data stored in the cache.")
 
 class SessionEndResponse(BaseModel):
     summary: str = Field(..., description="Summary of the session content.")

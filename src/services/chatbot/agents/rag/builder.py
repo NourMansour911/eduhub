@@ -149,9 +149,10 @@ class RAGSubgraph:
         current_run_unique = deduplicate_tool_outputs(current_run_filtered)
 
         if state.plan_attempts_count >= 3 and state.reflection_decision and state.reflection_decision.decision == "replan":
-            status = "failed"
+            status = "clarification"
+            clarification_question = "I couldn't retrieve the exact information after multiple attempts. Could you please clarify your question or provide more details?"
             error_message = "Exceeded the maximum number of plan attempts (3) without finding a satisfactory answer."
-            logger.warning("RAG Subgraph failed: %s", error_message)
+            logger.warning("RAG Subgraph replan attempts exhausted. Routing to clarification: %s", error_message)
         elif state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"
             clarification_question = state.reflection_decision.clarification_question

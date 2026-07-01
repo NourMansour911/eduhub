@@ -21,8 +21,9 @@ INTEGRATIONS_LOG_FILE = os.path.join(LOG_DIR, "integrations.log")
 class PrettyFormatter(logging.Formatter):
     """Custom formatter that automatically pretty-prints JSON strings and dict/list objects."""
     def format(self, record):
-        # Store original message to avoid mutating it permanently for other handlers
+        # Store original message and args to avoid mutating them permanently for other handlers
         orig_msg = record.msg
+        orig_args = record.args
         
         # Check if message is a string that looks like JSON
         if isinstance(record.msg, str):
@@ -42,32 +43,67 @@ class PrettyFormatter(logging.Formatter):
         
         # Also handle arguments if they contain dict/list/json
         if record.args:
-            new_args = []
-            for arg in record.args:
-                if isinstance(arg, (dict, list)):
+            if isinstance(record.args, dict):
+                # If it's a dict, we need to check if the message uses named format specifiers (e.g. %(name)s)
+                # If it's positional (no '%(' in msg), the whole dict is a single positional argument.
+                if isinstance(record.msg, str) and '%(' in record.msg:
+                    new_args = {}
+                    for k, v in record.args.items():
+                        if isinstance(v, (dict, list)):
+                            try:
+                                new_args[k] = json.dumps(v, indent=2, ensure_ascii=False)
+                            except Exception:
+                                new_args[k] = v
+                        elif isinstance(v, str):
+                            stripped = v.strip()
+                            if (stripped.startswith('{') and stripped.endswith('}')) or (stripped.startswith('[') and stripped.endswith(']')):
+                                try:
+                                    parsed = json.loads(v)
+                                    new_args[k] = json.dumps(parsed, indent=2, ensure_ascii=False)
+                                except Exception:
+                                    new_args[k] = v
+                            else:
+                                new_args[k] = v
+                        else:
+                            new_args[k] = v
+                    record.args = new_args
+                else:
+                    # Treat the entire dict as a single positional argument
                     try:
-                        new_args.append(json.dumps(arg, indent=2, ensure_ascii=False))
+                        pretty_dict = json.dumps(record.args, indent=2, ensure_ascii=False)
+                        record.args = (pretty_dict,)
                     except Exception:
-                        new_args.append(arg)
-                elif isinstance(arg, str):
-                    stripped = arg.strip()
-                    if (stripped.startswith('{') and stripped.endswith('}')) or (stripped.startswith('[') and stripped.endswith(']')):
+                        record.args = (record.args,)
+            else:
+                new_args = []
+                for arg in record.args:
+                    if isinstance(arg, (dict, list)):
                         try:
-                            parsed = json.loads(arg)
-                            new_args.append(json.dumps(parsed, indent=2, ensure_ascii=False))
+                            new_args.append(json.dumps(arg, indent=2, ensure_ascii=False))
                         except Exception:
+                            new_args.append(arg)
+                    elif isinstance(arg, str):
+                        stripped = arg.strip()
+                        if (stripped.startswith('{') and stripped.endswith('}')) or (stripped.startswith('[') and stripped.endswith(']')):
+                            try:
+                                parsed = json.loads(arg)
+                                new_args.append(json.dumps(parsed, indent=2, ensure_ascii=False))
+                            except Exception:
+                                new_args.append(arg)
+                        else:
                             new_args.append(arg)
                     else:
                         new_args.append(arg)
-                else:
-                    new_args.append(arg)
-            record.args = tuple(new_args)
+                record.args = tuple(new_args)
 
-        result = super().format(record)
-        
-        # Restore original message and args
-        record.msg = orig_msg
+        try:
+            result = super().format(record)
+        finally:
+            # Restore original message and args
+            record.msg = orig_msg
+            record.args = orig_args
         return result
+
 
 
 def _setup_logger(logger_name: str, file_path: str, console_level: int = logging.INFO, file_level: int = logging.DEBUG) -> logging.Logger:

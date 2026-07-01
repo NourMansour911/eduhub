@@ -108,7 +108,7 @@ class SessionService:
             )
         except Exception as exc:
             raise SessionProcessingError(
-                message="Failed to archive session into Qdrant",
+                message="Failed to archive session into the vector database",
                 details={
                     "user_id": user_id,
                     "session_id": session_id,
@@ -145,29 +145,58 @@ class SessionService:
         if is_active:
             raise SessionProcessingError(
                 message=(
-                    f"Cannot delete session '{session_id}' for user '{user_id}' because the session is currently active in Redis. "
+                    f"Cannot delete session '{session_id}' for user '{user_id}' because the session is currently active. "
                     "You must end the session first using the /session/{{user_id}}/{{session_id}}/end endpoint before deleting it from the vector database."
                 ),
                 details={"user_id": user_id, "session_id": session_id, "reason": "session_is_active"},
             )
 
+        # Check if the collection exists first
+        collection_exists = await self.vdb_service.vdb_client.is_collection_existed(self.COLLECTION_NAME)
+        if not collection_exists:
+            raise SessionNotFoundError(
+                message=f"Session '{session_id}' for user '{user_id}' was not found in the vector database.",
+                details={"user_id": user_id, "session_id": session_id}
+            )
+
+        filters = [
+            {"field": "session_id", "value": session_id, "op": "eq"},
+            {"field": "user_id", "value": user_id, "op": "eq"}
+        ]
+
+        # Check if the session exists in Qdrant
         try:
-            filters = [
-                {"field": "session_id", "value": session_id, "op": "eq"},
-                {"field": "user_id", "value": user_id, "op": "eq"}
-            ]
+            existing_chunks = await self.vdb_service.vdb_client.get_collection_chunks(
+                collection_name=self.COLLECTION_NAME,
+                limit=1,
+                filters=filters
+            )
+        except Exception as exc:
+            logger.exception("Failed to query session existence in the vector database")
+            raise SessionProcessingError(
+                message="An unexpected error occurred while checking session existence in the vector database.",
+                details={"user_id": user_id, "session_id": session_id, "error": str(exc)},
+            ) from exc
+
+        if not existing_chunks.get("chunks"):
+            raise SessionNotFoundError(
+                message=f"Session '{session_id}' for user '{user_id}' was not found in the vector database.",
+                details={"user_id": user_id, "session_id": session_id}
+            )
+
+        try:
             delete_result = await self.vdb_service.delete_by_filter(
                 collection_name=self.COLLECTION_NAME,
                 filters=filters
             )
-            logger.info("Delete session vectors from Qdrant completed. Result: %s", delete_result)
+            logger.info("Delete session vectors from the vector database completed. Result: %s", delete_result)
             
             return delete_result
             
         except Exception as exc:
-            logger.exception("Failed to delete session vectors from Qdrant")
+            logger.exception("Failed to delete session vectors from the vector database")
             raise SessionProcessingError(
-                message="An unexpected error occurred while deleting the session from Qdrant.",
+                message="An unexpected error occurred while deleting the session from the vector database.",
                 details={"user_id": user_id, "session_id": session_id, "error": str(exc)},
             ) from exc
 

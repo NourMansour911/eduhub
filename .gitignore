@@ -5,3 +5,4 @@ logs/
 __pycache__/
 *.py[cod]
 deploy/
+tests/test_logger.py
