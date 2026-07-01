@@ -9,8 +9,11 @@ from integrations.redis_provider import RedisProvider
 from integrations.llm import LCOpenAI
 from models import LLMJudgeInputModel
 from repositories.llm_judge_repo import LLMJudgeRepo
+from repositories.student_persona_repo import StudentPersonaRepo
 from schemas import ChatRequest, ChatResponse
+from schemas.assistant_schema import DeletePersonaResponse
 from dtos.redis_session_dto import RedisSessionDTO
+from services.service_exceptions import NotFoundError, ProcessingError
 
 from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
@@ -43,11 +46,14 @@ class ChatbotService:
         summarize_service: SummarizeService,
         redis_provider: RedisProvider,
         llm_judge_repo: LLMJudgeRepo,
+        student_persona_repo: StudentPersonaRepo,
     ) -> None:
         sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
         self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
         self.redis_provider = redis_provider
         self.llm_judge_repo = llm_judge_repo
+        self.student_persona_repo = student_persona_repo
+
 
         search_service = SearchService(
             vdb_client=vdb_client,
@@ -279,3 +285,56 @@ class ChatbotService:
             logger.info("LLM judge sample pushed to MongoDB.")
         except Exception as exc:
             logger.warning("Failed to push LLM judge sample to MongoDB: %s", exc)
+
+    async def delete_student_persona(self, user_id: str) -> DeletePersonaResponse:
+
+        user_id = (user_id or "").strip()
+        if not user_id:
+            raise ChatbotValidationError(
+                message="User ID is required.",
+                details={"user_id": user_id}
+            )
+
+        logger.info("Persona deletion request initiated for user: %s", user_id)
+
+        try:
+            has_active = await self.redis_provider.has_active_sessions(user_id)
+            if has_active:
+                raise ProcessingError(
+                    message=(
+                        f"Cannot delete persona for user '{user_id}' because there are active sessions running in Redis. "
+                        "Please end all active sessions first using the session router, then try again."
+                    ),
+                    details={"user_id": user_id, "reason": "active_sessions_exist"},
+                )
+
+            persona_doc = await self.student_persona_repo.get_persona_by_student_id(user_id)
+            if persona_doc is None:
+                raise NotFoundError(
+                    message=f"No persona found for user '{user_id}' to delete.",
+                    details={"user_id": user_id},
+                )
+
+            deleted = await self.student_persona_repo.delete_persona(user_id)
+            if not deleted:
+                raise ProcessingError(
+                    message=f"Failed to delete persona for user '{user_id}'.",
+                    details={"user_id": user_id},
+                )
+
+            logger.info("Successfully deleted persona for user: %s", user_id)
+            return DeletePersonaResponse(
+                user_id=user_id,
+                deleted=True,
+                message=f"Persona for user '{user_id}' has been successfully deleted."
+            )
+
+        except (NotFoundError, ProcessingError, ChatbotValidationError):
+            raise
+        except Exception as exc:
+            logger.exception("Unexpected error while deleting persona for user %s", user_id)
+            raise ProcessingError(
+                message="An unexpected error occurred during persona deletion.",
+                details={"user_id": user_id, "error": str(exc)},
+            ) from exc
+

@@ -145,6 +145,7 @@ async def lifespan(app: FastAPI):
       summarize_service=app.state.summarize_service,
       redis_provider=app.state.redis_provider,
       llm_judge_repo=app.state.llm_judge_repo,
+      student_persona_repo=app.state.student_persona_repo,
   )
   logger.info("All services and orchestrators loaded successfully")
 

@@ -15,3 +15,10 @@ class SessionEndResponse(BaseModel):
         None,
         description="ID of the record stored in the vector database, if applicable.",
     )
+
+class DeleteSessionResponse(BaseModel):
+    user_id: str = Field(..., description="User ID associated with the session")
+    session_id: str = Field(..., description="ID of the deleted session")
+    deleted: bool = Field(..., description="Indicates if the deletion was successful")
+    message: str = Field(..., description="Status message")
+

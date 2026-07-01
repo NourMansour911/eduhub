@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path
 
 from helpers.logger import get_logger
-from schemas.session_schema import SessionEndResponse, SessionRequest, SessionStartResponse
+from schemas.session_schema import SessionEndResponse, SessionRequest, SessionStartResponse, DeleteSessionResponse
 from services.session.session_service import SessionService
 from core.request_dependencies import get_session_service
 
@@ -44,6 +44,29 @@ async def end_session(
 ):
     return await session_service.end_session(
         request=SessionRequest(user_id=user_id, session_id=session_id),
+    )
+
+
+@session_route.delete(
+    "/delete",
+    summary="Delete session from Qdrant",
+    description=(
+        "Deletes the archived session vectors from Qdrant vector database. "
+        "Blocked if the session is currently active in Redis."
+    ),
+    response_model=DeleteSessionResponse,
+)
+async def delete_session(
+    user_id: str = Path(..., description="User identifier for the session."),
+    session_id: str = Path(..., description="Session identifier."),
+    session_service: SessionService = Depends(get_session_service),
+):
+    await session_service.delete_session(user_id=user_id, session_id=session_id)
+    return DeleteSessionResponse(
+        user_id=user_id,
+        session_id=session_id,
+        deleted=True,
+        message=f"Session '{session_id}' vectors have been successfully deleted from Qdrant."
     )
 
 

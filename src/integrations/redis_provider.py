@@ -144,3 +144,14 @@ class RedisProvider:
     async def clear_session_collection(self, user_id: str, session_id: str) -> None:
         key = self.build_collection_key(user_id=user_id, session_id=session_id)
         await self.delete(key)
+
+    async def has_active_sessions(self, user_id: str) -> bool:
+        """Check if a user has any active session keys in Redis."""
+        pattern = f"user:{user_id}:session:*"
+        keys = await self._ensure_client().keys(pattern)
+        return len(keys) > 0
+
+    async def is_session_active(self, user_id: str, session_id: str) -> bool:
+        """Check if a specific session is currently active in Redis."""
+        key = self.build_collection_key(user_id=user_id, session_id=session_id)
+        return await self.get(key) is not None

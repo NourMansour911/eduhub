@@ -15,3 +15,8 @@ class ChatRequest(BaseModel):
     
 class ChatResponse(BaseModel):
     ai_response: Any = Field(..., description="Generated chat response")
+
+class DeletePersonaResponse(BaseModel):
+    user_id: str = Field(..., description="User ID whose persona was deleted")
+    deleted: bool = Field(..., description="Indicates if the deletion was successful")
+    message: str = Field(..., description="Status message")

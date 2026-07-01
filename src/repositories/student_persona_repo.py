@@ -48,3 +48,7 @@ class StudentPersonaRepo:
             {"$set": {"persona": persona}},
             upsert=True
         )
+
+    async def delete_persona(self, student_id: str) -> bool:
+        result = await self.collection.delete_one({"student_id": student_id})
+        return result.deleted_count > 0

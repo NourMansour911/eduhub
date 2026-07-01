@@ -4,9 +4,13 @@ from helpers.logger import get_logger
 from schemas import SummarizeRequest, SummarizeResponse
 from services.summarize.summarize_service import  SummarizeService
 from schemas import ChatRequest
-from schemas.assistant_schema import ChatResponse
+from schemas.assistant_schema import ChatResponse, DeletePersonaResponse
 from services.chatbot.chatbot_service import ChatbotService
-from core.request_dependencies import get_chatbot_service,get_summarize_service
+from core.request_dependencies import (
+	get_chatbot_service,
+	get_summarize_service,
+)
+from services.service_exceptions import NotFoundError, ProcessingError
 
 logger = get_logger(__name__)
 
@@ -14,6 +18,7 @@ assistant_route = APIRouter(
 	prefix="/assistant",
 	tags=["Assistant"],
 )
+
 
 
 @assistant_route.post(
@@ -45,4 +50,22 @@ async def chat(
 	service: ChatbotService = Depends(get_chatbot_service),
 ):
 	return await service.chat(chat_request, user_id, session_id)
+
+
+@assistant_route.delete(
+    "/persona/{user_id}",
+    summary="Delete student persona",
+    description=(
+        "Deletes the stored persona for a given user from MongoDB. "
+        "This operation is blocked if the user has any active session in Redis — "
+        "you must end all sessions first before deleting the persona."
+    ),
+    response_model=DeletePersonaResponse,
+)
+async def delete_persona(
+    user_id: str = Path(..., description="User identifier whose persona will be deleted."),
+    chatbot_service: ChatbotService = Depends(get_chatbot_service),
+):
+    return await chatbot_service.delete_student_persona(user_id)
+
 

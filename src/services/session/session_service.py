@@ -130,6 +130,47 @@ class SessionService:
             vdb_record_id=ids[0] if ids else None,
         )
 
+    async def delete_session(self, user_id: str, session_id: str):
+        user_id = (user_id or "").strip()
+        session_id = (session_id or "").strip()
+        if not user_id or not session_id:
+            raise SessionValidationError(
+                message="Both user_id and session_id are required to delete a session.",
+                details={"user_id": user_id, "session_id": session_id}
+            )
+
+        logger.info("Session deletion from Qdrant initiated. user_id: %s | session_id: %s", user_id, session_id)
+
+        is_active = await self.redis_provider.is_session_active(user_id, session_id)
+        if is_active:
+            raise SessionProcessingError(
+                message=(
+                    f"Cannot delete session '{session_id}' for user '{user_id}' because the session is currently active in Redis. "
+                    "You must end the session first using the /session/{{user_id}}/{{session_id}}/end endpoint before deleting it from the vector database."
+                ),
+                details={"user_id": user_id, "session_id": session_id, "reason": "session_is_active"},
+            )
+
+        try:
+            filters = [
+                {"field": "session_id", "value": session_id, "op": "eq"},
+                {"field": "user_id", "value": user_id, "op": "eq"}
+            ]
+            delete_result = await self.vdb_service.delete_by_filter(
+                collection_name=self.COLLECTION_NAME,
+                filters=filters
+            )
+            logger.info("Delete session vectors from Qdrant completed. Result: %s", delete_result)
+            
+            return delete_result
+            
+        except Exception as exc:
+            logger.exception("Failed to delete session vectors from Qdrant")
+            raise SessionProcessingError(
+                message="An unexpected error occurred while deleting the session from Qdrant.",
+                details={"user_id": user_id, "session_id": session_id, "error": str(exc)},
+            ) from exc
+
     def _build_session_text(self, messages: List[Dict[str, Any]]) -> str:
         rendered_messages: List[str] = []
         for index, message in enumerate(messages, start=1):
