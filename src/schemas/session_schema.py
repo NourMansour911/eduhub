@@ -22,3 +22,10 @@ class DeleteSessionResponse(BaseModel):
     deleted: bool = Field(..., description="Indicates if the deletion was successful")
     message: str = Field(..., description="Status message")
 
+
+class DeleteUserSessionsResponse(BaseModel):
+    user_id: str = Field(..., description="User ID associated with the deleted sessions")
+    deleted: bool = Field(..., description="Indicates if the deletion was successful")
+    message: str = Field(..., description="Status message")
+
+

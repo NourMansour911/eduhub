@@ -11,7 +11,7 @@ from repositories.lecture_repo import LectureRepo
 from repositories.llm_judge_repo import LLMJudgeRepo
 from repositories.student_persona_repo import StudentPersonaRepo
 from repositories.mongo_bootstrap import init_mongo_resources
-from routers import grading_router, home_router, lecture_router, session_router, vectordb_router,assistant_router
+from routers import grading_router, home_router, lecture_router, session_router, vectordb_router, assistant_router, user_router
 from integrations.redis_provider import RedisProvider
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory,LCOpenAI
@@ -166,3 +166,4 @@ app.include_router(lecture_router.lecture_route)
 app.include_router(session_router.session_route)
 app.include_router(vectordb_router.vectordb_route)
 app.include_router(assistant_router.assistant_route)
+app.include_router(user_router.user_route)

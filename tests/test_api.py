@@ -21,6 +21,7 @@ from routers.assistant_router import assistant_route
 from routers.grading_router import grading_route
 from routers.vectordb_router import vectordb_route
 from routers.session_router import session_route
+from routers.user_router import user_route
 from services.lectures import lecture_service
 from core.request_dependencies import (
     get_chatbot_service,
@@ -178,6 +179,13 @@ def mock_chatbot_service():
             "ai_response": "Test AI response",
         }
     )
+    mock.delete_student_persona = AsyncMock(
+        return_value={
+            "user_id": TEST_USER_ID,
+            "deleted": True,
+            "message": "Persona deleted",
+        }
+    )
     return mock
 
 
@@ -206,6 +214,13 @@ def mock_session_service():
             "result": {"status": "completed"}
         }
     )
+    mock.delete_user_sessions = AsyncMock(
+        return_value={
+            "collection_name": "sessions",
+            "deleted": True,
+            "result": {"status": "completed"}
+        }
+    )
     return mock
 
 
@@ -228,6 +243,7 @@ def client(
     app.include_router(grading_route)
     app.include_router(vectordb_route)
     app.include_router(session_route)
+    app.include_router(user_route)
 
     app.dependency_overrides[get_settings] = lambda: _DummySettings()
     app.dependency_overrides[get_lecture_orchestrator] = lambda: mock_lecture_orchestrator
@@ -528,4 +544,25 @@ class TestSessionEndpoints:
         }
         response = client.delete(f"/session/{TEST_USER_ID}/{TEST_SESSION_ID}/delete")
         assert response.status_code == 200
-        assert response.json()["deleted"] is True
+        assert response.json()["deleted"] is True
+
+    def test_delete_user_sessions_returns_200(self, client, mock_session_service):
+        mock_session_service.delete_user_sessions.return_value = {
+            "collection_name": "sessions",
+            "deleted": True,
+            "result": {"status": "completed"}
+        }
+        response = client.delete(f"/user/{TEST_USER_ID}/sessions")
+        assert response.status_code == 200
+        assert response.json()["deleted"] is True
+
+    def test_delete_user_persona_returns_200(self, client, mock_chatbot_service):
+        mock_chatbot_service.delete_student_persona.return_value = {
+            "user_id": TEST_USER_ID,
+            "deleted": True,
+            "message": "Persona deleted"
+        }
+        response = client.delete(f"/user/{TEST_USER_ID}/persona")
+        assert response.status_code == 200
+        assert response.json()["deleted"] is True
+

@@ -3,7 +3,6 @@
 from . import assistant_router
 from .assistant_router import chat
 from .assistant_router import summarize
-from .assistant_router import delete_persona
 from . import grading_router
 from .grading_router import grade_batch
 from .grading_router import set_reference_answer
@@ -24,6 +23,9 @@ from .vectordb_router import delete_collection
 from .vectordb_router import get_collection_chunks
 from .vectordb_router import get_collection_info
 from .vectordb_router import search_collection
+from . import user_router
+from .user_router import delete_user_sessions
+from .user_router import delete_persona
 
 
 __all__ = [
@@ -33,6 +35,7 @@ __all__ = [
     "lecture_router",
     "session_router",
     "vectordb_router",
+    "user_router",
     "chat",
     "delete_collection",
     "delete_lecture",
@@ -49,6 +52,7 @@ __all__ = [
     "start_session",
     "store_lecture",
     "summarize",
+    "delete_user_sessions",
     "delete_persona",
     "delete_session",
 ]

@@ -200,6 +200,73 @@ class SessionService:
                 details={"user_id": user_id, "session_id": session_id, "error": str(exc)},
             ) from exc
 
+    async def delete_user_sessions(self, user_id: str):
+        user_id = (user_id or "").strip()
+        if not user_id:
+            raise SessionValidationError(
+                message="user_id is required to delete all sessions.",
+                details={"user_id": user_id}
+            )
+
+        logger.info("Delete all sessions initiated for user_id: %s", user_id)
+
+
+        is_active = await self.redis_provider.has_active_sessions(user_id)
+        if is_active:
+            raise SessionProcessingError(
+                message=(
+                    f"Cannot delete sessions for user '{user_id}' because there are active sessions. "
+                    "You must end all active sessions first before deleting them from the vector database."
+                ),
+                details={"user_id": user_id, "reason": "user_has_active_sessions"},
+            )
+
+        collection_exists = await self.vdb_service.vdb_client.is_collection_existed(self.COLLECTION_NAME)
+        if not collection_exists:
+            raise SessionNotFoundError(
+                message=f"No sessions were found for user '{user_id}' in the vector database.",
+                details={"user_id": user_id}
+            )
+
+        filters = [
+            {"field": "user_id", "value": user_id, "op": "eq"}
+        ]
+
+        try:
+            existing_chunks = await self.vdb_service.vdb_client.get_collection_chunks(
+                collection_name=self.COLLECTION_NAME,
+                limit=1,
+                filters=filters
+            )
+        except Exception as exc:
+            logger.exception("Failed to query user sessions existence in the vector database")
+            raise SessionProcessingError(
+                message="An unexpected error occurred while checking user sessions existence in the vector database.",
+                details={"user_id": user_id, "error": str(exc)},
+            ) from exc
+
+        if not existing_chunks.get("chunks"):
+            raise SessionNotFoundError(
+                message=f"No sessions were found for user '{user_id}' in the vector database.",
+                details={"user_id": user_id}
+            )
+
+        try:
+            delete_result = await self.vdb_service.delete_by_filter(
+                collection_name=self.COLLECTION_NAME,
+                filters=filters
+            )
+            logger.info("Delete user sessions from the vector database completed. Result: %s", delete_result)
+            
+            return delete_result
+            
+        except Exception as exc:
+            logger.exception("Failed to delete user sessions from the vector database")
+            raise SessionProcessingError(
+                message="An unexpected error occurred while deleting the user's sessions from the vector database.",
+                details={"user_id": user_id, "error": str(exc)},
+            ) from exc
+
     def _build_session_text(self, messages: List[Dict[str, Any]]) -> str:
         rendered_messages: List[str] = []
         for index, message in enumerate(messages, start=1):
