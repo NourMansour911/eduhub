@@ -180,7 +180,7 @@ class ChatbotService:
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
                 "past_messages_tool_outputs": past_messages_tool_outputs,
-            }, config={"run_name": "Chatbot Graph Main Run"})
+            }, config={"run_name": "Chatbot Graph Run"})
         except Exception as exc:
             logger.exception("Chatbot graph invocation failed")
             raise ChatbotProcessingError(

@@ -20,15 +20,25 @@ def extract_clean_content_text(content: Any) -> str:
     if not isinstance(content, dict):
         return str(content)
         
+    items = None
     if "chunks" in content and isinstance(content["chunks"], list):
+        items = content["chunks"]
+    elif "retrieved_context" in content and isinstance(content["retrieved_context"], list):
+        items = content["retrieved_context"]
+
+    if items is not None:
         parts = []
-        for i, chunk in enumerate(content["chunks"], start=1):
+        for i, chunk in enumerate(items, start=1):
             if not isinstance(chunk, dict):
                 parts.append(str(chunk))
                 continue
             text = chunk.get("text", "")
-            meta = {k: v for k, v in chunk.items() if k != "text"}
-            meta_str = ", ".join(f"{k}: {v}" for k, v in meta.items()) if meta else ""
+            meta = chunk.get("metadata", {}) or {}
+            if not isinstance(meta, dict):
+                meta = {}
+            
+            meta_clean = {k: v for k, v in meta.items() if k != "chunk_id"}
+            meta_str = " | ".join(f"{k}: {v}" for k, v in meta_clean.items()) if meta_clean else ""
             header = f"[Chunk {i}]" + (f" ({meta_str})" if meta_str else "")
             parts.append(f"{header}\n{text}")
         return "\n\n".join(parts)

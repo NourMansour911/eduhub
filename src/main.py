@@ -1,8 +1,18 @@
+import os
+from core import get_settings
+settings = get_settings()
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
+os.environ["LANGCHAIN_PROJECT"] = settings.APP_NAME
+
+if "SSL_CERT_FILE" in os.environ and not os.path.exists(os.environ["SSL_CERT_FILE"]):
+    del os.environ["SSL_CERT_FILE"]
+
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
-from core import app_exception_handler,get_settings
+from core import app_exception_handler
 from core.app_exceptions import AppException
 from contextlib import asynccontextmanager
 from helpers.logger import get_logger
@@ -25,15 +35,6 @@ from services.grading.set_reference import SetReferenceService
 from services.grading.set_score import SetScoreService
 from orchestrators.lecture_orchestrator import LectureOrchestrator
 from services.chatbot.chatbot_service import ChatbotService
-
-import os
-if "SSL_CERT_FILE" in os.environ and not os.path.exists(os.environ["SSL_CERT_FILE"]):
-    del os.environ["SSL_CERT_FILE"]
-
-settings = get_settings()
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
-os.environ["LANGCHAIN_PROJECT"] = settings.APP_NAME
 
 logger = get_logger(__name__)
 

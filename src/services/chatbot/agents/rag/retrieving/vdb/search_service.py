@@ -44,6 +44,7 @@ class SearchService:
 		field_value: Any,
 		limit: int = 10,
 		query_text: str = "",
+		rewrite_mode: str = "lecture_search",
 	) -> List[VDBSearchResultPayload]:
 		if not (query_text and query_text.strip()):
 			raise ServiceException(details={"operation": "search_by_metadata_field", "error": "query_text is required"})
@@ -54,6 +55,7 @@ class SearchService:
 			query=search_query,
 			limit=limit,
 			filters=[{"field": field_name, "value": field_value, "op": "eq"}],
+			rewrite_mode=rewrite_mode,
 		)
 
 	async def search_by_metadata_range(
@@ -96,12 +98,14 @@ class SearchService:
 	) -> List[VDBSearchResultPayload]:
 		query = (query or "").strip()
 
+		logger.info(f"[Retrieval] Initiating search. Original Query: '{query}' | Rewrite Mode: {rewrite_mode} | Collection: {collection_name}")
 		rewritten_queries = await self._resolve_rewritten_queries(
 			query=query,
 			rewrite_mode=rewrite_mode,
 			rewritten_queries=rewritten_queries,
 		)
 		all_queries = [query] + [q for q in rewritten_queries if q and q.strip()]
+		logger.info(f"[Retrieval] Resolved queries for search execution: {all_queries}")
 
 		base_k = max(1, limit)
 		candidate_k = min(base_k * 4, 50)
@@ -127,24 +131,44 @@ class SearchService:
 					"error": str(exc),
 					"type": type(exc).__name__,
 				},
-			)
+			) from exc
 
 		if not candidates:
+			logger.info(f"[Retrieval] Retrieved 0 candidates for queries: {all_queries}")
 			return []
+
+		logger.info(f"[Retrieval] Retrieved {len(candidates)} candidate chunks from Vector DB.")
+		for idx, candidate in enumerate(candidates, start=1):
+			text_snippet = str(candidate.get("text", ""))[:100].replace("\n", " ")
+			logger.info(
+				f"[Retrieval] Candidate {idx}: Score: {candidate.get('score')} | "
+				f"ID: {candidate.get('id')} | Snippet: '{text_snippet}...' | "
+				f"Metadata: {candidate.get('metadata')}"
+			)
 
 		final_top_k = max(1, int(limit or 10))
 
 		cohere_key = self.settings.COHERE_API_KEY
 		if not cohere_key:
-			return self._normalize_vdb_results(candidates[:final_top_k])
+			results = self._normalize_vdb_results(candidates[:final_top_k])
+			logger.info(f"[Retrieval] Cohere Reranking skipped (no API key). Returning top {len(results)} base candidate results.")
+			return results
 
 		try:
+			logger.info(f"[Retrieating/Reranking] Sending {len(candidates)} candidates to Cohere Reranker with query: '{query}'")
 			reranker = Reranker(api_key=cohere_key)
 			reranked = await reranker.rerank(
 				query=query,
 				documents=candidates,
 				top_k=final_top_k,
 			)
+			logger.info(f"[Retrieating/Reranking] Reranker returned {len(reranked)} results.")
+			for idx, item in enumerate(reranked[:final_top_k], start=1):
+				text_snippet = str(item.get("text", ""))[:100].replace("\n", " ")
+				logger.info(
+					f"[Retrieating/Reranking] Reranked Top {idx}: Score: {item.get('score')} | "
+					f"ID: {item.get('id')} | Snippet: '{text_snippet}...'"
+				)
 			return self._normalize_vdb_results(reranked[:final_top_k])
 		except ServiceException:
 			raise
@@ -163,11 +187,12 @@ class SearchService:
 	def _normalize_vdb_results(self, results: List[Dict[str, Any]]) -> List[VDBSearchResultPayload]:
 		normalized_results: List[VDBSearchResultPayload] = []
 		for item in results or []:
+			metadata = item.get("metadata", {}) if isinstance(item.get("metadata", {}), dict) else {}
 			payload = VDBSearchResultPayload(
 				id=str(item.get("id", "")),
 				relevance_score=round(item.get("score"), 2),
 				text=str(item.get("text", "")),
-				metadata=item.get("metadata", {}) if isinstance(item.get("metadata", {}), dict) else {},
+				metadata=metadata,
 			)
 			normalized_results.append(payload)
 		return normalized_results

@@ -36,6 +36,7 @@ class VDBTools:
 				field_value=lecture_id,
 				limit=3,
 				query_text=query,
+				rewrite_mode="lecture_search",
 			)
 		)
 
@@ -98,6 +99,7 @@ class VDBTools:
 				field_value=course_id,
 				limit=5,
 				query_text=query,
+				rewrite_mode="lecture_search",
 			)
 		)
 
@@ -160,6 +162,7 @@ class VDBTools:
 				field_value=student_id,
 				limit=3,
 				query_text=query,
+				rewrite_mode="session_summary",
 			)
 		)
 
@@ -220,6 +223,7 @@ class VDBTools:
 				field_value="REG01",
 				limit=5,
 				query_text=query,
+				rewrite_mode="lecture_search",
 			)
 		)
 
