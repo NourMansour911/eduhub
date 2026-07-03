@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from helpers.logger import get_logger
 from repositories.answer_repo import AnswerRepo
 from repositories.lecture_repo import LectureRepo
-from repositories.llm_judge_repo import LLMJudgeRepo
+from repositories.evaluation_repo import EvaluationRepo
 from repositories.student_persona_repo import StudentPersonaRepo
 from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, session_router, vectordb_router, assistant_router, user_router
@@ -71,11 +71,11 @@ async def lifespan(app: FastAPI):
   app.state.mongo_db = app.state.mongo_client[settings.MONGO_DB_NAME]
   mongo_repos = await init_mongo_resources(
     app.state.mongo_db,
-    [AnswerRepo, LectureRepo, LLMJudgeRepo, StudentPersonaRepo],
+    [AnswerRepo, LectureRepo, EvaluationRepo, StudentPersonaRepo],
   )
   app.state.answer_repo = mongo_repos["AnswerRepo"]
   app.state.lecture_repo = mongo_repos["LectureRepo"]
-  app.state.llm_judge_repo = mongo_repos["LLMJudgeRepo"]
+  app.state.evaluation_repo = mongo_repos["EvaluationRepo"]
   app.state.student_persona_repo = mongo_repos["StudentPersonaRepo"]
   logger.info("Mongo repositories loaded successfully")
 
@@ -145,7 +145,7 @@ async def lifespan(app: FastAPI):
       lecture_service=app.state.lecture_service,
       summarize_service=app.state.summarize_service,
       redis_provider=app.state.redis_provider,
-      llm_judge_repo=app.state.llm_judge_repo,
+      evaluation_repo=app.state.evaluation_repo,
       student_persona_repo=app.state.student_persona_repo,
   )
   logger.info("All services and orchestrators loaded successfully")

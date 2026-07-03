@@ -7,8 +7,9 @@ from core import Settings
 from helpers.logger import get_chatbot_logger
 from integrations.redis_provider import RedisProvider
 from integrations.llm import LCOpenAI
-from models import LLMJudgeInputModel
-from repositories.llm_judge_repo import LLMJudgeRepo
+from models import EvaluationModel
+from models.evaluation_model import RequestLayer, RetrievalLayer, GenerationLayer, PerformanceLayer
+from repositories.evaluation_repo import EvaluationRepo
 from repositories.student_persona_repo import StudentPersonaRepo
 from schemas import ChatRequest, ChatResponse
 from schemas.assistant_schema import DeletePersonaResponse
@@ -45,13 +46,13 @@ class ChatbotService:
         lecture_service: LectureService,
         summarize_service: SummarizeService,
         redis_provider: RedisProvider,
-        llm_judge_repo: LLMJudgeRepo,
+        evaluation_repo: EvaluationRepo,
         student_persona_repo: StudentPersonaRepo,
     ) -> None:
         sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
         self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
         self.redis_provider = redis_provider
-        self.llm_judge_repo = llm_judge_repo
+        self.evaluation_repo = evaluation_repo
         self.student_persona_repo = student_persona_repo
 
 
@@ -207,10 +208,15 @@ class ChatbotService:
             json.dumps(collection.model_dump(), indent=2, ensure_ascii=False, default=str),
         )
 
-        asyncio.create_task(self._push_llm_judge(
+        asyncio.create_task(self._push_evaluation(
             user_query=user_query,
             context=graph_result.get("retrieved_context") or "",
             answer=cleaned_reply,
+            student_id=student_id,
+            session_id=session_id,
+            run_step_outputs=run_step_outputs,
+            persona=collection.persona,
+            summary=collection.summary,
         ))
 
         needs_persona_update = graph_result.get("needs_persona_update", False)
@@ -274,17 +280,38 @@ class ChatbotService:
         except Exception as exc:
             logger.error("Failed background update for persona and summary: %s", exc, exc_info=True)
 
-    async def _push_llm_judge(self, user_query: str, context: str, answer: str) -> None:
+    async def _push_evaluation(
+        self,
+        user_query: str,
+        context: str,
+        answer: str,
+        student_id: str,
+        session_id: str,
+        run_step_outputs: list = None,
+        persona: str = None,
+        summary: str = None,
+    ) -> None:
         try:
-            doc = LLMJudgeInputModel(
-                user_query=user_query,
-                context=context,
-                answer=answer,
+            doc = EvaluationModel(
+                request=RequestLayer(
+                    user_query=user_query,
+                    session_id=session_id,
+                    student_id=student_id,
+                    context_data={"persona": persona, "summary": summary},
+                ),
+                retrieval=RetrievalLayer(
+                    final_context=context,
+                    raw_documents=run_step_outputs,
+                ),
+                generation=GenerationLayer(
+                    final_answer=answer,
+                ),
+                performance=PerformanceLayer(),
             )
-            await self.llm_judge_repo.add_judge_input(doc)
-            logger.info("LLM judge sample pushed to MongoDB.")
+            await self.evaluation_repo.add_eval_session(doc)
+            logger.info("Evaluation session pushed to MongoDB.")
         except Exception as exc:
-            logger.warning("Failed to push LLM judge sample to MongoDB: %s", exc)
+            logger.warning("Failed to push evaluation session to MongoDB: %s", exc)
 
     async def delete_student_persona(self, user_id: str) -> DeletePersonaResponse:
 

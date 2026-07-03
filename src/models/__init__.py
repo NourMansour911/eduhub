@@ -7,8 +7,8 @@ from .chunk_model import ChunkMetadata
 from . import enums
 from . import lecture_model
 from .lecture_model import LectureModel
-from . import llm_judge_model
-from .llm_judge_model import LLMJudgeInputModel
+from . import evaluation_model
+from .evaluation_model import EvaluationModel
 from . import mongo_document_model
 from .mongo_document_model import MongoDocumentModel
 from . import vdb_payload_model
@@ -21,13 +21,13 @@ __all__ = [
     "chunk_model",
     "enums",
     "lecture_model",
-    "llm_judge_model",
+    "evaluation_model",
     "mongo_document_model",
     "vdb_payload_model",
     "student_persona_model",
     "AnswerModel",
     "ChunkMetadata",
-    "LLMJudgeInputModel",
+    "EvaluationModel",
     "LectureModel",
     "MongoDocumentModel",
     "VDBChunkPayload",

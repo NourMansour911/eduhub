@@ -5,7 +5,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 
 from repositories.answer_repo import AnswerRepo
 from repositories.lecture_repo import LectureRepo
-from repositories.llm_judge_repo import LLMJudgeRepo
+from repositories.evaluation_repo import EvaluationRepo
 from repositories.student_persona_repo import StudentPersonaRepo
 
 if TYPE_CHECKING:
@@ -31,8 +31,8 @@ def get_answer_repo(request: Request) -> AnswerRepo:
     return request.app.state.answer_repo
 
 
-def get_llm_judge_repo(request: Request) -> LLMJudgeRepo:
-    return request.app.state.llm_judge_repo
+def get_evaluation_repo(request: Request) -> EvaluationRepo:
+    return request.app.state.evaluation_repo
 
 
 def get_lecture_repo(request: Request) -> LectureRepo:
