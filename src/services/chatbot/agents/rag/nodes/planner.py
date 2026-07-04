@@ -34,9 +34,6 @@ Enrolled Courses: {student_courses}
 Execution History of the current message (use to adjust strategy & avoid repeated failures):
 {past_attempts_tool_outputs}
 
-Steps Outputs of Previous Messages:
-{past_messages_tool_outputs}
-
 {reflection_feedback}
 
 Current User Query: {user_query}
@@ -63,7 +60,6 @@ Current User Query: {user_query}
 
         
         past_attempts_formatted = "\n\n".join([format_step_output(h, for_planning=True) for h in past_attempts]) if past_attempts else "No previous attempts."
-        past_messages_formatted = format_nested_step_outputs(state.past_messages_tool_outputs, for_planning=True)
         
         reflection_feedback = ""
         if state.reflection_decision and state.reflection_decision.decision == "replan":
@@ -77,7 +73,6 @@ Current User Query: {user_query}
             f"User Query: {state.user_query}\n"
             f"Enrolled Courses: {state.student_courses}\n"
             f"Past Attempts: {past_attempts_formatted}\n"
-            f"Past Messages Step Outputs: {past_messages_formatted}\n"
             f"Reflection Feedback: {reflection_feedback.strip() if reflection_feedback else 'None'}\n"
             + "="*80
         )
@@ -86,7 +81,6 @@ Current User Query: {user_query}
             planner_output = await self.chain.ainvoke({
                 "user_query": state.user_query,
                 "past_attempts_tool_outputs": past_attempts_formatted,
-                "past_messages_tool_outputs": past_messages_formatted,
                 "reflection_feedback": reflection_feedback,
                 "student_courses": state.student_courses
             }, config={"run_name": f"Planner Chain Run (Attempt {state.plan_attempts_count})"})

@@ -21,7 +21,8 @@ class RouteDecision(BaseModel):
 class OrchestratorNode:
     STATIC_SYSTEM_PROMPT = """
 You are a Router and Query Rewriter for an educational chatbot system.
-Analyze the query, session summary, and conversation history.
+Analyze the query, session summary, and conversation history. Note: Messages in the conversation history may be clipped/truncated for brevity (marked with '[clipped for brevity]').
+
 
 Guidelines:
 1. Set needs_retrieval=False if the query only lists, counts, or checks enrolled courses (already available downstream).

@@ -76,8 +76,8 @@ graph TD
     Planner -- "status: clarification" --> Finalize
     Executor --> Reflection
     Reflection -- "decision: success" --> Finalize
-    Reflection -- "decision: replan (attempt < 3)" --> Planner
-    Reflection -- "decision: replan (attempt >= 3)" --> Finalize
+    Reflection -- "decision: replan (attempt < 2)" --> Planner
+    Reflection -- "decision: replan (attempt >= 2)" --> Finalize
     Reflection -- "decision: clarification" --> Finalize
     Finalize --> END
 ```
@@ -154,7 +154,7 @@ The Reflection node is a binary classifier. After the Executor finishes, it look
 
 **Key design principle:** The node's system prompt explicitly instructs it *not* to evaluate the semantic correctness of the retrieved content — only whether the expected type of data (e.g., a lecture summary, a list of lectures) was successfully returned. This prevents false replanning on data that happens to look unexpected but was actually retrieved correctly.
 
-**Replan cap:** The `plan_attempts_count` field is incremented on each replan. The router function `_route_after_reflection` in `builder.py` enforces a hard cap: once `plan_attempts_count >= 3`, a `replan` decision is redirected to Finalize instead of back to Planner, with an automatic clarification message to the user.
+**Replan cap:** The `plan_attempts_count` field is incremented on each replan. The router function `_route_after_reflection` in `builder.py` enforces a hard cap: once `plan_attempts_count >= 2`, a `replan` decision is redirected to Finalize instead of back to Planner, with an automatic clarification message to the user.
 
 ---
 
@@ -164,7 +164,7 @@ The Reflection node is a binary classifier. After the Executor finishes, it look
 
 No LLM. This node aggregates all tool outputs across the entire run:
 
-1. **Merges** `past_messages_tool_outputs` + `past_attempts_tool_outputs` + `current_attempt_tool_outputs` into a single flat list.
+1. **Merges** `past_attempts_tool_outputs` + `current_attempt_tool_outputs` into a single flat list.
 2. **Filters** out failed steps (keeps only outputs where `failure_info is None`, or where `failure_info.clarification_message` exists and needs surfacing).
 3. **Deduplicates** by source via `deduplicate_tool_outputs` to prevent repeated context injection.
 4. **Extracts text** from each `StepOutput.content` using `extract_clean_content_text` (handles chunks with metadata, summary text, raw JSON).
@@ -289,13 +289,12 @@ RAGSubgraphState
 ├── session_id              str
 ├── student_courses         str          # compact enrolled-courses string
 ├── messages_history        List[Any]    # recent conversation turns
-├── past_messages_tool_outputs  List[StepOutput]   # outputs from previous chat turns (cross-turn memory)
 ├── past_attempts_tool_outputs  List[StepOutput]   # merged outputs from earlier replan attempts
 ├── current_attempt_tool_outputs List[StepOutput]  # outputs from the current execution round
 ├── planner_output          PlannerOutput | None
 ├── reflection_decision     ReflectionDecision | None
 ├── retriving_results       RAGSubgraphOutput | None
-└── plan_attempts_count     int          # 1 → 3 (hard replan cap)
+└── plan_attempts_count     int          # 1 → 2 (hard replan cap)
 ```
 
 **Key Pydantic models:**

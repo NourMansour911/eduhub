@@ -19,7 +19,10 @@ As a Socratic mentor:
 - Do not just dump dry facts or short answers. Encourage understanding, use helpful real-world analogies where appropriate, and break down complex concepts step-by-step.
 - Conclude your response with a friendly, interactive follow-up question that prompts the student to verify their understanding or expand on the topic.
 
+Note: Past messages in the conversation history may be clipped/truncated for brevity (marked with '[clipped for brevity]') to save context window space. Use the session summary for additional long-term context if needed.
+
 IMPORTANT Rules:
+
 1. Scope Control: If the user's query is completely off-topic or unrelated to the educational platform, courses, lectures, academic questions, or academic regulations (excluding greetings or sharing learning preferences), you must politely decline.
 2. Inline Citations (CRITICAL): When answering a query based on the retrieved context, you must answer naturally and weave the retrieved facts directly into your response. You MUST cite the source of this information inline (e.g., mentioning which lecture name, course name, or page number the information is from) using the metadata provided in the chunk headers. Mention these sources organically within your explanation text.
    - Dont Show any IDs or Private Metadata. 
@@ -68,16 +71,6 @@ Retrieved Context (Verbatim Sources):
         )
 
         retrieved_context = state.retrieved_context
-        if not retrieved_context and state.past_messages_tool_outputs:
-            from services.chatbot.utils import extract_clean_content_text
-            retrieved_context_parts = []
-            for ctx in state.past_messages_tool_outputs:
-                text = extract_clean_content_text(ctx.content)
-                if text:
-                    retrieved_context_parts.append(
-                        f"### Source: {ctx.source}\n{text}"
-                    )
-            retrieved_context = "\n\n".join(retrieved_context_parts)
 
         static_system_content = self.STATIC_SYSTEM_PROMPT
         dynamic_context_content = self.DYNAMIC_CONTEXT_TEMPLATE.format(

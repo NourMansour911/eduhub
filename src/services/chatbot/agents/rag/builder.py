@@ -49,6 +49,7 @@ class RAGSubgraph:
             "ask_in_legal_regulations": vdb_tools.ask_in_legal_regulations,
 
             "get_lecture_summary_by_lecture_id": mongodb_tools.get_lecture_summary_by_lecture_id,
+            "get_lecture_whole_content_by_lecture_id": mongodb_tools.get_lecture_whole_content_by_lecture_id,
 
             "get_lecture_id_by_lecture_name": sql_tools.get_lecture_id_by_lecture_name,
             "get_course_details_by_course_id": sql_tools.get_course_details_by_course_id,
@@ -107,7 +108,7 @@ class RAGSubgraph:
 
         decision = state.reflection_decision.decision
         if decision == "replan":
-            return "planner" if state.plan_attempts_count < 3 else "route_to_success"
+            return "planner" if state.plan_attempts_count < 2 else "route_to_success"
         if decision == "clarification":
             return "route_to_clarification"
         return "route_to_success"
@@ -119,7 +120,6 @@ class RAGSubgraph:
 
         
         all_raw = []
-        all_raw.extend(state.past_messages_tool_outputs)
         all_raw.extend(state.past_attempts_tool_outputs)
         all_raw.extend(state.current_attempt_tool_outputs)
 
@@ -148,10 +148,10 @@ class RAGSubgraph:
         ]
         current_run_unique = deduplicate_tool_outputs(current_run_filtered)
 
-        if state.plan_attempts_count >= 3 and state.reflection_decision and state.reflection_decision.decision == "replan":
+        if state.plan_attempts_count >= 2 and state.reflection_decision and state.reflection_decision.decision == "replan":
             status = "clarification"
             clarification_question = "I couldn't retrieve the exact information after multiple attempts. Could you please clarify your question or provide more details?"
-            error_message = "Exceeded the maximum number of plan attempts (3) without finding a satisfactory answer."
+            error_message = "Exceeded the maximum number of plan attempts (2) without finding a satisfactory answer."
             logger.warning("RAG Subgraph replan attempts exhausted. Routing to clarification: %s", error_message)
         elif state.reflection_decision and state.reflection_decision.decision == "clarification":
             status = "clarification"

@@ -32,7 +32,7 @@ from .chains.summary_chain import build_summary_chain
 from .chains.persona_chain import build_persona_chain
 
 from services.chatbot.agents.rag.retrieving.sql.sql_server_calling import SqlServerCalling
-from services.chatbot.utils import format_student_courses, format_chat_history_for_graph, deduplicate_tool_outputs
+from services.chatbot.utils import format_student_courses, format_chat_history_for_graph, deduplicate_tool_outputs, clip_message_content
 
 logger = get_chatbot_logger(__name__)
 
@@ -157,19 +157,6 @@ class ChatbotService:
 
         student_courses = await self._get_and_cache_student_courses(student_id, collection)
 
-        
-        raw_past = collection.contexts[-3:] if collection.contexts else []
-        flattened_past = []
-        for turn in raw_past:
-            if isinstance(turn, list):
-                flattened_past.extend(turn)
-            else:
-                flattened_past.append(turn)
-
-        past_messages_tool_outputs = deduplicate_tool_outputs(flattened_past)
-
-        logger.info("Retrieved last %d turns of step outputs. Flattened/deduplicated to %d past outputs.", len(raw_past), len(past_messages_tool_outputs))
-
         last_messages = format_chat_history_for_graph(collection.messages or [], limit=6)
         logger.info("Formatted last messages of chat history: %s", last_messages)
 
@@ -183,7 +170,6 @@ class ChatbotService:
                 "messages_history": last_messages,
                 "user_persona": collection.persona,
                 "session_summary": collection.summary,
-                "past_messages_tool_outputs": past_messages_tool_outputs,
             }, config={"run_name": "Chatbot Graph Run"})
             latency_ms = round((time.perf_counter() - _t0) * 1000, 2)
         except Exception as exc:
@@ -229,11 +215,22 @@ class ChatbotService:
         needs_persona_update = graph_result.get("needs_persona_update", False)
         needs_summary_update = graph_result.get("needs_summary_update", False)
 
-        if needs_persona_update or needs_summary_update:
+        if not hasattr(collection, "unsummarized_count") or collection.unsummarized_count is None:
+            collection.unsummarized_count = 0
+
+        if needs_summary_update:
+            collection.unsummarized_count += 2
+
+        should_run_summary_now = False
+        if needs_summary_update and collection.unsummarized_count >= 6:
+            should_run_summary_now = True
+
+        if needs_persona_update or should_run_summary_now:
             batch_history_str = ""
             for msg in collection.messages[-8:]:
                 role = "User" if msg.get("role") == "user" else "AI"
-                batch_history_str += f"{role}: {msg.get('content', '')}\n"
+                clipped_content = clip_message_content(msg.get("content", ""))
+                batch_history_str += f"{role}: {clipped_content}\n"
 
             asyncio.create_task(self._update_persona_and_summary_background(
                 student_id=student_id,
@@ -243,7 +240,7 @@ class ChatbotService:
                 current_persona=collection.persona,
                 current_summary=collection.summary,
                 run_persona=needs_persona_update,
-                run_summary=needs_summary_update
+                run_summary=should_run_summary_now
             ))
 
         return response_obj
@@ -280,12 +277,14 @@ class ChatbotService:
             if collection:
                 if run_summary and new_summary:
                     collection.summary = new_summary
+                    collection.unsummarized_count = 0
                 if run_persona and persona_decision and persona_decision.should_update and persona_decision.updated_persona:
                     collection.persona = persona_decision.updated_persona
                 await self.redis_provider.save_collection(collection, session_id=session_id)
                 logger.info("Background update for persona/summary completed successfully.")
         except Exception as exc:
             logger.error("Failed background update for persona and summary: %s", exc, exc_info=True)
+
 
     async def _push_evaluation(
         self,

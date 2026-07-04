@@ -19,7 +19,7 @@ class NameResolver:
 		*,
 		name_key: str = "name",
 		id_key: str = "id",
-		threshold: float = 0.75,
+		threshold: float = 0.5,
 	) -> Optional[dict[str, Any]]:
 		logger.info("[NameResolver] resolve_best_match_with_threshold | query: '%s' | candidates: %d | threshold: %.2f", query_name, len(items), threshold)
 		match = await self.resolve_best_match(

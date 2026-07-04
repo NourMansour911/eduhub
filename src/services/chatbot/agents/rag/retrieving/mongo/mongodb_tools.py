@@ -40,7 +40,7 @@ class MongoDBTools:
 			failure_info = FailureInfo(
 				message="Lecture content was not found.",
 				clarification_message="Please verify the lecture identifier.",
-				explanation="No lecture content exists for the provided lecture ID.",
+				explanation="No lecture content exists for the provided lecture ID. Try replanning by resolving the correct lecture ID first if not done. Otherwise, request clarification.",
 			)
 			content = {}
 
@@ -78,7 +78,7 @@ class MongoDBTools:
 			failure_info = FailureInfo(
 				message="Lecture summary was not found.",
 				clarification_message="Please verify the lecture identifier.",
-				explanation="No summary exists for the provided lecture ID.",
+				explanation="No summary exists for the provided lecture ID. Try replanning by resolving the correct lecture ID first, or request clarification.",
 			)
 			content = {}
 

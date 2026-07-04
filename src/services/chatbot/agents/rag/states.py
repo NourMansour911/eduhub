@@ -83,7 +83,6 @@ class RAGSubgraphState(BaseModel):
     student_courses: str = Field(default="", description="Compact string of student courses")
     past_attempts_tool_outputs: List[StepOutput] = Field(default_factory=list, description="Step outputs of previous attempts in the current run")
     messages_history: List[Any] = Field(default_factory=list, description="Recent messages from the conversation history")
-    past_messages_tool_outputs: List[StepOutput] = Field(default_factory=list, description="Step outputs from previous messages/turns")
     planner_output: Optional[PlannerOutput] = None 
     current_attempt_tool_outputs: List[StepOutput] = Field(default_factory=list)
     reflection_decision: Optional[ReflectionDecision] = None

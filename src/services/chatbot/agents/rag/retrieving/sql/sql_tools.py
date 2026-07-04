@@ -43,8 +43,8 @@ class SQLTools:
 				logger.info("[SQLTools] get_course_id_by_course_name FAILED | no match for '%s' among %d courses", course_name, len(courses))
 				failure_info = FailureInfo(
 					message="No matching course was found.",
-					clarification_message="Please provide the course name more accurately.",
-					explanation="The requested course could not be matched against the student's enrolled courses.",
+					clarification_message="Please provide the course name more accurately. The course name you searched for does not match your enrolled courses.",
+					explanation="No matching course was found. If a different search term or abbreviation might work, try replanning with it. Otherwise, request clarification.",
 				)
 				content = {}
 			else:
@@ -59,8 +59,8 @@ class SQLTools:
 			logger.error("[SQLTools] get_course_id_by_course_name EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
-				clarification_message="We cannot check your enrolled courses right now. Please try again later.",
-				explanation=str(exc),
+				clarification_message="A database system error occurred. We cannot check your enrolled courses right now. Please try again later.",
+				explanation=f"Database down or connection error: {str(exc)}. Replanning will NOT help. Immediately route to clarification.",
 			)
 			content = {}
 
@@ -99,8 +99,8 @@ class SQLTools:
 				logger.info("[SQLTools] get_lecture_id_by_lecture_name FAILED | no match for '%s' among %d lectures", lecture_name, len(lectures))
 				failure_info = FailureInfo(
 					message="No matching lecture was found.",
-					clarification_message="Please provide the lecture name more accurately.",
-					explanation="The requested lecture could not be matched against the lectures available in the course.",
+					clarification_message="Please provide the lecture name more accurately. The lecture was not found in this course.",
+					explanation="No matching lecture was found in the course. Try replanning with a different lecture name variation, or search the whole course directly instead of a specific lecture. If no options left, request clarification.",
 				)
 				content = {}
 			else:
@@ -115,8 +115,8 @@ class SQLTools:
 			logger.error("[SQLTools] get_lecture_id_by_lecture_name EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
-				clarification_message="We cannot check lectures right now. Please try again later.",
-				explanation=str(exc),
+				clarification_message="A database system error occurred. We cannot check lectures right now. Please try again later.",
+				explanation=f"Database down or connection error: {str(exc)}. Replanning will NOT help. Immediately route to clarification.",
 			)
 			content = {}
 
@@ -146,7 +146,7 @@ class SQLTools:
 				failure_info = FailureInfo(
 					message="Course details were not found.",
 					clarification_message="Please verify the course identifier.",
-					explanation="No course record exists for the provided course ID.",
+					explanation="No course details record exists for the provided course ID. Replanning won't help unless course ID is wrong.",
 				)
 				content = {}
 			else:
@@ -158,8 +158,8 @@ class SQLTools:
 			logger.error("[SQLTools] get_course_details_by_course_id EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
-				clarification_message="We cannot check course details right now. Please try again later.",
-				explanation=str(exc),
+				clarification_message="A database system error occurred. We cannot check course details right now. Please try again later.",
+				explanation=f"Database down or connection error: {str(exc)}. Replanning will NOT help. Immediately route to clarification.",
 			)
 			content = {}
 
@@ -187,9 +187,9 @@ class SQLTools:
 
 			if not courses:
 				failure_info = FailureInfo(
-					message="No courses were found for this student.",
-					clarification_message="Please verify the student identifier.",
-					explanation="The student is not enrolled in any courses or the student record was not found.",
+					message="No enrolled courses were found for this student.",
+					clarification_message="We couldn't find any enrolled courses for you on the platform.",
+					explanation="The student has no courses enrolled. Replanning to search courses won't yield anything.",
 				)
 				content = {}
 			else:
@@ -200,8 +200,8 @@ class SQLTools:
 		except Exception as exc:
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
-				clarification_message="We cannot retrieve your courses right now. Please try again later.",
-				explanation=str(exc),
+				clarification_message="A database system error occurred. We cannot retrieve your courses right now. Please try again later.",
+				explanation=f"Database down or connection error: {str(exc)}. Replanning will NOT help. Immediately route to clarification.",
 			)
 			content = {}
 
@@ -230,7 +230,7 @@ class SQLTools:
 				failure_info = FailureInfo(
 					message="No lectures were found for this course.",
 					clarification_message="Please verify the course identifier.",
-					explanation="No lectures exist for the given course ID.",
+					explanation="No lectures exist for the given course ID in the database. Replanning won't help unless course ID is wrong.",
 				)
 				content = {}
 			else:
@@ -243,8 +243,8 @@ class SQLTools:
 			logger.error("[SQLTools] get_all_course_lectures_by_course_id EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
-				clarification_message="We cannot retrieve lectures right now. Please try again later.",
-				explanation=str(exc),
+				clarification_message="A database system error occurred. We cannot retrieve lectures right now. Please try again later.",
+				explanation=f"Database down or connection error: {str(exc)}. Replanning will NOT help. Immediately route to clarification.",
 			)
 			content = {}
 

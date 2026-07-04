@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 
 
@@ -13,8 +12,10 @@ class PersonaUpdateDecision(BaseModel):
 
 SYSTEM_TMPL = """
 You are Persona Analyzer. Analyze the student's current persona, the conversation history, and their latest query to decide if their learning persona (preferences, level, tone, interests) has changed or needs an update.
+Note: Messages in the conversation history may be clipped/truncated for brevity (marked with '[clipped for brevity]').
 
 Current Student Persona:
+
 {user_persona}
 
 Conversation History (last 4 messages):

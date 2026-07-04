@@ -81,8 +81,7 @@ The Orchestrator is the first node in every request. It acts as a **query router
 
 A thin wrapper around the RAG subgraph. The content it retrieves originates from lectures parsed via **Azure AI Document Intelligence (OCR + structural analysis)** — meaning retrieved chunks carry intact section context, not arbitrary character fragments. It:
 1. Passes the current state into the RAG subgraph (using `standalone_query` if available, otherwise `user_query`).
-2. Injects `past_messages_tool_outputs` — deduplicated step outputs from the last 3 previous turns, enabling cross-turn context awareness.
-3. Maps the subgraph output back into `ChatbotState`: `retrieved_context`, `run_step_outputs`, `rag_status`, `rag_clarification_question`, `rag_error_message`.
+2. Maps the subgraph output back into `ChatbotState`: `retrieved_context`, `run_step_outputs`, `rag_status`, `rag_clarification_question`, `rag_error_message`.
 
 For the full RAG subgraph internals — DAG planning, parallel execution, Hybrid Search, RRF, Cohere reranking — see [`RAG_README.md`](agents/rag/RAG_README.md).
 
@@ -103,8 +102,6 @@ Luma is the final response generator. It's a **Socratic educational mentor** wit
 **Short-circuit logic:**
 - If `rag_status == "failed"` → returns an error message without LLM invocation.
 - If `rag_status == "clarification"` → returns the clarification question directly.
-
-**Context fallback:** If `retrieved_context` is empty but `past_messages_tool_outputs` exist (from cross-turn memory), Luma extracts and formats them as a fallback retrieved context before generating the response.
 
 **Message structure sent to LLM:**
 ```
@@ -148,6 +145,14 @@ Both chains run **in the background** via `asyncio.create_task` after the HTTP r
 | `summary` | Rolling session summary |
 | `student_courses` | Cached enrolled courses string (fetched from SQL on first request, cached for session) |
 | `contexts` | `List[List[StepOutput]]` — per-turn tool outputs for cross-turn context (last 3 turns injected into RAG) |
+| `unsummarized_count` | Number of messages added since the last session summary update (runs the summary chain when count reaches 6) |
+
+### Token Management & Optimization
+
+To prevent excessive token usage and response latency, two major optimizations are implemented in the session handler:
+1. **Message Clipping**: Any message content is clipped to a maximum of 500 characters when passed to the LLM nodes (Orchestrator, Luma Answering, and Persona chains). Original full-length messages are retained in Redis/Database.
+2. **Summarization Thresholding**: The rolling session summary chain is only triggered when at least 6 new messages (3 conversation turns) have accumulated. This reduces summarization calls and token consumption by up to 83%.
+
 
 ---
 
@@ -167,7 +172,6 @@ ChatbotState
 ├── needs_persona_update        bool
 ├── needs_summary_update        bool
 ├── messages_history            List[Any]       # last 6 messages from Redis
-├── past_messages_tool_outputs  List[StepOutput]   # last 3 turns deduplicated
 ├── retrieved_context           str | None
 ├── run_step_outputs            List[StepOutput]   # current turn → saved to Redis
 ├── rag_status                  str | None      # "route_to_rag" | "direct_answer" | "clarification" | "failed"
@@ -220,7 +224,8 @@ The RAG subgraph builds its own internal `rag_llm_map` from the same `lc_openai_
 | `format_nested_step_outputs(nested, for_planning)` | Formats `List[StepOutput]` organized by turn |
 | `format_messages_history(messages)` | Converts `[{role, content}]` dicts to a readable string |
 | `format_student_courses(courses)` | Formats SQL course list into a compact string for state injection |
-| `format_chat_history_for_graph(messages, limit)` | Selects last N messages and formats them |
+| `format_chat_history_for_graph(messages, limit)` | Selects last N messages and formats them (applying clipping) |
+| `clip_message_content(content, max_length)` | Truncates a message's content to a maximum character length and appends a notice |
 | `extract_clean_content_text(content)` | Extracts readable text from a `StepOutput.content` dict (chunks, summary, raw JSON) |
 | `deduplicate_tool_outputs(outputs)` | Deduplicates a list of `StepOutput` by `(tool_name, tool_args)` key |
 

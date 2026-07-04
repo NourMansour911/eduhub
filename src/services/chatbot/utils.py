@@ -87,11 +87,20 @@ def format_student_courses(courses: List[Dict[str, Any]]) -> str:
     return courses_str
 
 
+def clip_message_content(content: str, max_length: int = 500) -> str:
+
+    if not content:
+        return ""
+    if len(content) <= max_length:
+        return content
+    return content[:max_length] + " [clipped for brevity]"
+
+
 def format_chat_history_for_graph(messages: List[Dict[str, str]], limit: int = 6) -> List[Dict[str, str]]:
     last_messages = []
     for msg in messages[-limit:]:
         role = "Human" if msg.get("role") == "user" else "AI"
-        content = msg.get("content", "")
+        content = clip_message_content(msg.get("content", ""))
         last_messages.append({"role": role, "content": content})
     return last_messages
 
@@ -115,7 +124,22 @@ def format_step_output(out: Any, for_planning: bool = False) -> str:
             if hasattr(failure_info, "message")
             else (failure_info.get("message", "") if isinstance(failure_info, dict) else str(failure_info))
         )
-        return f"Tool: {tool_name}\nStatus: FAILED\nError: {msg}"
+        explanation = (
+            failure_info.explanation
+            if hasattr(failure_info, "explanation")
+            else (failure_info.get("explanation", None) if isinstance(failure_info, dict) else None)
+        )
+        clarification_msg = (
+            failure_info.clarification_message
+            if hasattr(failure_info, "clarification_message")
+            else (failure_info.get("clarification_message", None) if isinstance(failure_info, dict) else None)
+        )
+        err_str = f"Tool: {tool_name}\nStatus: FAILED\nError: {msg}"
+        if explanation:
+            err_str += f"\nExplanation: {explanation}"
+        if clarification_msg:
+            err_str += f"\nClarification Recommendation: {clarification_msg}"
+        return err_str
 
     if for_planning:
         content = clean_payload_for_planning(content)

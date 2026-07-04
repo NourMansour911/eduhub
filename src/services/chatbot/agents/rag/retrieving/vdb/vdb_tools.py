@@ -57,7 +57,7 @@ class VDBTools:
 			failure_info = FailureInfo(
 				message="No relevant information found in the lecture.",
 				clarification_message="Could you please provide more details or specify your question related to the lecture?",
-				explanation="No relevant information in the lecture passed the relevance threshold.",
+				explanation="No relevant information in the lecture passed the relevance threshold. If the query was too specific or narrow, try replanning to search the whole course instead of this specific lecture, or use a broader/different query. If no other options are viable, route to clarification.",
 			)
 			content = {}
 		else:
@@ -120,7 +120,7 @@ class VDBTools:
 			failure_info = FailureInfo(
 				message="No relevant information found across the course.",
 				clarification_message="Could you provide more details or specify the topic within the course?",
-				explanation="No chunks passed the relevance threshold for this course and query.",
+				explanation="No chunks passed the relevance threshold for this course and query. Try replanning with a different query phrasing or search terms. If already attempted, request clarification.",
 			)
 			content = {}
 		else:
@@ -183,7 +183,7 @@ class VDBTools:
 			failure_info = FailureInfo(
 				message="No relevant session history found.",
 				clarification_message="Try rephrasing the question or provide more context.",
-				explanation="No past session chunks matched the query above the relevance threshold.",
+				explanation="No past session chunks matched the query above the relevance threshold. Try replanning by querying student courses or regulations if relevant, or request clarification.",
 			)
 			content = {}
 		else:
@@ -244,7 +244,7 @@ class VDBTools:
 			failure_info = FailureInfo(
 				message="No relevant legal/regulatory content found.",
 				clarification_message="Try giving more context or a regulation code if known.",
-				explanation="No regulatory chunks passed the relevance threshold for this query.",
+				explanation="No regulatory chunks passed the relevance threshold for this query. If the query could be academic rather than regulatory, try replanning to search the course or lectures. Otherwise, request clarification.",
 			)
 			content = {}
 		else:

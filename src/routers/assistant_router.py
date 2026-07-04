@@ -53,8 +53,9 @@ async def chat(
 	service: ChatbotService = Depends(get_chatbot_service),
 ):
 	response_obj = await service.chat(chat_request, user_id, session_id)
+	response_data = response_obj.model_dump() if hasattr(response_obj, "model_dump") else response_obj
 	raw_json = json.dumps(
-		response_obj.model_dump(),
+		response_data,
 		ensure_ascii=False,
 	)
 	return Response(

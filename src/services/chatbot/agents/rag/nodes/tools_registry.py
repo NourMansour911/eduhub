@@ -44,6 +44,12 @@ def get_default_tools_registry():
             "returns": {"summary": "str"}
         },
         {
+            "name": "get_lecture_whole_content_by_lecture_id",
+            "desc": "Retrieves the entire content of a lecture. Use only when the user explicitly requests an action on the complete lecture.",
+            "args": {"lecture_id": "str"},
+            "returns": {"lecture_content": "dict"}
+        },
+        {
             "name": "get_all_course_lectures_by_course_id",
             "desc": "Gets a list of all lectures in a course, ordered from oldest to newest.",
             "args": {"course_id": "str"},

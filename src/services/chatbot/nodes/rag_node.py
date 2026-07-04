@@ -12,14 +12,7 @@ class RAGNode:
         self.rag_subgraph: Runnable = rag_subgraph
 
     async def __call__(self, state: ChatbotState) -> Dict[str, Any]:
-        serialized_prev = []
-        for out in state.past_messages_tool_outputs:
-            if hasattr(out, "model_dump"):
-                serialized_prev.append(out.model_dump())
-            elif isinstance(out, dict):
-                serialized_prev.append(out)
-
-        logger.info("RAGNode invoking subgraph with %d past messages tool outputs.", len(serialized_prev))
+        logger.info("RAGNode invoking subgraph.")
 
         subgraph_result = await self.rag_subgraph.ainvoke({
             "user_query": state.standalone_query or state.user_query,
@@ -27,7 +20,6 @@ class RAGNode:
             "session_id": state.session_id,
             "student_courses": state.student_courses,
             "messages_history": state.messages_history,
-            "past_messages_tool_outputs": serialized_prev,
         })
 
         retriving_results: RAGSubgraphOutput = subgraph_result.get("retriving_results")

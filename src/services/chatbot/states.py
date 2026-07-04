@@ -14,7 +14,6 @@ class ChatbotState(BaseModel):
     needs_persona_update: bool = False
     needs_summary_update: bool = False
     messages_history: List[Any] = Field(default_factory=list)
-    past_messages_tool_outputs: List[StepOutput] = Field(default_factory=list)
     retrieved_context: Optional[str] = None
     run_step_outputs: List[StepOutput] = Field(default_factory=list)
     rag_status: Optional[str] = None

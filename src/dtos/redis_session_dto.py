@@ -12,3 +12,5 @@ class RedisSessionDTO(BaseModel):
     persona: str | None = Field(default=None, description="The student's persona to inject into the chatbot context")
     summary: str | None = Field(default=None, description="Session summary cached in Redis")
     student_courses: str | None = Field(default=None, description="Cached student courses formatted string")
+    unsummarized_count: int = Field(default=0, description="Number of new messages since last session summary update")
+

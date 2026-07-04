@@ -1,8 +1,13 @@
-# EduHub — AI-Powered Educational Platform Backend
+# EduHub — AI-Powered Educational Platform
 
 > **Graduation Project** — a production-grade AI backend microservice designed to operate as part of a larger educational portal ecosystem.
 
 EduHub is the backend engine of an AI-powered university portal. It provides an intelligent tutoring chatbot, automated lecture ingestion, batch essay grading, and dynamic summarization — all as isolated, asynchronous services built in FastAPI and Python.
+
+---
+## Project Context
+
+This repository is a **graduation project** implementing the AI backend microservice of a larger **educational portal platform**. In the full system architecture, this service exposes REST endpoints consumed by a frontend portal that aggregates multiple learning management features. The service is independently deployable and designed for horizontal scalability.
 
 ---
 
@@ -27,11 +32,6 @@ EduHub is the backend engine of an AI-powered university portal. It provides an 
 
 ---
 
-## Project Context
-
-This repository is a **graduation project** implementing the AI backend microservice of a larger **educational portal platform**. In the full system architecture, this service exposes REST endpoints consumed by a frontend portal that aggregates multiple learning management features. The service is independently deployable and designed for horizontal scalability.
-
----
 
 ## Chatbot Service — Agentic AI Tutor
 
