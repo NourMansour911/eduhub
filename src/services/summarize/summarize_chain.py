@@ -30,62 +30,57 @@ Core rules:
 
 LEVEL_INSTRUCTIONS = {
     0: """
-Level: Quick Revision Notes
+Level: Comprehensive Quick Revision
 
 Purpose:
-Ultra-compressed recall notes for final exam revision. Must be extremely short.
+A high-density, structured summary for rapid review, focusing on core pillars without sacrificing conceptual accuracy.
 
 Requirements:
-- Bullet points only (strictly between 3 to 5 bullet points in total)
-- Ultra-short: Total summary must be under 80 words
-- Each bullet captures one complete key concept in a single concise sentence
-- Remove examples, side details, repetition, and elaboration
-- Prioritize definitions, formulas, relationships, and classifications
+- Structure: Clear, high-impact bullet points (strictly 4 to 6 bullets).
+- Content: Each bullet must be a complete, self-contained analytical sentence capturing a core concept, key definitions, or fundamental relationships.
+- Logical Continuity: The sequence of bullets must reflect the core narrative of the lecture, ensuring no conceptual gaps.
+- Depth: Omit minor examples and conversational filler, but retain all critical technical terminology and essential formulas/rules.
+- Word Count: Aim for 80–130 words to ensure adequate depth for a reliable quick review.
 
 Do NOT:
-- Exceed 5 bullet points or 80 words in total
-- Output isolated keywords
-- Break meaning through over-compression
-- Explain beyond recall-level detail
+- Output shallow fragments or isolated keywords.
+- Sacrifice the clarity or correctness of a definition for the sake of brevity.
 """,
 
     1: """
-Level: Compact Study Summary
+Level: Core Concept Summary
 
 Purpose:
-A concise but coherent explanation for quick understanding.
+A cohesive, single-paragraph summary providing a well-structured overview of the lecture's primary framework.
 
 Requirements:
-- Write exactly 1 paragraph
-- 120–220 words
-- Explain the lecture's main ideas naturally
-- Preserve logical relationships between concepts
-- Include only essential supporting detail needed for clarity
-- Keep flow smooth and connected
+- Structure: Exactly 1 well-developed, continuous paragraph.
+- Content: Synthesize the main arguments, methodologies, and conclusions into a fluid narrative.
+- Logical Continuity: Use strong transitional phrasing to show cause-and-effect or sequential relationships between concepts.
+- Depth: Include necessary context and primary supporting details that make the concept fully understandable on its own.
+- Word Count: Strictly 160–260 words, ensuring it serves as a robust standalone study reference.
 
 Do NOT:
-- Over-expand into textbook-style explanation
-- Abruptly cut concepts
-- Use excessive examples or low-value details
+- Use bullet points, subheadings, or lists.
+- Abruptly transition between ideas or leave main concepts partially explained.
 """,
 
     2: """
-Level: Detailed Learning Summary
+Level: Detailed Learning & Analysis Summary
 
 Purpose:
-A structured explanation for deep understanding while remaining compressed.
+An exhaustive, multi-paragraph educational reference that mirrors the depth and sequence of the original material.
 
 Requirements:
-- Write 2–4 coherent paragraphs
-- Preserve the lecture's logical teaching sequence
-- Explain major concepts and their relationships clearly
-- Include supporting details only when essential for understanding
-- Compress aggressively while preserving completeness
+- Structure: 3 to 5 structured paragraphs, organized logically around major thematic shifts in the lecture.
+- Content: Fully map out every significant concept, its underlying mechanism, practical implications, and relevant classifications.
+- Logical Continuity: Build a thorough, end-to-end academic narrative that flows naturally from introduction to advanced details.
+- Depth: Retain all essential nuances, structural relationships, and technical distinctions while stripping out only true redundancies and non-educational filler.
+- Word Count: 350–550 words, serving as a primary substitute for the full lecture text during deep revision.
 
 Do NOT:
-- Add external examples, tools, frameworks, or assumptions
-- Introduce information not explicitly stated
-- Become verbose or repetitive
+- Compress to the point of omitting secondary but important technical nuances.
+- Introduce external frameworks, assumptions, or tools not explicitly mentioned in the source text.
 """
 }
 
