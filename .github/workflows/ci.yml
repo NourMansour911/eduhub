@@ -1,4 +1,4 @@
-name: CI
+Name: CI
 
 on:
   push:
@@ -64,9 +64,6 @@ jobs:
         )
       ) }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout repository
@@ -131,30 +128,31 @@ jobs:
 
           cleanup
 
-docker run -d --name "${CONTAINER_NAME}" -p 81:81 \
-  -e APP_NAME=eduhub \
-  -e APP_VERSION=0.1 \
-  -e STORAGE_PATH=storage \
-  -e AZURE_DOC_ENDPOINT="${{ secrets.AZURE_DOC_ENDPOINT }}" \
-  -e AZURE_DOC_KEY="${{ secrets.AZURE_DOC_KEY }}" \
-  -e DB_BASE_URL="${{ secrets.DB_BASE_URL }}" \
-  -e MONGO_DB_NAME=eduhub \
-  -e MONGODB_URL="${{ secrets.MONGODB_URL }}" \
-  -e QDRANT_URL="${{ secrets.QDRANT_URL }}" \
-  -e REDIS_URL="${{ secrets.REDIS_URL }}" \
-  -e COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}" \
-  -e OPENAI_API_URL=https://openrouter.ai/api/v1 \
-  -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-  -e LANGSMITH_API_KEY="${{ secrets.LANGSMITH_API_KEY }}" \
-  -e GENERATION_BACKEND=OPENAI \
-  -e GENERATION_MODEL_ID=deepseek/deepseek-v4-flash \
-  -e EMBEDDING_BACKEND=HF \
-  -e EMBEDDING_MODEL_ID=intfloat/multilingual-e5-large \
-  -e EMBEDDING_MODEL_SIZE=1024 \
-  -e VECTOR_DB_BACKEND=QDRANT \
-  -e VECTOR_DB_DISTANCE_METHOD=cosine \
-  "${IMAGE}" \
-  uvicorn main:app --host 0.0.0.0 --port 81 --workers 1 --lifespan off
+          # تم تصليح المحاذاة (Indentation) هنا ليعمل الـ Script بنجاح
+          docker run -d --name "${CONTAINER_NAME}" -p 81:81 \
+            -e APP_NAME=eduhub \
+            -e APP_VERSION=0.1 \
+            -e STORAGE_PATH=storage \
+            -e AZURE_DOC_ENDPOINT="${{ secrets.AZURE_DOC_ENDPOINT }}" \
+            -e AZURE_DOC_KEY="${{ secrets.AZURE_DOC_KEY }}" \
+            -e DB_BASE_URL="${{ secrets.DB_BASE_URL }}" \
+            -e MONGO_DB_NAME=eduhub \
+            -e MONGODB_URL="${{ secrets.MONGODB_URL }}" \
+            -e QDRANT_URL="${{ secrets.QDRANT_URL }}" \
+            -e REDIS_URL="${{ secrets.REDIS_URL }}" \
+            -e COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}" \
+            -e OPENAI_API_URL=https://openrouter.ai/api/v1 \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e LANGSMITH_API_KEY="${{ secrets.LANGSMITH_API_KEY }}" \
+            -e GENERATION_BACKEND=OPENAI \
+            -e GENERATION_MODEL_ID=deepseek/deepseek-v4-flash \
+            -e EMBEDDING_BACKEND=HF \
+            -e EMBEDDING_MODEL_ID=intfloat/multilingual-e5-large \
+            -e EMBEDDING_MODEL_SIZE=1024 \
+            -e VECTOR_DB_BACKEND=QDRANT \
+            -e VECTOR_DB_DISTANCE_METHOD=cosine \
+            "${IMAGE}" \
+            uvicorn main:app --host 0.0.0.0 --port 81 --workers 1 --lifespan off
 
           for attempt in {1..20}; do
             if curl -fsS http://127.0.0.1:81/ > /dev/null; then
