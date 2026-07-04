@@ -8,7 +8,7 @@ from helpers.logger import get_chatbot_logger
 logger = get_chatbot_logger(__name__)
 
 
-from services.chatbot.utils import format_step_output, log_duration, format_nested_step_outputs
+from services.chatbot.utils import format_step_output, log_duration, format_nested_step_outputs, extract_llm_usage
 
 
 class ReflectionNode:
@@ -37,7 +37,7 @@ Current Attempt Step Outputs:
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
         ])
-        self.chain = self.prompt | llm.with_structured_output(ReflectionDecision, method="function_calling")
+        self.chain = self.prompt | llm.with_structured_output(ReflectionDecision, method="function_calling", include_raw=True)
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         user_query = state.user_query
@@ -56,10 +56,14 @@ Current Attempt Step Outputs:
         )
 
         async with log_duration(logger, f"Reflection Node Chain Call (Attempt {state.plan_attempts_count})", session_id=state.session_id):
-            decision: ReflectionDecision = await self.chain.ainvoke({
+            raw_result = await self.chain.ainvoke({
                 "user_query": user_query,
                 "current_attempt_tool_outputs": current_attempt_formatted,
             }, config={"run_name": f"Reflection Chain Run (Attempt {state.plan_attempts_count})"})
+
+        decision: ReflectionDecision = raw_result["parsed"]
+        usage = extract_llm_usage(raw_result.get("raw"))
+        node_key = f"reflection_{state.plan_attempts_count}"
 
         logger.info(
             "\n" + "-"*80 + "\n"
@@ -68,11 +72,16 @@ Current Attempt Step Outputs:
             f"Decision: {decision.decision.upper()}\n"
             f"Reason: {decision.reason}\n"
             f"Clarification Question: {decision.clarification_question or 'None'}\n"
+            f"Token Usage: {usage}\n"
             + "-"*80
         )
 
+        updated_usage = dict(state.llm_usage_per_node)
+        updated_usage[node_key] = usage
+
         result = {
-            "reflection_decision": decision
+            "reflection_decision": decision,
+            "llm_usage_per_node": updated_usage,
         }
         if decision.decision == "replan":
             result["plan_attempts_count"] = state.plan_attempts_count + 1

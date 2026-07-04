@@ -74,6 +74,10 @@ class RAGSubgraphOutput(BaseModel):
     run_step_outputs: List[StepOutput] = Field(default_factory=list)
     clarification_question: Optional[str] = None
     error_message: Optional[str] = None
+    rag_llm_usage: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Aggregated token usage from all LLM calls inside the RAG subgraph (planner, reflection)"
+    )
 
 
 class RAGSubgraphState(BaseModel):
@@ -88,3 +92,8 @@ class RAGSubgraphState(BaseModel):
     reflection_decision: Optional[ReflectionDecision] = None
     retriving_results: Optional[RAGSubgraphOutput] = None
     plan_attempts_count: int = Field(default=1, description="Tracks the planning attempt number (1 to 3)")
+    llm_usage_per_node: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Token usage keyed by node name (e.g. planner_1, reflection_1)"
+    )
+

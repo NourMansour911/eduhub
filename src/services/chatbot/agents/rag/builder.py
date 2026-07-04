@@ -14,7 +14,7 @@ from helpers.logger import get_chatbot_logger
 from services.chatbot.agents.rag.retrieving.vdb.vdb_tools import VDBTools
 from services.chatbot.agents.rag.retrieving.mongo.mongodb_tools import MongoDBTools
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
-from services.chatbot.utils import extract_clean_content_text,  deduplicate_tool_outputs
+from services.chatbot.utils import extract_clean_content_text, deduplicate_tool_outputs, merge_llm_usage
 
 logger = get_chatbot_logger(__name__)
 
@@ -168,6 +168,10 @@ class RAGSubgraph:
 
         logger.info("RAG Subgraph execution concluded. Status: %s | Deduplicated sources: %d", status, len(unique_contexts))
 
+
+        rag_llm_usage = merge_llm_usage(list(state.llm_usage_per_node.values()))
+        rag_llm_usage["breakdown"] = dict(state.llm_usage_per_node)
+
         return {
             "retriving_results": RAGSubgraphOutput(
                 status=status,
@@ -175,6 +179,7 @@ class RAGSubgraph:
                 run_step_outputs=current_run_unique,
                 clarification_question=clarification_question,
                 error_message=error_message,
+                rag_llm_usage=rag_llm_usage,
             )
         }
 

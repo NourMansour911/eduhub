@@ -35,4 +35,5 @@ class RAGNode:
             "rag_status": retriving_results.status,
             "rag_clarification_question": retriving_results.clarification_question,
             "rag_error_message": retriving_results.error_message,
+            "llm_usage_breakdown": {"rag": retriving_results.rag_llm_usage},
         }

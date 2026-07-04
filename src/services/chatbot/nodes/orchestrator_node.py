@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 
 from ..states import ChatbotState
 from helpers.logger import get_chatbot_logger
-from ..utils import format_messages_history
+from ..utils import format_messages_history, extract_llm_usage
 
 logger = get_chatbot_logger(__name__)
 
@@ -48,7 +48,7 @@ Current User Query: {user_query}
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
         ])
-        self.chain = self.prompt | llm.with_structured_output(RouteDecision, method="function_calling")
+        self.chain = self.prompt | llm.with_structured_output(RouteDecision, method="function_calling", include_raw=True)
 
     async def __call__(self, state: ChatbotState) -> Dict[str, Any]:
         logger.info("OrchestratorNode invoked. Query: %s", state.user_query)
@@ -56,11 +56,14 @@ Current User Query: {user_query}
         messages_history_formatted = format_messages_history(state.messages_history)
         session_summary_str = state.session_summary or "No session summary."
 
-        decision: RouteDecision = await self.chain.ainvoke({
+        raw_result = await self.chain.ainvoke({
             "session_summary": session_summary_str,
             "messages_history": messages_history_formatted,
             "user_query": state.user_query
         })
+
+        decision: RouteDecision = raw_result["parsed"]
+        usage = extract_llm_usage(raw_result.get("raw"))
 
         logger.info("Orchestrator decision: needs_retrieval=%s, persona_update=%s, summary_update=%s, query='%s'", 
                     decision.needs_retrieval, decision.needs_persona_update, decision.needs_summary_update, decision.standalone_query)
@@ -71,5 +74,6 @@ Current User Query: {user_query}
             "rag_status": rag_status,
             "standalone_query": decision.standalone_query,
             "needs_persona_update": decision.needs_persona_update,
-            "needs_summary_update": decision.needs_summary_update
+            "needs_summary_update": decision.needs_summary_update,
+            "llm_usage_breakdown": {"orchestrator": usage},
         }

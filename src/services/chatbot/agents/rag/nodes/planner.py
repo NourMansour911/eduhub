@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, PlannerOutput
 from .tools_registry import get_default_tools_registry
 from helpers.logger import get_chatbot_logger
-from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration, deduplicate_tool_outputs
+from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration, deduplicate_tool_outputs, extract_llm_usage
 
 logger = get_chatbot_logger(__name__)
 
@@ -46,8 +46,9 @@ Current User Query: {user_query}
         ]).partial(
             tools_registry=lambda: json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2)
         )
-        
-        self.chain = self.prompt | llm.with_structured_output(PlannerOutput, method="function_calling")
+
+        raw_chain = self.prompt | llm.with_structured_output(PlannerOutput, method="function_calling", include_raw=True)
+        self.chain = raw_chain
 
     async def __call__(self, state: RAGSubgraphState) -> Dict[str, Any]:
         past_attempts = list(state.past_attempts_tool_outputs)
@@ -78,12 +79,16 @@ Current User Query: {user_query}
         )
 
         async with log_duration(logger, f"Planner Node Chain Call (Attempt {state.plan_attempts_count})", session_id=state.session_id):
-            planner_output = await self.chain.ainvoke({
+            raw_result = await self.chain.ainvoke({
                 "user_query": state.user_query,
                 "past_attempts_tool_outputs": past_attempts_formatted,
                 "reflection_feedback": reflection_feedback,
                 "student_courses": state.student_courses
             }, config={"run_name": f"Planner Chain Run (Attempt {state.plan_attempts_count})"})
+
+        planner_output: PlannerOutput = raw_result["parsed"]
+        usage = extract_llm_usage(raw_result.get("raw"))
+        node_key = f"planner_{state.plan_attempts_count}"
 
         steps_logged = []
         if planner_output.steps:
@@ -97,11 +102,16 @@ Current User Query: {user_query}
             f"Status: {planner_output.status.upper()}\n"
             f"Steps:\n{steps_str}\n"
             f"Clarification Question: {planner_output.clarification_question or 'None'}\n"
+            f"Token Usage: {usage}\n"
             + "-"*80
         )
-        
+
+        updated_usage = dict(state.llm_usage_per_node)
+        updated_usage[node_key] = usage
+
         return {
             "planner_output": planner_output,
             "past_attempts_tool_outputs": past_attempts,
-            "current_attempt_tool_outputs": current_attempt
+            "current_attempt_tool_outputs": current_attempt,
+            "llm_usage_per_node": updated_usage,
         }

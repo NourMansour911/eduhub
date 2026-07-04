@@ -209,6 +209,7 @@ class ChatbotService:
             summary=collection.summary,
             llm_usage=graph_result.get("llm_usage") or {},
             llm_metadata=graph_result.get("llm_metadata") or {},
+            llm_usage_breakdown=graph_result.get("llm_usage_breakdown") or {},
             latency_ms=latency_ms,
         ))
 
@@ -298,6 +299,7 @@ class ChatbotService:
         summary: str = None,
         llm_usage: dict = None,
         llm_metadata: dict = None,
+        llm_usage_breakdown: dict = None,
         latency_ms: float = None,
     ) -> None:
         try:
@@ -305,6 +307,7 @@ class ChatbotService:
                 (llm_metadata.get("model") if llm_metadata else None)
                 or self.generation_model_id
             )
+
             doc = EvaluationModel(
                 request=RequestLayer(
                     user_query=user_query,
@@ -333,6 +336,7 @@ class ChatbotService:
                 performance=PerformanceLayer(
                     latency_ms=latency_ms,
                     token_usage=llm_usage or {},
+                    metrics={"llm_usage_breakdown": llm_usage_breakdown or {}},
                 ),
             )
             await self.evaluation_repo.add_eval_session(doc)

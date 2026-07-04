@@ -1,7 +1,40 @@
 import time
 import contextlib
 import json
-from typing import Any, List, AsyncGenerator, Dict
+from typing import Any, List, AsyncGenerator, Dict, Optional
+
+def extract_llm_usage(response: Any) -> Dict[str, Optional[int]]:
+
+    usage_meta = getattr(response, "usage_metadata", None) or {}
+    response_meta = getattr(response, "response_metadata", None) or {}
+    token_usage_meta = response_meta.get("token_usage") or {}
+
+    prompt_tokens     = usage_meta.get("input_tokens")  if "input_tokens"  in usage_meta else token_usage_meta.get("prompt_tokens")
+    completion_tokens = usage_meta.get("output_tokens") if "output_tokens" in usage_meta else token_usage_meta.get("completion_tokens")
+    total_tokens      = usage_meta.get("total_tokens")  if "total_tokens"  in usage_meta else token_usage_meta.get("total_tokens")
+
+    return {
+        "prompt_tokens":     prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens":      total_tokens,
+    }
+
+
+def merge_llm_usage(usage_dicts: List[Dict[str, Optional[int]]]) -> Dict[str, Optional[int]]:
+
+    total_prompt, total_completion, total_tokens = 0, 0, 0
+    for usage in usage_dicts:
+        if not usage:
+            continue
+        total_prompt     += usage.get("prompt_tokens")     or 0
+        total_completion += usage.get("completion_tokens") or 0
+        total_tokens     += usage.get("total_tokens")      or 0
+    return {
+        "prompt_tokens":     total_prompt,
+        "completion_tokens": total_completion,
+        "total_tokens":      total_tokens,
+    }
+
 
 @contextlib.asynccontextmanager
 async def log_duration(logger: Any, action_name: str, session_id: str = "Unknown") -> AsyncGenerator[None, None]:
@@ -199,6 +232,6 @@ def deduplicate_tool_outputs(outputs: List[Any]) -> List[Any]:
             seen_keys.add(key)
             deduped.append(out)
             
-    # Reverse back to restore original chronological order
+
     deduped.reverse()
     return deduped

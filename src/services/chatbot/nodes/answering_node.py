@@ -6,6 +6,7 @@ from helpers.logger import get_chatbot_logger
 from helpers.utils import unescape_newlines
 from integrations.redis_provider import RedisProvider
 from ..states import ChatbotState
+from ..utils import extract_llm_usage, merge_llm_usage
 
 
 logger = get_chatbot_logger(__name__)
@@ -97,25 +98,12 @@ Retrieved Context (Verbatim Sources):
 
         response = await self.llm.ainvoke(messages, config={"run_name": "Answering LLM"})
 
-
         final_response_text = unescape_newlines(str(response.content).strip())
         logger.info("Luma final answer: %s", final_response_text)
 
-        usage_meta = getattr(response, "usage_metadata", None) or {}
-        response_meta = response.response_metadata or {}
-        token_usage_meta = response_meta.get("token_usage") or {}
+        llm_usage = extract_llm_usage(response)
 
-        
-        prompt_tokens     = usage_meta.get("input_tokens")  if "input_tokens"  in usage_meta else token_usage_meta.get("prompt_tokens")
-        completion_tokens = usage_meta.get("output_tokens") if "output_tokens" in usage_meta else token_usage_meta.get("completion_tokens")
-        total_tokens      = usage_meta.get("total_tokens")  if "total_tokens"  in usage_meta else token_usage_meta.get("total_tokens")
-
-        llm_usage: dict = {
-            "prompt_tokens":     prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens":      total_tokens,
-        }
-
+        response_meta = getattr(response, "response_metadata", None) or {}
         llm_metadata: dict = {
             "model":              response_meta.get("model_name") or response_meta.get("model"),
             "finish_reason":      response_meta.get("finish_reason"),
@@ -123,13 +111,19 @@ Retrieved Context (Verbatim Sources):
         }
 
         logger.info(
-            "LLM token usage — prompt: %s | completion: %s | total: %s "
-            "| raw usage_metadata: %s | raw token_usage: %s",
-            prompt_tokens, completion_tokens, total_tokens, usage_meta, token_usage_meta,
+            "Answering LLM token usage — prompt: %s | completion: %s | total: %s",
+            llm_usage.get("prompt_tokens"), llm_usage.get("completion_tokens"), llm_usage.get("total_tokens"),
         )
 
+
+        existing_breakdown = dict(state.llm_usage_breakdown)
+        existing_breakdown["answering"] = llm_usage
+        total_usage = merge_llm_usage([v for k, v in existing_breakdown.items() if isinstance(v, dict) and "prompt_tokens" in v])
+        existing_breakdown["total"] = total_usage
+
         return {
-            "response":     final_response_text,
-            "llm_usage":    llm_usage,
-            "llm_metadata": llm_metadata,
+            "response":             final_response_text,
+            "llm_usage":            llm_usage,
+            "llm_metadata":         llm_metadata,
+            "llm_usage_breakdown":  existing_breakdown,
         }
