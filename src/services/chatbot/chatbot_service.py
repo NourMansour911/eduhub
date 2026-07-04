@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from typing import Any, List, Dict
 from langchain_core.runnables import Runnable
 
@@ -98,6 +99,7 @@ class ChatbotService:
         )
         self.summary_chain = build_summary_chain(llm_map["summary"])
         self.persona_chain = build_persona_chain(llm_map["persona"])
+        self.generation_model_id = settings.GENERATION_MODEL_ID
 
     async def _get_and_cache_student_courses(self, student_id: str, collection: RedisSessionDTO) -> str:
         if collection.student_courses:
@@ -172,6 +174,7 @@ class ChatbotService:
         logger.info("Formatted last messages of chat history: %s", last_messages)
 
         try:
+            _t0 = time.perf_counter()
             graph_result = await self.chatbot_graph.ainvoke({
                 "user_query": user_query,
                 "student_id": student_id,
@@ -182,6 +185,7 @@ class ChatbotService:
                 "session_summary": collection.summary,
                 "past_messages_tool_outputs": past_messages_tool_outputs,
             }, config={"run_name": "Chatbot Graph Run"})
+            latency_ms = round((time.perf_counter() - _t0) * 1000, 2)
         except Exception as exc:
             logger.exception("Chatbot graph invocation failed")
             raise ChatbotProcessingError(
@@ -217,6 +221,9 @@ class ChatbotService:
             run_step_outputs=run_step_outputs,
             persona=collection.persona,
             summary=collection.summary,
+            llm_usage=graph_result.get("llm_usage") or {},
+            llm_metadata=graph_result.get("llm_metadata") or {},
+            latency_ms=latency_ms,
         ))
 
         needs_persona_update = graph_result.get("needs_persona_update", False)
@@ -290,8 +297,15 @@ class ChatbotService:
         run_step_outputs: list = None,
         persona: str = None,
         summary: str = None,
+        llm_usage: dict = None,
+        llm_metadata: dict = None,
+        latency_ms: float = None,
     ) -> None:
         try:
+            resolved_model = (
+                (llm_metadata.get("model") if llm_metadata else None)
+                or self.generation_model_id
+            )
             doc = EvaluationModel(
                 request=RequestLayer(
                     user_query=user_query,
@@ -305,13 +319,25 @@ class ChatbotService:
                 ),
                 generation=GenerationLayer(
                     final_answer=answer,
+                    parameters={
+                        "model":       resolved_model,
+                        "temperature": 0.7,
+                    },
+                    metadata={
+                        "finish_reason":      llm_metadata.get("finish_reason")      if llm_metadata else None,
+                        "system_fingerprint": llm_metadata.get("system_fingerprint") if llm_metadata else None,
+                    },
                 ),
-                performance=PerformanceLayer(),
+                performance=PerformanceLayer(
+                    latency_ms=latency_ms,
+                    token_usage=llm_usage or {},
+                ),
             )
             await self.evaluation_repo.add_eval_session(doc)
             logger.info("Evaluation session pushed to MongoDB.")
         except Exception as exc:
             logger.warning("Failed to push evaluation session to MongoDB: %s", exc)
+
 
     async def delete_student_persona(self, user_id: str) -> DeletePersonaResponse:
 
