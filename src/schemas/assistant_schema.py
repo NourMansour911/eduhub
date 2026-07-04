@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import List, Any
 
+from helpers.utils import CleanMarkdownStr
+
 
 class SummarizeRequest(BaseModel):
     lecture_id: str = Field(..., description="Lecture identifier to summarize")
@@ -8,13 +10,13 @@ class SummarizeRequest(BaseModel):
 
 
 class SummarizeResponse(BaseModel):
-    summary: str = Field(..., description="Generated summary text")
+    summary: CleanMarkdownStr = Field(..., description="Generated summary text")
 
 class ChatRequest(BaseModel):
     message: str = Field(..., description="Message to send to the chat")
     
 class ChatResponse(BaseModel):
-    ai_response: Any = Field(..., description="Generated chat response")
+    ai_response: CleanMarkdownStr = Field(..., description="Generated chat response")
 
 class DeletePersonaResponse(BaseModel):
     user_id: str = Field(..., description="User ID whose persona was deleted")

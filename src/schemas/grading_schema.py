@@ -2,7 +2,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
-
+from helpers.utils import CleanMarkdownStr
 
 
 class RefGradingRequest(BaseModel):
@@ -19,7 +19,7 @@ class GradingRequest(BaseModel):
 
 class GradingResponse(BaseModel):
     score: float = Field(..., ge=0, le=1, description="Final weighted score.")
-    feedback: Optional[str] = Field(None, description="Optional feedback for the student.")
+    feedback: Optional[CleanMarkdownStr] = Field(None, description="Optional feedback for the student.")
     student_answer: Optional[str] = Field(None, description="The student's answer that was graded.")
     question_id: Optional[str] = Field(None, description="The question identifier.")
     reference_answer: Optional[str] = Field(None, description="The reference answer used for grading.")

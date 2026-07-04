@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends, Path
+from fastapi.responses import Response
 
 from helpers.logger import get_logger
 from schemas import SummarizeRequest, SummarizeResponse
@@ -49,6 +52,14 @@ async def chat(
     user_id: str = Path(..., description="User identifier used for memory and trace metadata."),
 	service: ChatbotService = Depends(get_chatbot_service),
 ):
-	return await service.chat(chat_request, user_id, session_id)
+	response_obj = await service.chat(chat_request, user_id, session_id)
+	raw_json = json.dumps(
+		response_obj.model_dump(),
+		ensure_ascii=False,
+	)
+	return Response(
+		content=raw_json,
+		media_type="application/json",
+	)
 
 
