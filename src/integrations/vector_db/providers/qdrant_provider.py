@@ -26,7 +26,7 @@ class QdrantDBProvider(VectorDBInterface):
         
 
     def connect(self) -> None:
-        self.client = AsyncQdrantClient(url=self.url)
+        self.client = AsyncQdrantClient(url=self.url,timeout=60)
         logger.info("[CONNECT SUCCESS]")
 
     def disconnect(self) -> None:

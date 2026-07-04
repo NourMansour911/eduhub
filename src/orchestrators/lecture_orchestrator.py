@@ -8,8 +8,7 @@ from services.vdb_service.vectordb_service import VDBService
 from services.service_exceptions import ProcessingError, ServiceException
 from integrations.llm import LLMInterface
 from helpers.logger import get_logger
-from helpers.utils import serialize_content
-import json
+
 from pathlib import Path
 logger = get_logger(__name__)
 
@@ -93,17 +92,17 @@ class LectureOrchestrator:
         
         
         raw_content = prepared_content.content
-        """ summaries = await self.summarize_service.generate_all_summaries(
+        summaries = await self.summarize_service.generate_all_summaries(
             lecture_content=raw_content,
             lecture_id=payload.lecture_id,
             course_id=payload.course_id,
-        ) """
+        )
         
-        projects_root = Path(__file__).parents[3]  # Navigate to d:\training\AI\projects
+        """ projects_root = Path(__file__).parents[3]  
         json_file = projects_root / "demos" /"eduhub_demos"/ "test_jsons" / "summaries.json"
             
         with open(json_file, "r", encoding="utf-8") as f:
-            summaries = json.load(f)
+            summaries = json.load(f) """
                 
         lecture = LectureModel(
             lecture_id=payload.lecture_id,

@@ -36,7 +36,12 @@ class SessionService:
         user_id = request.user_id
         session_id = request.session_id
         
-        
+        collection = await self.redis_provider.get_collection(user_id=user_id, session_id=session_id)
+        if collection :
+            raise SessionProcessingError(
+                message="Session already exists",
+                details={"user_id": user_id, "session_id": session_id},
+            )
         persona_doc = await self.student_persona_repo.get_persona_by_student_id(user_id)
         persona_str = persona_doc.persona if persona_doc else None
 
@@ -151,7 +156,7 @@ class SessionService:
                 details={"user_id": user_id, "session_id": session_id, "reason": "session_is_active"},
             )
 
-        # Check if the collection exists first
+        
         collection_exists = await self.vdb_service.vdb_client.is_collection_existed(self.COLLECTION_NAME)
         if not collection_exists:
             raise SessionNotFoundError(
@@ -164,7 +169,7 @@ class SessionService:
             {"field": "user_id", "value": user_id, "op": "eq"}
         ]
 
-        # Check if the session exists in Qdrant
+        
         try:
             existing_chunks = await self.vdb_service.vdb_client.get_collection_chunks(
                 collection_name=self.COLLECTION_NAME,

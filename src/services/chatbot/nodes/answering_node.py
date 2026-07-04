@@ -110,11 +110,17 @@ Retrieved Context (Verbatim Sources):
 
         usage_meta = getattr(response, "usage_metadata", None) or {}
         response_meta = response.response_metadata or {}
+        token_usage_meta = response_meta.get("token_usage") or {}
+
+        
+        prompt_tokens     = usage_meta.get("input_tokens")  if "input_tokens"  in usage_meta else token_usage_meta.get("prompt_tokens")
+        completion_tokens = usage_meta.get("output_tokens") if "output_tokens" in usage_meta else token_usage_meta.get("completion_tokens")
+        total_tokens      = usage_meta.get("total_tokens")  if "total_tokens"  in usage_meta else token_usage_meta.get("total_tokens")
 
         llm_usage: dict = {
-            "prompt_tokens":     usage_meta.get("input_tokens")  or response_meta.get("token_usage", {}).get("prompt_tokens"),
-            "completion_tokens": usage_meta.get("output_tokens") or response_meta.get("token_usage", {}).get("completion_tokens"),
-            "total_tokens":      usage_meta.get("total_tokens")  or response_meta.get("token_usage", {}).get("total_tokens"),
+            "prompt_tokens":     prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens":      total_tokens,
         }
 
         llm_metadata: dict = {
@@ -123,7 +129,11 @@ Retrieved Context (Verbatim Sources):
             "system_fingerprint": response_meta.get("system_fingerprint"),
         }
 
-        logger.debug("LLM usage: %s | LLM metadata: %s", llm_usage, llm_metadata)
+        logger.info(
+            "LLM token usage — prompt: %s | completion: %s | total: %s "
+            "| raw usage_metadata: %s | raw token_usage: %s",
+            prompt_tokens, completion_tokens, total_tokens, usage_meta, token_usage_meta,
+        )
 
         return {
             "response":     final_response_text,

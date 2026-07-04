@@ -44,7 +44,7 @@ class SearchService:
 		field_value: Any,
 		limit: int = 10,
 		query_text: str = "",
-		rewrite_mode: str = "lecture_search",
+		rewrite_mode: str = "general",
 	) -> List[VDBSearchResultPayload]:
 		if not (query_text and query_text.strip()):
 			raise ServiceException(details={"operation": "search_by_metadata_field", "error": "query_text is required"})

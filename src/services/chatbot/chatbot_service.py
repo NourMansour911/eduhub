@@ -196,7 +196,7 @@ class ChatbotService:
         ai_reply = graph_result.get("response") or "I'm sorry, I could not generate a response."
         logger.info("Chatbot graph result response: %s", ai_reply)
 
-        # Validate and clean the response via Pydantic model validation
+        
         response_obj = ChatResponse(ai_response=ai_reply)
         cleaned_reply = response_obj.ai_response
 
@@ -315,7 +315,10 @@ class ChatbotService:
                 ),
                 retrieval=RetrievalLayer(
                     final_context=context,
-                    raw_documents=run_step_outputs,
+                    raw_documents=[
+                        s.model_dump() if hasattr(s, "model_dump") else s
+                        for s in (run_step_outputs or [])
+                    ],
                 ),
                 generation=GenerationLayer(
                     final_answer=answer,

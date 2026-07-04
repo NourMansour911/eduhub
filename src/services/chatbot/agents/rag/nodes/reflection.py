@@ -77,7 +77,6 @@ Step Outputs of Previous Messages:
         result = {
             "reflection_decision": decision
         }
-        if decision.decision == "replan":
-            result["plan_attempts_count"] = state.plan_attempts_count + 1
+        
 
         return result

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 class QueryRewriteMode(str, Enum):
 	SESSION_SUMMARY = "session_summary"
 	LECTURE_SEARCH = "lecture_search"
+	REGULATIONS_SEARCH = "regulations_search"
 	GENERAL = "general"
 
 
@@ -43,6 +44,11 @@ Focus on lecture-style terminology and high-recall search variants.
 	QueryRewriteMode.GENERAL.value: """
 You are rewriting a query for general retrieval.
 Generate a small set of semantically close variants that improve recall without drifting from the original meaning.
+""",
+	QueryRewriteMode.REGULATIONS_SEARCH.value: """
+You are rewriting a query for regulations retrieval.
+Prefer keyword-rich wording that captures regulatory terms, concepts, and high-recall search variants.
+Focus on academic, legal, and policy phrasing.
 """,
 }
 

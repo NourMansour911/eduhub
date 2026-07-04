@@ -8,6 +8,9 @@ from integrations.llm import LLMInterface
 from ...states import StepOutput, FailureInfo
 from .name_resolver import NameResolver
 from .sql_server_calling import SqlServerCalling
+from helpers.logger import get_chatbot_logger
+
+logger = get_chatbot_logger(__name__)
 
 
 class SQLTools:
@@ -23,7 +26,8 @@ class SQLTools:
 		student_id: str,
 		course_name: str,
 	) -> StepOutput:
-
+		logger.info("[SQLTools] get_course_id_by_course_name START | step_id: %s | student_id: %s | course_name: '%s'",
+					step_id, student_id, course_name)
 		try:
 			courses = await self.sql_server_calling.get_student_courses(student_id)
 
@@ -36,6 +40,7 @@ class SQLTools:
 			)
 
 			if resolved_course is None:
+				logger.info("[SQLTools] get_course_id_by_course_name FAILED | no match for '%s' among %d courses", course_name, len(courses))
 				failure_info = FailureInfo(
 					message="No matching course was found.",
 					clarification_message="Please provide the course name more accurately.",
@@ -43,12 +48,15 @@ class SQLTools:
 				)
 				content = {}
 			else:
+				logger.info("[SQLTools] get_course_id_by_course_name OK | resolved: %s (id=%s)",
+							resolved_course.get('name'), resolved_course.get('id'))
 				failure_info = None
 				content = {
 					"course_id": resolved_course["id"],
 					"course_name": resolved_course["name"],
 				}
 		except Exception as exc:
+			logger.error("[SQLTools] get_course_id_by_course_name EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
 				clarification_message="We cannot check your enrolled courses right now. Please try again later.",
@@ -74,7 +82,8 @@ class SQLTools:
 		course_id: str,
 		lecture_name: str,
 	) -> StepOutput:
-
+		logger.info("[SQLTools] get_lecture_id_by_lecture_name START | step_id: %s | course_id: %s | lecture_name: '%s'",
+					step_id, course_id, lecture_name)
 		try:
 			lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
@@ -87,6 +96,7 @@ class SQLTools:
 			)
 
 			if resolved_lecture is None:
+				logger.info("[SQLTools] get_lecture_id_by_lecture_name FAILED | no match for '%s' among %d lectures", lecture_name, len(lectures))
 				failure_info = FailureInfo(
 					message="No matching lecture was found.",
 					clarification_message="Please provide the lecture name more accurately.",
@@ -94,12 +104,15 @@ class SQLTools:
 				)
 				content = {}
 			else:
+				logger.info("[SQLTools] get_lecture_id_by_lecture_name OK | resolved: '%s' (id=%s)",
+							resolved_lecture.get('title') or resolved_lecture.get('name'), resolved_lecture.get('id'))
 				failure_info = None
 				content = {
 					"lecture_id": resolved_lecture["id"],
 					"lecture_name": resolved_lecture["title"],
 				}
 		except Exception as exc:
+			logger.error("[SQLTools] get_lecture_id_by_lecture_name EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
 				clarification_message="We cannot check lectures right now. Please try again later.",
@@ -124,11 +137,12 @@ class SQLTools:
 		step_id: str,
 		course_id: str,
 	) -> StepOutput:
-
+		logger.info("[SQLTools] get_course_details_by_course_id START | step_id: %s | course_id: %s", step_id, course_id)
 		try:
 			course_details = await self.sql_server_calling.get_course_details(course_id)
 
 			if not course_details:
+				logger.info("[SQLTools] get_course_details_by_course_id FAILED | course_id: %s not found", course_id)
 				failure_info = FailureInfo(
 					message="Course details were not found.",
 					clarification_message="Please verify the course identifier.",
@@ -136,9 +150,12 @@ class SQLTools:
 				)
 				content = {}
 			else:
+				logger.info("[SQLTools] get_course_details_by_course_id OK | course_id: %s | keys: %s",
+							course_id, list(course_details.keys()) if isinstance(course_details, dict) else type(course_details).__name__)
 				failure_info = None
 				content = course_details
 		except Exception as exc:
+			logger.error("[SQLTools] get_course_details_by_course_id EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
 				clarification_message="We cannot check course details right now. Please try again later.",
@@ -204,11 +221,12 @@ class SQLTools:
 		step_id: str,
 		course_id: str,
 	) -> StepOutput:
-
+		logger.info("[SQLTools] get_all_course_lectures_by_course_id START | step_id: %s | course_id: %s", step_id, course_id)
 		try:
 			lectures = await self.sql_server_calling.get_course_lectures(course_id)
 
 			if not lectures:
+				logger.info("[SQLTools] get_all_course_lectures_by_course_id FAILED | no lectures for course_id: %s", course_id)
 				failure_info = FailureInfo(
 					message="No lectures were found for this course.",
 					clarification_message="Please verify the course identifier.",
@@ -216,11 +234,13 @@ class SQLTools:
 				)
 				content = {}
 			else:
+				logger.info("[SQLTools] get_all_course_lectures_by_course_id OK | course_id: %s | lectures: %d", course_id, len(lectures))
 				failure_info = None
 				content = {
-					"lectures": lectures, 
+					"lectures": lectures,
 				}
 		except Exception as exc:
+			logger.error("[SQLTools] get_all_course_lectures_by_course_id EXCEPTION | step_id: %s | error: %s", step_id, exc)
 			failure_info = FailureInfo(
 				message="Database temporarily down.",
 				clarification_message="We cannot retrieve lectures right now. Please try again later.",

@@ -223,7 +223,7 @@ class VDBTools:
 				field_value="REG01",
 				limit=5,
 				query_text=query,
-				rewrite_mode="lecture_search",
+				rewrite_mode="regulations_search",
 			)
 		)
 
