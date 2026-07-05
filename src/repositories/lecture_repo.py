@@ -46,14 +46,20 @@ class LectureRepo:
         lecture.iid = result.inserted_id
         return lecture.iid
 
+    @staticmethod
+    def _normalize_lecture_id(lecture_id: str) -> str:
+        return str(lecture_id)
+
 
     async def get_lecture_by_lecture_id(self, lecture_id: str) -> LectureModel | None:
-        record = await self.collection.find_one({"lecture_id": lecture_id})
+        normalized_lecture_id = self._normalize_lecture_id(lecture_id)
+        record = await self.collection.find_one({"lecture_id": normalized_lecture_id})
         return LectureModel(**record) if record else None
 
     async def delete_by_lecture_id(self, lecture_id: str) -> int:
 
-        result = await self.collection.delete_one({"lecture_id": lecture_id})
+        normalized_lecture_id = self._normalize_lecture_id(lecture_id)
+        result = await self.collection.delete_one({"lecture_id": normalized_lecture_id})
         return int(result.deleted_count)
 
     async def delete_by_course_id(self, course_id: str) -> int:

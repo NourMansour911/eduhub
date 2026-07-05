@@ -3,6 +3,49 @@ import contextlib
 import json
 from typing import Any, List, AsyncGenerator, Dict, Optional
 
+
+def extract_llm_call_config(llm: Any) -> Dict[str, Any]:
+    if llm is None:
+        return {}
+
+    config: Dict[str, Any] = {}
+    model_name = getattr(llm, "model_name", None) or getattr(llm, "model", None)
+    if model_name is not None:
+        config["model"] = model_name
+
+    for attr in ("temperature", "max_tokens", "top_p", "max_retries"):
+        value = getattr(llm, attr, None)
+        if value is not None:
+            config[attr] = value
+
+    model_kwargs = getattr(llm, "model_kwargs", None)
+    if isinstance(model_kwargs, dict) and model_kwargs:
+        config["model_kwargs"] = model_kwargs
+
+    return config
+
+
+def extract_llm_metadata(response: Any, llm: Any = None, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    metadata = extract_llm_call_config(llm)
+
+    response_meta = getattr(response, "response_metadata", None) or {}
+    for key in ("model_name", "model", "finish_reason", "system_fingerprint"):
+        value = response_meta.get(key)
+        if value is not None:
+            metadata["model" if key == "model_name" else key] = value
+
+    if extra:
+        metadata.update(extra)
+
+    return metadata
+
+
+def build_llm_node_payload(usage: Optional[Dict[str, Any]] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return {
+        "usage": usage or {},
+        "metadata": metadata or {},
+    }
+
 def extract_llm_usage(response: Any) -> Dict[str, Optional[int]]:
 
     usage_meta = getattr(response, "usage_metadata", None) or {}
@@ -33,6 +76,41 @@ def merge_llm_usage(usage_dicts: List[Dict[str, Optional[int]]]) -> Dict[str, Op
         "prompt_tokens":     total_prompt,
         "completion_tokens": total_completion,
         "total_tokens":      total_tokens,
+    }
+
+
+def sum_llm_usage_tree(usage_tree: Any) -> Dict[str, int]:
+    total_prompt, total_completion, total_tokens = 0, 0, 0
+
+    if not isinstance(usage_tree, dict):
+        return {
+            "prompt_tokens": total_prompt,
+            "completion_tokens": total_completion,
+            "total_tokens": total_tokens,
+        }
+
+    for key, value in usage_tree.items():
+        if key == "total":
+            continue
+        if isinstance(value, dict) and "usage" in value and isinstance(value["usage"], dict):
+            usage = value["usage"]
+            total_prompt += int(usage.get("prompt_tokens") or 0)
+            total_completion += int(usage.get("completion_tokens") or 0)
+            total_tokens += int(usage.get("total_tokens") or 0)
+        elif isinstance(value, dict) and any(token_key in value for token_key in ("prompt_tokens", "completion_tokens", "total_tokens")):
+            total_prompt += int(value.get("prompt_tokens") or 0)
+            total_completion += int(value.get("completion_tokens") or 0)
+            total_tokens += int(value.get("total_tokens") or 0)
+        elif isinstance(value, dict):
+            nested_total = sum_llm_usage_tree(value)
+            total_prompt += nested_total["prompt_tokens"]
+            total_completion += nested_total["completion_tokens"]
+            total_tokens += nested_total["total_tokens"]
+
+    return {
+        "prompt_tokens": total_prompt,
+        "completion_tokens": total_completion,
+        "total_tokens": total_tokens,
     }
 
 

@@ -76,7 +76,7 @@ class RAGSubgraphOutput(BaseModel):
     error_message: Optional[str] = None
     rag_llm_usage: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Aggregated token usage from all LLM calls inside the RAG subgraph (planner, reflection)"
+        description="Hierarchical node payloads for all LLM calls inside the RAG subgraph (planner, reflection)"
     )
 
 
@@ -94,6 +94,6 @@ class RAGSubgraphState(BaseModel):
     plan_attempts_count: int = Field(default=1, description="Tracks the planning attempt number (1 to 3)")
     llm_usage_per_node: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Token usage keyed by node name (e.g. planner_1, reflection_1)"
+        description="Node payloads keyed by node name (e.g. planner_1, reflection_1)"
     )
 

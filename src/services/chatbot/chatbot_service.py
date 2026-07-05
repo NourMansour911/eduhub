@@ -207,8 +207,6 @@ class ChatbotService:
             run_step_outputs=run_step_outputs,
             persona=collection.persona,
             summary=collection.summary,
-            llm_usage=graph_result.get("llm_usage") or {},
-            llm_metadata=graph_result.get("llm_metadata") or {},
             llm_usage_breakdown=graph_result.get("llm_usage_breakdown") or {},
             latency_ms=latency_ms,
         ))
@@ -297,17 +295,10 @@ class ChatbotService:
         run_step_outputs: list = None,
         persona: str = None,
         summary: str = None,
-        llm_usage: dict = None,
-        llm_metadata: dict = None,
         llm_usage_breakdown: dict = None,
         latency_ms: float = None,
     ) -> None:
         try:
-            resolved_model = (
-                (llm_metadata.get("model") if llm_metadata else None)
-                or self.generation_model_id
-            )
-
             doc = EvaluationModel(
                 request=RequestLayer(
                     user_query=user_query,
@@ -324,19 +315,10 @@ class ChatbotService:
                 ),
                 generation=GenerationLayer(
                     final_answer=answer,
-                    parameters={
-                        "model":       resolved_model,
-                        "temperature": 0.7,
-                    },
-                    metadata={
-                        "finish_reason":      llm_metadata.get("finish_reason")      if llm_metadata else None,
-                        "system_fingerprint": llm_metadata.get("system_fingerprint") if llm_metadata else None,
-                    },
                 ),
                 performance=PerformanceLayer(
                     latency_ms=latency_ms,
-                    token_usage=llm_usage or {},
-                    metrics={"llm_usage_breakdown": llm_usage_breakdown or {}},
+                    token_usage=llm_usage_breakdown or {},
                 ),
             )
             await self.evaluation_repo.add_eval_session(doc)

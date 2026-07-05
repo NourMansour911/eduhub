@@ -1,4 +1,4 @@
-Name: CI
+name: CI
 
 on:
   push:
@@ -24,14 +24,18 @@ env:
 
 jobs:
   test_and_lint:
-    if: ${{ github.event_name == 'workflow_dispatch' || (
-        github.event_name == 'push' && (
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'push' &&
+        (
           contains(github.event.head_commit.message, '[ci]') ||
           contains(github.event.head_commit.message, '[build]') ||
-          github.ref_type == 'tag'
+          startsWith(github.ref, 'refs/tags/')
         )
-      ) }}
+      )
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,7 +44,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
           cache-dependency-path: requirements.txt
 
       - name: Install dependencies
@@ -57,12 +61,15 @@ jobs:
 
   build_and_push_image:
     needs: test_and_lint
-    if: ${{ github.event_name == 'workflow_dispatch' || (
-        github.event_name == 'push' && (
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'push' &&
+        (
           contains(github.event.head_commit.message, '[build]') ||
-          github.ref_type == 'tag'
+          startsWith(github.ref, 'refs/tags/')
         )
-      ) }}
+      )
     runs-on: ubuntu-latest
 
     steps:
@@ -124,33 +131,32 @@ jobs:
           cleanup() {
             docker rm -f "${CONTAINER_NAME}" > /dev/null 2>&1 || true
           }
-          trap cleanup EXIT
 
+          trap cleanup EXIT
           cleanup
 
-          # تم تصليح المحاذاة (Indentation) هنا ليعمل الـ Script بنجاح
           docker run -d --name "${CONTAINER_NAME}" -p 81:81 \
             -e APP_NAME=eduhub \
             -e APP_VERSION=0.1 \
-            -e STORAGE_PATH=storage \
-            -e AZURE_DOC_ENDPOINT="${{ secrets.AZURE_DOC_ENDPOINT }}" \
-            -e AZURE_DOC_KEY="${{ secrets.AZURE_DOC_KEY }}" \
-            -e DB_BASE_URL="${{ secrets.DB_BASE_URL }}" \
+            -e STORAGE_PATH=/tmp/storage \
+            -e MONGODB_URL=mongodb://localhost:27017 \
             -e MONGO_DB_NAME=eduhub \
-            -e MONGODB_URL="${{ secrets.MONGODB_URL }}" \
-            -e QDRANT_URL="${{ secrets.QDRANT_URL }}" \
-            -e REDIS_URL="${{ secrets.REDIS_URL }}" \
-            -e COHERE_API_KEY="${{ secrets.COHERE_API_KEY }}" \
-            -e OPENAI_API_URL=https://openrouter.ai/api/v1 \
-            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            -e LANGSMITH_API_KEY="${{ secrets.LANGSMITH_API_KEY }}" \
+            -e DB_BASE_URL=http://example.com \
+            -e QDRANT_URL=http://localhost:6333 \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e COHERE_API_KEY=test-cohere-key \
+            -e LANGSMITH_API_KEY=test-langsmith-key \
+            -e OPENAI_API_URL=https://api.openai.com/v1 \
+            -e OPENAI_API_KEY=test-openai-key \
             -e GENERATION_BACKEND=OPENAI \
-            -e GENERATION_MODEL_ID=deepseek/deepseek-v4-flash \
+            -e GENERATION_MODEL_ID=deepseek-v4-flash \
             -e EMBEDDING_BACKEND=HF \
-            -e EMBEDDING_MODEL_ID=intfloat/multilingual-e5-large \
-            -e EMBEDDING_MODEL_SIZE=1024 \
+            -e EMBEDDING_MODEL_ID=BAAI/bge-base-en-v1.5 \
+            -e EMBEDDING_MODEL_SIZE=768 \
             -e VECTOR_DB_BACKEND=QDRANT \
             -e VECTOR_DB_DISTANCE_METHOD=cosine \
+            -e AZURE_DOC_ENDPOINT=https://test.cognitiveservices.azure.com/ \
+            -e AZURE_DOC_KEY=test-azure-key \
             "${IMAGE}" \
             uvicorn main:app --host 0.0.0.0 --port 81 --workers 1 --lifespan off
 
@@ -159,6 +165,7 @@ jobs:
               echo "Smoke test passed"
               exit 0
             fi
+
             echo "Waiting for service startup (${attempt}/20)"
             sleep 2
           done

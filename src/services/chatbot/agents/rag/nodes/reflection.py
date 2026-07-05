@@ -8,7 +8,7 @@ from helpers.logger import get_chatbot_logger
 logger = get_chatbot_logger(__name__)
 
 
-from services.chatbot.utils import format_step_output, log_duration, format_nested_step_outputs, extract_llm_usage
+from services.chatbot.utils import format_step_output, log_duration, format_nested_step_outputs, extract_llm_usage, extract_llm_metadata, build_llm_node_payload
 
 
 class ReflectionNode:
@@ -33,6 +33,7 @@ Current Attempt Step Outputs:
 """
 
     def __init__(self, llm: ChatOpenAI):
+        self.llm = llm
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
@@ -63,6 +64,7 @@ Current Attempt Step Outputs:
 
         decision: ReflectionDecision = raw_result["parsed"]
         usage = extract_llm_usage(raw_result.get("raw"))
+        metadata = extract_llm_metadata(raw_result.get("raw"), self.llm)
         node_key = f"reflection_{state.plan_attempts_count}"
 
         logger.info(
@@ -77,7 +79,7 @@ Current Attempt Step Outputs:
         )
 
         updated_usage = dict(state.llm_usage_per_node)
-        updated_usage[node_key] = usage
+        updated_usage[node_key] = build_llm_node_payload(usage, metadata)
 
         result = {
             "reflection_decision": decision,

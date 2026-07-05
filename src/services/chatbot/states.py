@@ -20,11 +20,8 @@ class ChatbotState(BaseModel):
     rag_clarification_question: Optional[str] = None
     rag_error_message: Optional[str] = None
     response: Optional[str] = None
-    llm_usage: Optional[Dict[str, Any]] = None      
-    llm_metadata: Optional[Dict[str, Any]] = None    
-
     llm_usage_breakdown: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Token usage per component: orchestrator, rag, answering, and total"
+        description="Hierarchical node payloads keyed by node name. Each node contains usage and metadata."
     )
 

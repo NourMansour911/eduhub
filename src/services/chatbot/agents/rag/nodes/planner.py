@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from ..states import RAGSubgraphState, PlannerOutput
 from .tools_registry import get_default_tools_registry
 from helpers.logger import get_chatbot_logger
-from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration, deduplicate_tool_outputs, extract_llm_usage
+from services.chatbot.utils import format_step_output, format_nested_step_outputs, log_duration, deduplicate_tool_outputs, extract_llm_usage, extract_llm_metadata, build_llm_node_payload
 
 logger = get_chatbot_logger(__name__)
 
@@ -40,6 +40,7 @@ Current User Query: {user_query}
 """
 
     def __init__(self, llm: ChatOpenAI):
+        self.llm = llm
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", self.STATIC_SYSTEM_PROMPT),
             ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
@@ -88,6 +89,7 @@ Current User Query: {user_query}
 
         planner_output: PlannerOutput = raw_result["parsed"]
         usage = extract_llm_usage(raw_result.get("raw"))
+        metadata = extract_llm_metadata(raw_result.get("raw"), self.llm)
         node_key = f"planner_{state.plan_attempts_count}"
 
         steps_logged = []
@@ -107,7 +109,7 @@ Current User Query: {user_query}
         )
 
         updated_usage = dict(state.llm_usage_per_node)
-        updated_usage[node_key] = usage
+        updated_usage[node_key] = build_llm_node_payload(usage, metadata)
 
         return {
             "planner_output": planner_output,
