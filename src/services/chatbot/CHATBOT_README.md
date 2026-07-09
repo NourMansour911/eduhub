@@ -38,8 +38,8 @@ ChatbotService.chat()
   ├── Invoke chatbot_graph.ainvoke(...)
   │     │
   │     ▼
-  │   [Orchestrator] ── route_to_rag ──► [RAG Node] ──► [Answering (Luma)]
-  │         └──────── direct_answer ────────────────► [Answering (Luma)]
+  │   [Orchestrator] ── route_to_rag ──► [RAG Node] ──► [Answering (Nova)]
+  │         └──────── direct_answer ────────────────► [Answering (Nova)]
   │
   ├── Append user/assistant messages to Redis
   ├── Persist run_step_outputs to Redis contexts
@@ -71,7 +71,7 @@ The Orchestrator is the first node in every request. It acts as a **query router
 **Smart routing logic:**
 - Returns `direct_answer` when the query is a follow-up on already-discussed content, a greeting, or a question about enrolled courses (already available in state).
 - Returns `route_to_rag` when fresh database retrieval is needed.
-- On prompt injection attempts, sets `needs_retrieval=False` and preserves the query for safe downstream handling by Luma.
+- On prompt injection attempts, sets `needs_retrieval=False` and preserves the query for safe downstream handling by Nova.
 
 ---
 
@@ -87,11 +87,11 @@ For the full RAG subgraph internals — DAG planning, parallel execution, Hybrid
 
 ---
 
-### Answering Node — Luma (`temp=0.7`)
+### Answering Node — Nova (`temp=0.7`)
 
 **File:** `nodes/answering_node.py`
 
-Luma is the final response generator. It's a **Socratic educational mentor** with a distinct persona enforced by its system prompt:
+Nova is the final response generator. It's a **Socratic educational mentor** with a distinct persona enforced by its system prompt:
 
 - Encourages understanding over fact-dumping; uses analogies, step-by-step breakdowns.
 - Always concludes with a follow-up question to check student comprehension.
@@ -150,7 +150,7 @@ Both chains run **in the background** via `asyncio.create_task` after the HTTP r
 ### Token Management & Optimization
 
 To prevent excessive token usage and response latency, two major optimizations are implemented in the session handler:
-1. **Message Clipping**: Any message content is clipped to a maximum of 500 characters when passed to the LLM nodes (Orchestrator, Luma Answering, and Persona chains). Original full-length messages are retained in Redis/Database.
+1. **Message Clipping**: Any message content is clipped to a maximum of 500 characters when passed to the LLM nodes (Orchestrator, Nova Answering, and Persona chains). Original full-length messages are retained in Redis/Database.
 2. **Summarization Thresholding**: The rolling session summary chain is only triggered when at least 6 new messages (3 conversation turns) have accumulated. This reduces summarization calls and token consumption by up to 83%.
 
 
@@ -206,7 +206,7 @@ Built in `ChatbotService.__init__` and passed to `build_chatbot_graph`. This is 
 | Key | Temperature | Used By |
 |---|---|---|
 | `orchestrator` | 0.0 | OrchestratorNode — deterministic routing decisions |
-| `answering` | 0.7 | AnsweringNode (Luma) — creative, natural responses |
+| `answering` | 0.7 | AnsweringNode (Nova) — creative, natural responses |
 | `summary` | 0.2 | `summary_chain` — controlled rolling summary generation |
 | `persona` | 0.1 | `persona_chain` — near-deterministic persona update decisions |
 

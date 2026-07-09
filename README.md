@@ -40,7 +40,7 @@ This repository is a **graduation project** implementing the AI backend microser
 **Entry:** `src/services/chatbot/chatbot_service.py`  
 **Detailed docs:** [`CHATBOT_README.md`](src/services/chatbot/CHATBOT_README.md) · [`RAG_README.md`](src/services/chatbot/agents/rag/RAG_README.md)
 
-A stateful AI tutoring assistant named **Luma**, implemented as a two-level LangGraph system. The key architectural decision throughout is **replacing the standard `bind_tools` agent loop with a custom Cyclic DAG planning architecture** — a deliberate trade-off to eliminate sequential LLM bottlenecks and reduce token consumption.
+A stateful AI tutoring assistant named **Nova**, implemented as a two-level LangGraph system. The key architectural decision throughout is **replacing the standard `bind_tools` agent loop with a custom Cyclic DAG planning architecture** — a deliberate trade-off to eliminate sequential LLM bottlenecks and reduce token consumption.
 
 ### Why Cyclic DAG Over `bind_tools`?
 
@@ -63,13 +63,13 @@ This system replaces that pattern entirely:
 **Outer Graph (3 nodes):**
 
 ```
-[Orchestrator] ── route_to_rag ──► [RAG Node] ──► [Answering — Luma]
-      └──────── direct_answer ────────────────────► [Answering — Luma]
+[Orchestrator] ── route_to_rag ──► [RAG Node] ──► [Answering — Nova]
+      └──────── direct_answer ────────────────────► [Answering — Nova]
 ```
 
 - **OrchestratorNode** (`temp=0.0`): Routes each query, rewrites it to a standalone form (resolves pronouns), and flags whether the persona/summary needs background updating.
 - **RAG Node**: Wraps the RAG subgraph. Injects deduplicated tool outputs from the last 3 turns for cross-turn memory continuity.
-- **AnsweringNode — Luma** (`temp=0.7`): Socratic AI mentor. Grounded in retrieved context, cites sources inline, adapts to student language and knowledge level, enforces scope guardrails, and captures full LLM token telemetry per response.
+- **AnsweringNode — Nova** (`temp=0.7`): Socratic AI mentor. Grounded in retrieved context, cites sources inline, adapts to student language and knowledge level, enforces scope guardrails, and captures full LLM token telemetry per response.
 
 **Inner Graph — Agentic RAG Subgraph (4 nodes, cyclic):**
 
