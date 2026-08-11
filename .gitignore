@@ -6,3 +6,4 @@ __pycache__/
 *.py[cod]
 deploy/
 tests/test_logger.py
+EDUHUB_REVIEW_AND_ROADMAP.md
