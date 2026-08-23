@@ -98,6 +98,23 @@ class PrettyFormatter(logging.Formatter):
 
 
 
+class CustomRichHandler(RichHandler):
+
+    def render(self, *, record: logging.LogRecord, traceback, message_renderable):
+        orig_pathname = record.pathname
+        try:
+            if orig_pathname:
+                clean_path = os.path.abspath(orig_pathname).replace("\\", "/")
+                if not clean_path.startswith("/"):
+                    clean_path = "/" + clean_path
+                record.pathname = clean_path
+            return super().render(
+                record=record, traceback=traceback, message_renderable=message_renderable
+            )
+        finally:
+            record.pathname = orig_pathname
+
+
 def _setup_logger(logger_name: str, file_path: str, console_level: int = logging.INFO, file_level: int = logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger(logger_name)
     logger.propagate = False
@@ -105,7 +122,7 @@ def _setup_logger(logger_name: str, file_path: str, console_level: int = logging
 
     logger.handlers.clear()
     
-    ch = RichHandler(
+    ch = CustomRichHandler(
         rich_tracebacks=True,
         show_time=True,
         show_level=True,

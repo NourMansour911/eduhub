@@ -7,6 +7,7 @@ services:
     ports:
       - "81:81"
     volumes:
+      - C:/Users/nourm/.cache/huggingface:/root/.cache/huggingface
       - ../storage:/app/storage
     networks:
       - backend

@@ -200,7 +200,6 @@ class QdrantDBProvider(VectorDBInterface):
                 enable_bm25=enable_bm25,
                 fields_for_indexing=fields_for_indexing,
             )
-            logger.info(f"Created collection {collection_name}")
 
         return True
 

@@ -1,4 +1,5 @@
 import os
+import uvicorn
 from core import get_settings
 settings = get_settings()
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -168,3 +169,8 @@ app.include_router(session_router.session_route)
 app.include_router(vectordb_router.vectordb_route)
 app.include_router(assistant_router.assistant_route)
 app.include_router(user_router.user_route)
+
+
+if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    uvicorn.run("main:app", host="0.0.0.0", port=81, reload=True)
