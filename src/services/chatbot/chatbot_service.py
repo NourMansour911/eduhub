@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Any, List, Dict
+from typing import Any, List, Dict, AsyncGenerator
 from langchain_core.runnables import Runnable
 
 from core import Settings
@@ -243,6 +243,148 @@ class ChatbotService:
             ))
 
         return response_obj
+
+    async def chat_stream(
+        self, payload: ChatRequest, student_id: str, session_id: str
+    ) -> AsyncGenerator[str, None]:
+        user_query = (payload.message or "").strip()
+        query_len = len(user_query)
+        if query_len > 1000:
+            yield f"data: {json.dumps({'error': f'Query is too long ({query_len} characters). Maximum allowed length is 1000 characters.'}, ensure_ascii=False)}\n\n"
+            return
+
+        student_id = (student_id or "").strip()
+        if not student_id:
+            yield f"data: {json.dumps({'error': 'student_id is required'}, ensure_ascii=False)}\n\n"
+            return
+
+        session_id = (session_id or "").strip()
+        if not session_id:
+            yield f"data: {json.dumps({'error': 'session_id is required'}, ensure_ascii=False)}\n\n"
+            return
+
+        logger.info("Chatbot stream session run initiated. student_id: %s | session_id: %s", student_id, session_id)
+
+        collection = await self.redis_provider.get_collection(user_id=student_id, session_id=session_id)
+        if collection is None:
+            yield f"data: {json.dumps({'error': 'Active session not found. Please start a session before chatting.'}, ensure_ascii=False)}\n\n"
+            return
+
+        student_courses = await self._get_and_cache_student_courses(student_id, collection)
+        last_messages = format_chat_history_for_graph(collection.messages or [], limit=6)
+
+        accumulated_text = ""
+        graph_final_state = {}
+        _t0 = time.perf_counter()
+
+        try:
+            async for event in self.chatbot_graph.astream_events(
+                {
+                    "user_query": user_query,
+                    "student_id": student_id,
+                    "session_id": session_id,
+                    "student_courses": student_courses,
+                    "messages_history": last_messages,
+                    "user_persona": collection.persona,
+                    "session_summary": collection.summary,
+                },
+                config={"run_name": "Chatbot Graph Run"},
+                version="v2"
+            ):
+                event_type = event.get("event")
+                if event_type == "on_chat_model_stream":
+                    node_name = event.get("metadata", {}).get("langgraph_node")
+                    if node_name == "answering" or event.get("name") == "Answering LLM":
+                        chunk = event.get("data", {}).get("chunk")
+                        token = chunk.content if hasattr(chunk, "content") else str(chunk)
+                        if token:
+                            accumulated_text += token
+                            yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
+
+                elif event_type == "on_chain_end":
+                    chain_name = event.get("name")
+                    if chain_name in ("ChatbotGraph", "LangGraph", "chatbot_graph"):
+                        output = event.get("data", {}).get("output")
+                        if isinstance(output, dict):
+                            graph_final_state = output
+
+        except Exception as exc:
+            logger.exception("Error during graph stream execution")
+            yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            return
+
+        latency_ms = round((time.perf_counter() - _t0) * 1000, 2)
+
+
+        if not accumulated_text and graph_final_state.get("response"):
+            fallback_resp = graph_final_state.get("response")
+            accumulated_text = fallback_resp
+            yield f"data: {json.dumps({'token': fallback_resp}, ensure_ascii=False)}\n\n"
+
+        if not accumulated_text:
+            accumulated_text = "I'm sorry, I could not generate a response."
+            yield f"data: {json.dumps({'token': accumulated_text}, ensure_ascii=False)}\n\n"
+
+        
+        yield f"data: {json.dumps({'done': True, 'full_response': accumulated_text}, ensure_ascii=False)}\n\n"
+
+
+        try:
+            cleaned_reply = accumulated_text
+            collection.messages.append({"role": "user", "content": user_query})
+            collection.messages.append({"role": "assistant", "content": cleaned_reply})
+
+            run_step_outputs = graph_final_state.get("run_step_outputs") or []
+            self._update_session_contexts(collection, run_step_outputs)
+
+            await self.redis_provider.save_collection(collection, session_id=session_id)
+            logger.info("Redis session collection saved after stream.")
+
+            asyncio.create_task(self._push_evaluation(
+                user_query=user_query,
+                context=graph_final_state.get("retrieved_context") or "",
+                answer=cleaned_reply,
+                student_id=student_id,
+                session_id=session_id,
+                run_step_outputs=run_step_outputs,
+                persona=collection.persona,
+                summary=collection.summary,
+                llm_usage_breakdown=graph_final_state.get("llm_usage_breakdown") or {},
+                latency_ms=latency_ms,
+            ))
+
+            needs_persona_update = graph_final_state.get("needs_persona_update", False)
+            needs_summary_update = graph_final_state.get("needs_summary_update", False)
+
+            if not hasattr(collection, "unsummarized_count") or collection.unsummarized_count is None:
+                collection.unsummarized_count = 0
+
+            if needs_summary_update:
+                collection.unsummarized_count += 2
+
+            should_run_summary_now = False
+            if needs_summary_update and collection.unsummarized_count >= 6:
+                should_run_summary_now = True
+
+            if needs_persona_update or should_run_summary_now:
+                batch_history_str = ""
+                for msg in collection.messages[-8:]:
+                    role = "User" if msg.get("role") == "user" else "AI"
+                    clipped_content = clip_message_content(msg.get("content", ""))
+                    batch_history_str += f"{role}: {clipped_content}\n"
+
+                asyncio.create_task(self._update_persona_and_summary_background(
+                    student_id=student_id,
+                    session_id=session_id,
+                    user_query=user_query,
+                    batch_history_str=batch_history_str,
+                    current_persona=collection.persona,
+                    current_summary=collection.summary,
+                    run_persona=needs_persona_update,
+                    run_summary=should_run_summary_now
+                ))
+        except Exception as exc:
+            logger.error("Error during post-stream cleanup: %s", exc)
 
     async def _update_persona_and_summary_background(
         self, student_id: str, session_id: str, user_query: str,

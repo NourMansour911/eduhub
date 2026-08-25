@@ -1,7 +1,7 @@
 import json
 
 from fastapi import APIRouter, Depends, Path
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 
 from helpers.logger import get_logger
 from schemas import SummarizeRequest, SummarizeResponse
@@ -62,5 +62,28 @@ async def chat(
 		content=raw_json,
 		media_type="application/json",
 	)
+
+
+@assistant_route.post(
+    "/chat/{user_id}/{session_id}/stream",
+    summary="Stream chat with project files",
+    description="Starts a real-time streaming chat session over the selected project's files.",
+)
+async def chat_stream(
+    chat_request: ChatRequest,
+    session_id: str = Path(..., description="Session identifier used for memory and trace metadata."),
+    user_id: str = Path(..., description="User identifier used for memory and trace metadata."),
+	service: ChatbotService = Depends(get_chatbot_service),
+):
+	return StreamingResponse(
+		service.chat_stream(chat_request, user_id, session_id),
+		media_type="text/event-stream",
+		headers={
+			"Cache-Control": "no-cache",
+			"Connection": "keep-alive",
+			"X-Accel-Buffering": "no",
+		}
+	)
+
 
 
