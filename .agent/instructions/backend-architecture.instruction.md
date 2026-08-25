@@ -14,10 +14,44 @@ These instructions define how code should be structured, not business logic deta
 
 - If a task clearly matches a specialized skill, use that skill-guided workflow instead of guessing.
 - Skills are for focused workflows and edge cases; do not ignore them when the task fits.
-- Use the project structure and the active instruction files together when deciding the right primitive.
 - Repo skills live in `.agent/skills/*.skill.md`.
-- User-level skills live in the VS Code user prompts folder, but project work should prefer repo skills first.
-- For chain/prompt/runnable work, check for a matching skill before inventing a new pattern.
+- User-level skills live in VS Code user prompts, but project work should prefer repo skills first.
+
+### 12-Skill Index
+
+#### Group A: LangGraph & Agentic Patterns
+
+| Skill File | Description | Activate When |
+|---|---|---|
+| `langgraph-node-builder.skill.md` | **PRIMARY**. Callable-class node pattern: `__init__` chain setup, `async __call__` delta return, static/dynamic prompt separation, structured output with `include_raw=True`, telemetry extraction, short-circuit guards. | Creating or reviewing ANY LangGraph node. |
+| `langgraph-agentic-workflow-builder.skill.md` | `StateGraph` builder class, cyclic DAG (Planner→Executor→Reflection), nested subgraph wrapping, LangGraph Studio `studio.py`. | Building a new graph, adding cyclic routing, or compiling for Studio. |
+| `workflow-state-data-exchange.skill.md` | Centralized `states.py` design, `StepOutput` schema, message clipping (500 chars / last 6), tool output deduplication by `(tool_name, tool_args)`, format utilities. | Designing state schemas, handling message history, managing tool results. |
+
+#### Group B: Session, Background & Evaluation
+
+| Skill File | Description | Activate When |
+|---|---|---|
+| `background-eval-and-session-tasks.skill.md` | `asyncio.create_task` fire-and-forget, 4-layer telemetry (`RequestLayer`, `RetrievalLayer`, `GenerationLayer`, `PerformanceLayer`), thresholded summary/persona updates (threshold: 6 messages). | Adding background tasks, evaluation pipelines, or thresholded triggers. |
+| `redis-session-state-lifecycle.skill.md` | `RedisSessionDTO`, Redis key schema (`user:{id}:session:{id}`), Redis-first caching with DB fallback, session start/chat/end lifecycle. | Implementing stateful AI sessions or Redis-backed caching. |
+
+#### Group C: Service & Architecture Layers
+
+| Skill File | Description | Activate When |
+|---|---|---|
+| `ai-feature-service-pattern.skill.md` | AI service class structure: `llm_map` construction, graph invocation with error wrapping, Redis load/save, background task dispatch, domain exception hierarchy. | Building or extending an AI-powered feature service. |
+| `app-lifecycle-di.skill.md` | FastAPI lifespan context manager, startup ordering (providers → repos → services → orchestrators), `app.state` singletons, `request_dependencies.py` getters. | Modifying app startup, adding new singletons, or creating dependency getters. |
+| `provider-abstraction-factory.skill.md` | Abstract base class + concrete vendor implementation + factory class. Directory: `src/integrations/<category>/`. Return interface types from factories. | Adding a new external vendor or reviewing integration boundary violations. |
+| `mongo-repository-pattern.skill.md` | `create_instance` + `init_collection` + `get_indexes` pattern, `DBEnum` collection names, `init_mongo_resources` bootstrap registration, query encapsulation. | Creating or modifying a MongoDB repository. |
+| `router-layering-convention.skill.md` | Thin router: 1-3 line handlers, all services via `Depends()`, Pydantic DTOs in `src/schemas/`, no domain logic. | Creating a new API route or reviewing for business logic leakage. |
+
+#### Group D: Cross-Cutting Patterns
+
+| Skill File | Description | Activate When |
+|---|---|---|
+| `chain-building.skill.md` | LCEL chain builders, `LCOpenAI` wrapper, structured output, `run_name` for LangSmith tracing, background chain patterns. | Creating or reviewing LangChain chains or prompt pipelines. |
+| `error-handling.skill.md` | `AppException` → `ServiceException` → domain exception hierarchy, `status_code` + `error_code`, logging conventions, no schema-level validation duplication. | Adding exceptions, reviewing service error paths. |
+| `workflow-orchestration.skill.md` | Service vs. Orchestrator decision table, `LectureOrchestrator` as the canonical cross-service coordination example. | Deciding whether a new flow needs an orchestrator or can stay in a service. |
+
 
 ## 1. Core Architecture Principle
 
