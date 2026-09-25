@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # APIs
     COHERE_API_KEY: str
     LANGSMITH_API_KEY: str
+    LANGSMITH_WORKSPACE: str = "nourmansour"
+    PROMPT_ENVIRONMENT_TAG: str = "production"
+    PROMPT_FETCH_REMOTE: bool = True
     OPENAI_API_URL: str
     OPENAI_API_KEY: str
 

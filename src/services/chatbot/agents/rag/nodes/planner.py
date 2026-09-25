@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +13,7 @@ logger = get_chatbot_logger(__name__)
 
 
 class PlannerNode:
-    STATIC_SYSTEM_PROMPT = """
+    SYSTEM_MSG = """
 You are a DAG planner. Convert the user request to a tool plan DAG or clarification.
 
 Rules:
@@ -28,7 +28,7 @@ Tools Registry:
 {tools_registry}
 """
 
-    DYNAMIC_CONTEXT_TEMPLATE = """
+    CONTEXT_MSG = """
 Enrolled Courses: {student_courses}
 
 Execution History of the current message (use to adjust strategy & avoid repeated failures):
@@ -39,12 +39,13 @@ Execution History of the current message (use to adjust strategy & avoid repeate
 Current User Query: {user_query}
 """
 
-    def __init__(self, llm: ChatOpenAI):
+    def __init__(self, llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None):
         self.llm = llm
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.STATIC_SYSTEM_PROMPT),
-            ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
-        ]).partial(
+        base_prompt = prompt or ChatPromptTemplate.from_messages([
+            ("system", self.SYSTEM_MSG),
+            ("human", self.CONTEXT_MSG),
+        ])
+        self.prompt = base_prompt.partial(
             tools_registry=lambda: json.dumps(get_default_tools_registry(), ensure_ascii=True, indent=2)
         )
 

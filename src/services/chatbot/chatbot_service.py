@@ -1,13 +1,13 @@
 import asyncio
 import json
 import time
-from typing import Any, List, Dict, AsyncGenerator
+from typing import Any, List, Dict, AsyncGenerator, Optional
 from langchain_core.runnables import Runnable
 
 from core import Settings
 from helpers.logger import get_chatbot_logger
 from integrations.redis_provider import RedisProvider
-from integrations.llm import LCOpenAI
+from integrations.llm import LCOpenAI, PromptRegistry
 from models import EvaluationModel
 from models.evaluation_model import RequestLayer, RetrievalLayer, GenerationLayer, PerformanceLayer
 from repositories.evaluation_repo import EvaluationRepo
@@ -49,13 +49,23 @@ class ChatbotService:
         redis_provider: RedisProvider,
         evaluation_repo: EvaluationRepo,
         student_persona_repo: StudentPersonaRepo,
+        prompt_registry: Optional[PromptRegistry] = None,
     ) -> None:
         sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
         self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
         self.redis_provider = redis_provider
         self.evaluation_repo = evaluation_repo
         self.student_persona_repo = student_persona_repo
+        self.prompt_registry = prompt_registry
 
+        prompt_map = {}
+        if prompt_registry:
+            prompt_map = {
+                "orchestrator": prompt_registry.get("orchestrator"),
+                "answering": prompt_registry.get("answering"),
+                "planner": prompt_registry.get("planner"),
+                "reflection": prompt_registry.get("reflection"),
+            }
 
         search_service = SearchService(
             vdb_client=vdb_client,
@@ -91,14 +101,22 @@ class ChatbotService:
             mongodb_tools=mongodb_tools,
             sql_tools=self.sql_tools,
             redis_provider=redis_provider,
+            prompt_map=prompt_map,
         )
         self.chatbot_graph: Runnable = build_chatbot_graph(
             llm_map=llm_map,
             rag_subgraph=self.rag_subgraph,
             redis_provider=self.redis_provider,
+            prompt_map=prompt_map,
         )
-        self.summary_chain = build_summary_chain(llm_map["summary"])
-        self.persona_chain = build_persona_chain(llm_map["persona"])
+        self.summary_chain = build_summary_chain(
+            llm_map["summary"],
+            prompt=prompt_registry.get("session-summary") if prompt_registry else None,
+        )
+        self.persona_chain = build_persona_chain(
+            llm_map["persona"],
+            prompt=prompt_registry.get("persona") if prompt_registry else None,
+        )
         self.generation_model_id = settings.GENERATION_MODEL_ID
 
     async def _get_and_cache_student_courses(self, student_id: str, collection: RedisSessionDTO) -> str:

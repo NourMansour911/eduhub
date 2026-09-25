@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from typing import List, Dict, Any, Optional
 from langchain_core.runnables import Runnable, RunnableConfig
+from langchain_core.prompts import ChatPromptTemplate
 
 from repositories.answer_repo import AnswerRepo
 from schemas import  GradingResponse, BatchGradingRequest, BatchGradingResponse
@@ -15,9 +16,16 @@ from core import Settings
 
 
 class SetScoreService:
-    def __init__(self, answer_repo: AnswerRepo, settings: Settings, lc_openai_client: LCOpenAI) -> None:
+    def __init__(
+        self,
+        answer_repo: AnswerRepo,
+        settings: Settings,
+        lc_openai_client: LCOpenAI,
+        prompt: Optional[ChatPromptTemplate] = None,
+    ) -> None:
         self.answer_repo: AnswerRepo = answer_repo
-        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, top_p=0.1,temperature=0.0)
+        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, top_p=0.1, temperature=0.0)
+        self.prompt = prompt
 
 
     async def batch_grade(self, payload: BatchGradingRequest) -> BatchGradingResponse:
@@ -57,7 +65,7 @@ class SetScoreService:
                 configs.append(config)
             
 
-            grading_chain: Runnable = build_requery_chain(self.llm)
+            grading_chain: Runnable = build_requery_chain(self.llm, prompt=self.prompt)
             grading_outputs: List[GradingOutput] = await grading_chain.abatch(inputs, config=configs)
             
  

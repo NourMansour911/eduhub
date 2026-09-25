@@ -158,12 +158,24 @@ Do NOT introduce new architectural styles inside this project.
 
 Prefer the lightest correct abstraction for the feature as it exists in this repository.
 
-## 8. Copilot Behavior Expectation
+## 9. Documentation & Technical Guides Location
 
-When generating code, Copilot MUST:
+- **Mandatory Location**: All user-requested documentation, technical implementation guides, architectural reviews, audits, and roadmaps MUST be saved inside `.agent/docs/` (e.g. `.agent/docs/LANGSMITH_PROMPT_VERSIONING_GUIDE.md`, `.agent/docs/EDUHUB_REVIEW_AND_ROADMAP.md`).
+- Do NOT place temporary or generated standalone markdown documentation files in the repository root directory.
+- Keep the repository root clean, containing only essential project files (`README.md`, config files, etc.).
+- **Diagrams & Flows Format Rule**: Do NOT use Mermaid graph blocks. Instead, present all workflows, architectures, comparisons, and processes as clean **Markdown Structured Card Menus, Numbered Step Cards, or Formatted Tables**.
+
+## 10. Copilot / Assistant Behavior Expectation
+
+When generating code or documentation, the Assistant MUST:
 
 - Follow this architecture strictly
 - Respect separation of layers
+- Save all generated documentation, reviews, and guides in `.agent/docs/`
+- Present all architectural flows and workflows as clean Markdown Structured Card Menus and Tables (avoid Mermaid graphs)
 - Reuse existing patterns instead of inventing new ones
 - Keep code consistent with current project structure
 - Treat orchestrators as intentional workflow coordinators, not as a mandatory default
+
+
+

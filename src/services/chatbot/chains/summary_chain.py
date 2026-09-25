@@ -1,11 +1,11 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
-SYSTEM_TMPL = """
+SYSTEM_MSG = """
 You are an educational session summary updater.
 Your task is to take an existing session summary and update it to incorporate the latest user-AI interactions.
 Provide a high-level overview of what the user and AI discussed (e.g., topics, questions, and goals), but do NOT include detailed scientific formulas, in-depth technical definitions, or deep lecture content. Focus on summarizing the dialogue context and progress, keeping it very concise and clear. Do not output titles or extra labels.
@@ -14,23 +14,24 @@ Existing Session Summary:
 {old_summary}
 """
 
-PROMPT = ChatPromptTemplate.from_messages(
-    [
-        ("system", SYSTEM_TMPL),
-        (
-            "human",
-            """
+CONTEXT_MSG = """
 Latest Interactions:
 {new_messages}
 
 Generate the updated, merged session summary incorporating these latest interactions.
-""",
-        ),
+"""
+
+PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYSTEM_MSG),
+        ("human", CONTEXT_MSG),
     ]
 )
 
 
-def build_summary_chain(llm: ChatOpenAI) -> Runnable:
+def build_summary_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None) -> Runnable:
+    prompt_to_use = prompt or PROMPT
+
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         old_summary = (inputs.get("old_summary") or "").strip() or "No existing summary."
         new_messages = (inputs.get("new_messages") or "").strip()
@@ -39,4 +40,4 @@ def build_summary_chain(llm: ChatOpenAI) -> Runnable:
 
         return {"old_summary": old_summary, "new_messages": new_messages}
 
-    return RunnableLambda(prepare_input) | PROMPT | llm | StrOutputParser()
+    return RunnableLambda(prepare_input) | prompt_to_use | llm | StrOutputParser()

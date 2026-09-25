@@ -1,11 +1,11 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, Runnable
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 
 
-SYSTEM_TMPL = """
+SYSTEM_MSG = """
 You are an expert educational assistant specialized in transforming lecture content into high-quality study summaries.
 
 Your objective:
@@ -84,13 +84,7 @@ Do NOT:
 """
 }
 
-
-PROMPT = ChatPromptTemplate.from_messages(
-    [
-        ("system", SYSTEM_TMPL),
-        (
-            "human",
-            """
+CONTEXT_MSG = """
 Lecture content:
 {lecture_content}
 
@@ -105,11 +99,16 @@ Output requirements:
 - No markdown formatting except bullets when required
 - Ensure the summary feels complete and naturally written
 """
-        ),
+
+PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYSTEM_MSG),
+        ("human", CONTEXT_MSG),
     ]
 )
 
-def build_summarize_chain(llm: ChatOpenAI) -> Runnable:
+def build_summarize_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None) -> Runnable:
+    prompt_to_use = prompt or PROMPT
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         if "lecture_text" not in inputs:
@@ -129,7 +128,7 @@ def build_summarize_chain(llm: ChatOpenAI) -> Runnable:
 
     chain = (
         RunnableLambda(prepare_input)
-        | PROMPT
+        | prompt_to_use
         | llm
         | StrOutputParser()
     )

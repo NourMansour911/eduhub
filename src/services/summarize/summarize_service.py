@@ -1,5 +1,6 @@
-from typing import Dict
+from typing import Dict, Optional
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 import re
 import asyncio
 from repositories.lecture_repo import LectureRepo
@@ -18,9 +19,14 @@ logger = get_logger(__name__)
 
 
 class SummarizeService:
-    def __init__(self, lecture_repo: LectureRepo,summary_llm: ChatOpenAI) :
+    def __init__(
+        self,
+        lecture_repo: LectureRepo,
+        summary_llm: ChatOpenAI,
+        prompt: Optional[ChatPromptTemplate] = None,
+    ):
         self.lecture_repo = lecture_repo
-        self.chain = build_summarize_chain(summary_llm)
+        self.chain = build_summarize_chain(summary_llm, prompt=prompt)
 
     async def generate_all_summaries(
         self,

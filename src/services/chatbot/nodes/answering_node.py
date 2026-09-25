@@ -1,5 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 from helpers.logger import get_chatbot_logger
@@ -13,7 +14,7 @@ logger = get_chatbot_logger(__name__)
 
 
 class AnsweringNode:
-    STATIC_SYSTEM_PROMPT = """
+    SYSTEM_MSG = """
 You are Nova, an enthusiastic, warm, and Socratic educational mentor. Your goal is to guide students, facilitate their learning, and answer their academic queries. 
 
 As a Socratic mentor:
@@ -33,7 +34,7 @@ IMPORTANT Rules:
 6. Never Use EMOJIS
 """
 
-    DYNAMIC_CONTEXT_TEMPLATE = """
+    CONTEXT_MSG = """
 Student Persona:
 {user_persona}
 
@@ -44,16 +45,21 @@ Enrolled Courses:
 {student_courses}
 
 Retrieved Context (Verbatim Sources):
-{retrieved_context}-
+{retrieved_context}
 """
 
     def __init__(
         self,
         llm_map: Dict[str, ChatOpenAI],
         redis_provider: RedisProvider,
+        prompt: Optional[ChatPromptTemplate] = None,
     ):
         self.llm: ChatOpenAI = llm_map["answering"]
         self.redis_provider = redis_provider
+        self.prompt = prompt or ChatPromptTemplate.from_messages([
+            ("system", self.SYSTEM_MSG),
+            ("human", self.CONTEXT_MSG),
+        ])
 
     async def __call__(self, state: ChatbotState) -> Dict[str, Any]:
         if state.rag_status == "failed":
@@ -74,17 +80,14 @@ Retrieved Context (Verbatim Sources):
 
         retrieved_context = state.retrieved_context
 
-        static_system_content = self.STATIC_SYSTEM_PROMPT
-        dynamic_context_content = self.DYNAMIC_CONTEXT_TEMPLATE.format(
+        rendered_messages = self.prompt.format_messages(
             user_persona=state.user_persona or "General friendly student.",
             session_summary=session_summary_str,
             student_courses=state.student_courses or "No enrolled courses.",
             retrieved_context=retrieved_context or "No retrieved context.",
         )
 
-        messages = [
-            SystemMessage(content=static_system_content)
-        ]
+        messages = [rendered_messages[0]]  # System prompt
 
         for msg in state.messages_history:
             role = msg.get("role")
@@ -94,7 +97,7 @@ Retrieved Context (Verbatim Sources):
             elif role == "AI":
                 messages.append(AIMessage(content=content))
 
-        messages.append(SystemMessage(content=dynamic_context_content))
+        messages.append(rendered_messages[1])  # Context (persona, summary, courses, retrieved)
         messages.append(HumanMessage(content=state.user_query))
 
         response = await self.llm.ainvoke(messages, config={"run_name": "Answering LLM"})

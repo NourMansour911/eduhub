@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -53,11 +53,7 @@ Focus on academic, legal, and policy phrasing.
 }
 
 
-QUERY_REWRITE_PROMPT = ChatPromptTemplate.from_messages(
-	[
-		(
-			"system",
-			"""
+SYSTEM_MSG = """
 You are a query rewriting assistant for retrieval systems.
 
 Rules:
@@ -65,11 +61,9 @@ Rules:
 - Do not answer the query
 - Do not add facts that are not already implied
 - Produce search-friendly rewrites only
-""",
-		),
-		(
-			"human",
-			"""
+"""
+
+CONTEXT_MSG = """
 Use case:
 {mode_instruction}
 
@@ -84,8 +78,12 @@ Output requirements:
 - Each rewrite must be a single search query string
 - Do not repeat the original query verbatim
 - Keep each rewrite short and retrieval-oriented
-""",
-		),
+"""
+
+QUERY_REWRITE_PROMPT = ChatPromptTemplate.from_messages(
+	[
+		("system", SYSTEM_MSG),
+		("human", CONTEXT_MSG),
 	]
 )
 

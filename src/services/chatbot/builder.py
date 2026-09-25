@@ -1,5 +1,6 @@
-from typing import  Dict
+from typing import Dict, Optional
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.state import CompiledStateGraph
 from integrations.redis_provider import RedisProvider
@@ -16,12 +17,17 @@ class ChatbotGraph:
         llm_map: Dict[str, ChatOpenAI],
         rag_subgraph: CompiledStateGraph,
         redis_provider: RedisProvider,
+        prompt_map: Optional[Dict[str, ChatPromptTemplate]] = None,
     ):
-        self.orchestrator_node = OrchestratorNode(llm=llm_map["orchestrator"])
+        orchestrator_prompt = (prompt_map or {}).get("orchestrator")
+        answering_prompt = (prompt_map or {}).get("answering")
+
+        self.orchestrator_node = OrchestratorNode(llm=llm_map["orchestrator"], prompt=orchestrator_prompt)
         self.rag_node = RAGNode(rag_subgraph)
         self.answering_node = AnsweringNode(
             llm_map=llm_map,
             redis_provider=redis_provider,
+            prompt=answering_prompt,
         )
         self.rag_subgraph = rag_subgraph
         self.graph = self._build_graph()
@@ -60,9 +66,11 @@ def build_chatbot_graph(
     llm_map: Dict[str, ChatOpenAI],
     rag_subgraph: CompiledStateGraph,
     redis_provider: RedisProvider,
+    prompt_map: Optional[Dict[str, ChatPromptTemplate]] = None,
 ) -> CompiledStateGraph:
     return ChatbotGraph(
         llm_map=llm_map,
         rag_subgraph=rag_subgraph,
         redis_provider=redis_provider,
+        prompt_map=prompt_map,
     ).graph

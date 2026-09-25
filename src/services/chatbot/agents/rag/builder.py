@@ -1,7 +1,8 @@
 import json
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 from langgraph.graph import StateGraph, END, START
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 from integrations.llm import LCOpenAI
 from integrations.redis_provider import RedisProvider
 
@@ -28,6 +29,7 @@ class RAGSubgraph:
         mongodb_tools: MongoDBTools,
         sql_tools: SQLTools,
         redis_provider: RedisProvider,
+        prompt_map: Optional[Dict[str, ChatPromptTemplate]] = None,
     ):
         self.redis_provider = redis_provider
 
@@ -56,9 +58,12 @@ class RAGSubgraph:
             "get_all_course_lectures_by_course_id": sql_tools.get_all_course_lectures_by_course_id,
         }
 
-        self.planner_node = PlannerNode(rag_llm_map["planner"])
+        planner_prompt = (prompt_map or {}).get("planner")
+        reflection_prompt = (prompt_map or {}).get("reflection")
+
+        self.planner_node = PlannerNode(rag_llm_map["planner"], prompt=planner_prompt)
         self.executor_node = ExecutorNode(tool_registry=actual_tools)
-        self.reflection_node = ReflectionNode(rag_llm_map["reflection"])
+        self.reflection_node = ReflectionNode(rag_llm_map["reflection"], prompt=reflection_prompt)
 
         self.graph = self._build_graph()
 
@@ -194,6 +199,7 @@ def build_rag_subgraph(
     mongodb_tools: MongoDBTools,
     sql_tools: SQLTools,
     redis_provider: RedisProvider,
+    prompt_map: Optional[Dict[str, ChatPromptTemplate]] = None,
 ) -> Any:
     subgraph = RAGSubgraph(
         lc_openai_client=lc_openai_client,
@@ -202,5 +208,6 @@ def build_rag_subgraph(
         mongodb_tools=mongodb_tools,
         sql_tools=sql_tools,
         redis_provider=redis_provider,
+        prompt_map=prompt_map,
     )
     return subgraph.graph

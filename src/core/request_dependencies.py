@@ -10,6 +10,7 @@ from repositories.student_persona_repo import StudentPersonaRepo
 
 if TYPE_CHECKING:
     from integrations.redis_provider import RedisProvider
+    from integrations.llm.prompt_registry import PromptRegistry
     from services.chatbot.chatbot_service import ChatbotService
     from services.lectures.lecture_service import LectureService
     from services.summarize.summarize_service import SummarizeService
@@ -91,6 +92,11 @@ def get_set_score_service(request: Request) -> "SetScoreService":
 
 def get_lecture_orchestrator(request: Request) -> "LectureOrchestrator":
     return request.app.state.lecture_orchestrator
+
+
+def get_prompt_registry(request: Request) -> "PromptRegistry":
+    return request.app.state.prompt_registry
+
 
 
 

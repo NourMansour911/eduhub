@@ -25,7 +25,8 @@ from repositories.mongo_bootstrap import init_mongo_resources
 from routers import grading_router, home_router, lecture_router, session_router, vectordb_router, assistant_router, user_router
 from integrations.redis_provider import RedisProvider
 from integrations.vector_db import VectorDBFactory
-from integrations.llm import LLMFactory,LCOpenAI
+from integrations.llm import LLMFactory, LCOpenAI, PromptRegistry
+from langchain_core.prompts import ChatPromptTemplate
 
 # Service & orchestrator imports
 from services.vdb_service.vectordb_service import VDBService
@@ -36,6 +37,16 @@ from services.grading.set_reference import SetReferenceService
 from services.grading.set_score import SetScoreService
 from orchestrators.lecture_orchestrator import LectureOrchestrator
 from services.chatbot.chatbot_service import ChatbotService
+
+# Prompt templates for registry fallbacks
+from services.chatbot.nodes.orchestrator_node import OrchestratorNode
+from services.chatbot.nodes.answering_node import AnsweringNode
+from services.chatbot.agents.rag.nodes.planner import PlannerNode
+from services.chatbot.agents.rag.nodes.reflection import ReflectionNode
+from services.chatbot.chains.summary_chain import PROMPT as SUMMARY_PROMPT
+from services.chatbot.chains.persona_chain import PROMPT as PERSONA_PROMPT
+from services.grading.grading_chain import GRADING_PROMPT
+from services.summarize.summarize_chain import PROMPT as SUMMARIZE_PROMPT
 
 logger = get_logger(__name__)
 
@@ -66,6 +77,33 @@ async def lifespan(app: FastAPI):
   ## LangChain client
   app.state.langchain_client = LCOpenAI(api_key=settings.OPENAI_API_KEY,api_url=settings.OPENAI_API_URL)
   logger.info("LangChain client loaded successfully")
+
+  # Prompt Registry
+  fallbacks = {
+      "orchestrator": ChatPromptTemplate.from_messages([
+          ("system", OrchestratorNode.SYSTEM_MSG),
+          ("human", OrchestratorNode.CONTEXT_MSG),
+      ]),
+      "planner": ChatPromptTemplate.from_messages([
+          ("system", PlannerNode.SYSTEM_MSG),
+          ("human", PlannerNode.CONTEXT_MSG),
+      ]),
+      "reflection": ChatPromptTemplate.from_messages([
+          ("system", ReflectionNode.SYSTEM_MSG),
+          ("human", ReflectionNode.CONTEXT_MSG),
+      ]),
+      "answering": ChatPromptTemplate.from_messages([
+          ("system", AnsweringNode.SYSTEM_MSG),
+          ("human", AnsweringNode.CONTEXT_MSG),
+      ]),
+      "grading": GRADING_PROMPT,
+      "summarize": SUMMARIZE_PROMPT,
+      "session-summary": SUMMARY_PROMPT,
+      "persona": PERSONA_PROMPT,
+  }
+  app.state.prompt_registry = PromptRegistry(settings=settings, fallbacks=fallbacks)
+  await app.state.prompt_registry.initialize()
+  logger.info("Prompt registry initialized successfully")
 
   # Mongo client
   app.state.mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
@@ -112,6 +150,7 @@ async def lifespan(app: FastAPI):
   app.state.summarize_service = SummarizeService(
       lecture_repo=app.state.lecture_repo,
       summary_llm=summary_llm,
+      prompt=app.state.prompt_registry.get("summarize"),
   )
 
   app.state.session_service = SessionService(
@@ -129,6 +168,7 @@ async def lifespan(app: FastAPI):
       answer_repo=app.state.answer_repo,
       settings=settings,
       lc_openai_client=app.state.langchain_client,
+      prompt=app.state.prompt_registry.get("grading"),
   )
 
   app.state.lecture_orchestrator = LectureOrchestrator(
@@ -148,6 +188,7 @@ async def lifespan(app: FastAPI):
       redis_provider=app.state.redis_provider,
       evaluation_repo=app.state.evaluation_repo,
       student_persona_repo=app.state.student_persona_repo,
+      prompt_registry=app.state.prompt_registry,
   )
   logger.info("All services and orchestrators loaded successfully")
 

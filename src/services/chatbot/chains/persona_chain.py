@@ -10,10 +10,12 @@ class PersonaUpdateDecision(BaseModel):
     updated_persona: Optional[str] = Field(None, description="The new updated persona if should_update is True, otherwise None")
 
 
-SYSTEM_TMPL = """
+SYSTEM_MSG = """
 You are Persona Analyzer. Analyze the student's current persona, the conversation history, and their latest query to decide if their learning persona (preferences, level, tone, interests) has changed or needs an update.
 Note: Messages in the conversation history may be clipped/truncated for brevity (marked with '[clipped for brevity]').
+"""
 
+CONTEXT_MSG = """
 Current Student Persona:
 
 {user_persona}
@@ -24,12 +26,15 @@ Conversation History (last 4 messages):
 Latest User Query: {user_query}
 """
 
-PROMPT = ChatPromptTemplate.from_template(SYSTEM_TMPL)
+PROMPT = ChatPromptTemplate.from_messages([
+    ("system", SYSTEM_MSG),
+    ("human", CONTEXT_MSG),
+])
 
 
-def build_persona_chain(llm: ChatOpenAI) -> Runnable:
+def build_persona_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None) -> Runnable:
     structured_llm = llm.with_structured_output(PersonaUpdateDecision, method="function_calling")
-    prompt = PROMPT
+    prompt_to_use = prompt or PROMPT
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         user_persona = (inputs.get("user_persona") or "General friendly student.").strip()
@@ -41,4 +46,4 @@ def build_persona_chain(llm: ChatOpenAI) -> Runnable:
             "user_query": user_query,
         }
 
-    return RunnableLambda(prepare_input) | prompt | structured_llm
+    return RunnableLambda(prepare_input) | prompt_to_use | structured_llm

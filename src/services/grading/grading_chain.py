@@ -1,5 +1,5 @@
 
-from typing import Dict, Any    
+from typing import Dict, Any, Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, Runnable
 from langchain_core.output_parsers import PydanticOutputParser
@@ -19,11 +19,7 @@ class GradingOutput(BaseModel):
     )
 
 
-GRADING_PROMPT = ChatPromptTemplate.from_messages(
-[
-(
-"system",
-"""
+SYSTEM_MSG = """
 You are a senior university professor grading student exam answers.
 
 Your grading behavior must simulate real human grading distribution.
@@ -79,10 +75,8 @@ CRITICAL RULES:
 
 ---------------------------------------
 """
-),
-(
-"human",
-"""
+
+CONTEXT_MSG = """
 QUESTION:
 {question}
 
@@ -92,12 +86,17 @@ REFERENCE ANSWER:
 STUDENT ANSWER:
 {student_answer}
 """
-),
-]
+
+GRADING_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYSTEM_MSG),
+        ("human", CONTEXT_MSG),
+    ]
 )
 
-def build_requery_chain(llm: ChatOpenAI) -> Runnable:
+def build_requery_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None) -> Runnable:
     structured_llm = llm.with_structured_output(GradingOutput, method="function_calling")
+    prompt_to_use = prompt or GRADING_PROMPT
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -108,7 +107,7 @@ def build_requery_chain(llm: ChatOpenAI) -> Runnable:
 
     chain = (
         RunnableLambda(prepare_input)
-        | GRADING_PROMPT
+        | prompt_to_use
         | structured_llm
     )
 

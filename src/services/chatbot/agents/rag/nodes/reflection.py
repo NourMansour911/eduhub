@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
@@ -12,7 +12,7 @@ from services.chatbot.utils import format_step_output, log_duration, format_nest
 
 
 class ReflectionNode:
-    STATIC_SYSTEM_PROMPT = """
+    SYSTEM_MSG = """
 You are a Reflection node in a RAG system.
 Look at the retrieved context (Step Outputs) and determine if it contains enough information to answer the user's query.
 
@@ -24,7 +24,7 @@ Rules:
    - If the error/recommendation indicates that the system fundamentally cannot resolve the user's request (e.g. database down, student not enrolled in the course, query is totally ambiguous, or no other tools can help), choose 'clarification' and output the 'Clarification Recommendation' as your 'clarification_question'.
 """
 
-    DYNAMIC_CONTEXT_TEMPLATE = """
+    CONTEXT_MSG = """
 User Query:
 {user_query}
 
@@ -32,11 +32,11 @@ Current Attempt Step Outputs:
 {current_attempt_tool_outputs}
 """
 
-    def __init__(self, llm: ChatOpenAI):
+    def __init__(self, llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None):
         self.llm = llm
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.STATIC_SYSTEM_PROMPT),
-            ("human", self.DYNAMIC_CONTEXT_TEMPLATE),
+        self.prompt = prompt or ChatPromptTemplate.from_messages([
+            ("system", self.SYSTEM_MSG),
+            ("human", self.CONTEXT_MSG),
         ])
         self.chain = self.prompt | llm.with_structured_output(ReflectionDecision, method="function_calling", include_raw=True)
 
