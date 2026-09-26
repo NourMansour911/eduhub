@@ -1,10 +1,10 @@
-from typing import Dict, Optional
+from typing import Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import re
 import asyncio
 from repositories.lecture_repo import LectureRepo
-from services.summarize.summarize_chain import build_summarize_chain
+from services.summarize.summarize_chain import build_summarize_chains
 from services.summarize.summarize_exceptions import (
     SummarizeNotFoundError,
     SummarizeProcessingError,
@@ -23,10 +23,13 @@ class SummarizeService:
         self,
         lecture_repo: LectureRepo,
         summary_llm: ChatOpenAI,
+        prompts: Optional[Dict[Any, ChatPromptTemplate]] = None,
         prompt: Optional[ChatPromptTemplate] = None,
     ):
         self.lecture_repo = lecture_repo
-        self.chain = build_summarize_chain(summary_llm, prompt=prompt)
+        if prompts is None and prompt is not None:
+            prompts = {0: prompt, 1: prompt, 2: prompt}
+        self.chains = build_summarize_chains(summary_llm, prompts=prompts)
 
     async def generate_all_summaries(
         self,
@@ -81,11 +84,11 @@ class SummarizeService:
     ) -> str:
 
         try:
-
-            summary: str = await self.chain.ainvoke(
+            chain = self.chains.get(level) or self.chains.get(1)
+            summary: str = await chain.ainvoke(
                 {"lecture_text": content_text, "level": level},
                 config={
-                    "run_name": "summary_run",
+                    "run_name": f"summary_run_level_{level}",
                     "metadata": {
                         "lecture_id": lecture_id,
                         "course_id": course_id,

@@ -24,10 +24,24 @@ from services.chatbot.nodes.orchestrator_node import OrchestratorNode
 from services.chatbot.nodes.answering_node import AnsweringNode
 from services.chatbot.agents.rag.nodes.planner import PlannerNode
 from services.chatbot.agents.rag.nodes.reflection import ReflectionNode
-from services.chatbot.chains.summary_chain import PROMPT as SUMMARY_PROMPT
-from services.chatbot.chains.persona_chain import PROMPT as PERSONA_PROMPT
-from services.grading.grading_chain import GRADING_PROMPT
-from services.summarize.summarize_chain import PROMPT as SUMMARIZE_PROMPT
+from services.chatbot.chains.summary_chain import (
+    SYSTEM_MSG as SESSION_SUMMARY_SYSTEM_MSG,
+    CONTEXT_MSG as SESSION_SUMMARY_CONTEXT_MSG,
+)
+from services.chatbot.chains.persona_chain import (
+    SYSTEM_MSG as PERSONA_SYSTEM_MSG,
+    CONTEXT_MSG as PERSONA_CONTEXT_MSG,
+)
+from services.grading.grading_chain import (
+    SYSTEM_MSG as GRADING_SYSTEM_MSG,
+    CONTEXT_MSG as GRADING_CONTEXT_MSG,
+)
+from services.summarize.summarize_chain import (
+    SYSTEM_MSG as SUMMARIZE_SYSTEM_MSG,
+    CONTEXT_MSG_LEVEL0,
+    CONTEXT_MSG_LEVEL1,
+    CONTEXT_MSG_LEVEL2,
+)
 
 
 def get_all_prompts_to_push():
@@ -62,19 +76,45 @@ def get_all_prompts_to_push():
         },
         "grading": {
             "description": "EduHub Professor exam answer auto-grading prompt",
-            "template": GRADING_PROMPT,
+            "template": ChatPromptTemplate.from_messages([
+                ("system", GRADING_SYSTEM_MSG),
+                ("human", GRADING_CONTEXT_MSG),
+            ]),
         },
-        "summarize": {
-            "description": "EduHub Lecture Multi-level summarization prompt",
-            "template": SUMMARIZE_PROMPT,
+        "summarize-level0": {
+            "description": "EduHub Lecture Level 0 (Comprehensive Quick Revision) summary prompt",
+            "template": ChatPromptTemplate.from_messages([
+                ("system", SUMMARIZE_SYSTEM_MSG),
+                ("human", CONTEXT_MSG_LEVEL0),
+            ]),
+        },
+        "summarize-level1": {
+            "description": "EduHub Lecture Level 1 (Core Concept Summary) summary prompt",
+            "template": ChatPromptTemplate.from_messages([
+                ("system", SUMMARIZE_SYSTEM_MSG),
+                ("human", CONTEXT_MSG_LEVEL1),
+            ]),
+        },
+        "summarize-level2": {
+            "description": "EduHub Lecture Level 2 (Detailed Learning & Analysis Summary) summary prompt",
+            "template": ChatPromptTemplate.from_messages([
+                ("system", SUMMARIZE_SYSTEM_MSG),
+                ("human", CONTEXT_MSG_LEVEL2),
+            ]),
         },
         "session-summary": {
             "description": "EduHub Chat session running summary compaction prompt",
-            "template": SUMMARY_PROMPT,
+            "template": ChatPromptTemplate.from_messages([
+                ("system", SESSION_SUMMARY_SYSTEM_MSG),
+                ("human", SESSION_SUMMARY_CONTEXT_MSG),
+            ]),
         },
         "persona": {
             "description": "EduHub Student learning persona extractor prompt",
-            "template": PERSONA_PROMPT,
+            "template": ChatPromptTemplate.from_messages([
+                ("system", PERSONA_SYSTEM_MSG),
+                ("human", PERSONA_CONTEXT_MSG),
+            ]),
         },
     }
 
@@ -110,7 +150,7 @@ def main():
                 object=item["template"],
                 is_public=False,
                 description=item["description"],
-                tags=[app_name, key, tag],
+                tags=[app_name, key],
                 
             )
             print(f"     [SUCCESS] Published to: {url}")

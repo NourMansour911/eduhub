@@ -46,7 +46,11 @@ from services.chatbot.agents.rag.nodes.reflection import ReflectionNode
 from services.chatbot.chains.summary_chain import PROMPT as SUMMARY_PROMPT
 from services.chatbot.chains.persona_chain import PROMPT as PERSONA_PROMPT
 from services.grading.grading_chain import GRADING_PROMPT
-from services.summarize.summarize_chain import PROMPT as SUMMARIZE_PROMPT
+from services.summarize.summarize_chain import (
+    SUMMARIZE_LEVEL0_PROMPT,
+    SUMMARIZE_LEVEL1_PROMPT,
+    SUMMARIZE_LEVEL2_PROMPT,
+)
 
 logger = get_logger(__name__)
 
@@ -97,7 +101,9 @@ async def lifespan(app: FastAPI):
           ("human", AnsweringNode.CONTEXT_MSG),
       ]),
       "grading": GRADING_PROMPT,
-      "summarize": SUMMARIZE_PROMPT,
+      "summarize-level0": SUMMARIZE_LEVEL0_PROMPT,
+      "summarize-level1": SUMMARIZE_LEVEL1_PROMPT,
+      "summarize-level2": SUMMARIZE_LEVEL2_PROMPT,
       "session-summary": SUMMARY_PROMPT,
       "persona": PERSONA_PROMPT,
   }
@@ -147,10 +153,15 @@ async def lifespan(app: FastAPI):
       vdb_service=app.state.vdb_service,
   )
 
+  summarize_prompts = {
+      0: app.state.prompt_registry.get("summarize-level0"),
+      1: app.state.prompt_registry.get("summarize-level1"),
+      2: app.state.prompt_registry.get("summarize-level2"),
+  }
   app.state.summarize_service = SummarizeService(
       lecture_repo=app.state.lecture_repo,
       summary_llm=summary_llm,
-      prompt=app.state.prompt_registry.get("summarize"),
+      prompts=summarize_prompts,
   )
 
   app.state.session_service = SessionService(

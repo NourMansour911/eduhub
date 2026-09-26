@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, Runnable
 from langchain_openai import ChatOpenAI
@@ -84,9 +84,11 @@ Do NOT:
 """
 }
 
-CONTEXT_MSG = """
-Lecture content:
-{lecture_content}
+
+def build_context_msg_for_level(level: int) -> str:
+    level_instruction = LEVEL_INSTRUCTIONS.get(level, LEVEL_INSTRUCTIONS[1]).strip()
+    return f"""Lecture content:
+{{lecture_content}}
 
 Instructions:
 {level_instruction}
@@ -97,34 +99,57 @@ Output requirements:
 - No labels
 - No introductions or conclusions
 - No markdown formatting except bullets when required
-- Ensure the summary feels complete and naturally written
-"""
+- Ensure the summary feels complete and naturally written"""
 
-PROMPT = ChatPromptTemplate.from_messages(
+
+CONTEXT_MSG_LEVEL0 = build_context_msg_for_level(0)
+CONTEXT_MSG_LEVEL1 = build_context_msg_for_level(1)
+CONTEXT_MSG_LEVEL2 = build_context_msg_for_level(2)
+
+CONTEXT_MSG = CONTEXT_MSG_LEVEL1
+
+SUMMARIZE_LEVEL0_PROMPT = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_MSG),
-        ("human", CONTEXT_MSG),
+        ("human", CONTEXT_MSG_LEVEL0),
     ]
 )
 
-def build_summarize_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] = None) -> Runnable:
-    prompt_to_use = prompt or PROMPT
+SUMMARIZE_LEVEL1_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYSTEM_MSG),
+        ("human", CONTEXT_MSG_LEVEL1),
+    ]
+)
+
+SUMMARIZE_LEVEL2_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SYSTEM_MSG),
+        ("human", CONTEXT_MSG_LEVEL2),
+    ]
+)
+
+PROMPTS: Dict[int, ChatPromptTemplate] = {
+    0: SUMMARIZE_LEVEL0_PROMPT,
+    1: SUMMARIZE_LEVEL1_PROMPT,
+    2: SUMMARIZE_LEVEL2_PROMPT,
+}
+
+PROMPT = SUMMARIZE_LEVEL1_PROMPT
+
+
+def build_summarize_chain_for_level(
+    llm: ChatOpenAI,
+    level: int = 1,
+    prompt: Optional[ChatPromptTemplate] = None,
+) -> Runnable:
+    prompt_to_use = prompt or PROMPTS.get(level, SUMMARIZE_LEVEL1_PROMPT)
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
-        if "lecture_text" not in inputs:
+        lecture_text = inputs.get("lecture_text") or inputs.get("lecture_content")
+        if not lecture_text:
             raise ValueError("lecture_text is required")
-
-        level = int(inputs.get("level", 1))
-
-        level_instruction = LEVEL_INSTRUCTIONS.get(
-            level,
-            LEVEL_INSTRUCTIONS[1]
-        )
-
-        return {
-            "lecture_content": inputs["lecture_text"],
-            "level_instruction": level_instruction,
-        }
+        return {"lecture_content": lecture_text}
 
     chain = (
         RunnableLambda(prepare_input)
@@ -134,3 +159,28 @@ def build_summarize_chain(llm: ChatOpenAI, prompt: Optional[ChatPromptTemplate] 
     )
 
     return chain
+
+
+def build_summarize_chains(
+    llm: ChatOpenAI,
+    prompts: Optional[Dict[Any, ChatPromptTemplate]] = None,
+) -> Dict[int, Runnable]:
+    prompts = prompts or {}
+    chains: Dict[int, Runnable] = {}
+
+    for level in [0, 1, 2]:
+        p = (
+            prompts.get(level)
+            or prompts.get(str(level))
+            or prompts.get(f"summarize-level{level}")
+        )
+        chains[level] = build_summarize_chain_for_level(llm, level=level, prompt=p)
+
+    return chains
+
+
+def build_summarize_chain(
+    llm: ChatOpenAI,
+    prompt: Optional[ChatPromptTemplate] = None,
+) -> Runnable:
+    return build_summarize_chain_for_level(llm, level=1, prompt=prompt)
