@@ -14,10 +14,10 @@ These instructions define how code should be structured, not business logic deta
 
 - If a task clearly matches a specialized skill, use that skill-guided workflow instead of guessing.
 - Skills are for focused workflows and edge cases; do not ignore them when the task fits.
-- Repo skills live in `.agent/skills/*.skill.md`.
+- Repo skills live in `.agents/skills/*.skill.md`.
 - User-level skills live in VS Code user prompts, but project work should prefer repo skills first.
 
-### 12-Skill Index
+### 14-Skill Index
 
 #### Group A: LangGraph & Agentic Patterns
 
@@ -44,11 +44,12 @@ These instructions define how code should be structured, not business logic deta
 | `mongo-repository-pattern.skill.md` | `create_instance` + `init_collection` + `get_indexes` pattern, `DBEnum` collection names, `init_mongo_resources` bootstrap registration, query encapsulation. | Creating or modifying a MongoDB repository. |
 | `router-layering-convention.skill.md` | Thin router: 1-3 line handlers, all services via `Depends()`, Pydantic DTOs in `src/schemas/`, no domain logic. | Creating a new API route or reviewing for business logic leakage. |
 
-#### Group D: Cross-Cutting Patterns
+#### Group D: Cross-Cutting & LLM Patterns
 
 | Skill File | Description | Activate When |
 |---|---|---|
 | `chain-building.skill.md` | LCEL chain builders, `LCOpenAI` wrapper, structured output, `run_name` for LangSmith tracing, background chain patterns. | Creating or reviewing LangChain chains or prompt pipelines. |
+| `prompt-versioning.skill.md` | Decouple prompts to LangSmith Hub with fail-safe local fallback, CLI `push_prompts.py` sync script, namespace tagging. | Creating, pushing, versioning, or loading LLM prompt templates. |
 | `error-handling.skill.md` | `AppException` → `ServiceException` → domain exception hierarchy, `status_code` + `error_code`, logging conventions, no schema-level validation duplication. | Adding exceptions, reviewing service error paths. |
 | `workflow-orchestration.skill.md` | Service vs. Orchestrator decision table, `LectureOrchestrator` as the canonical cross-service coordination example. | Deciding whether a new flow needs an orchestrator or can stay in a service. |
 
@@ -160,10 +161,10 @@ Prefer the lightest correct abstraction for the feature as it exists in this rep
 
 ## 9. Documentation & Technical Guides Location
 
-- **Mandatory Location**: All user-requested documentation, technical implementation guides, architectural reviews, audits, and roadmaps MUST be saved inside `.agent/docs/` (e.g. `.agent/docs/LANGSMITH_PROMPT_VERSIONING_GUIDE.md`, `.agent/docs/EDUHUB_REVIEW_AND_ROADMAP.md`).
+- **Mandatory Location**: All user-requested documentation, technical implementation guides, architectural reviews, audits, and roadmaps MUST be saved inside `.agents/docs/` (e.g. `.agents/docs/EDUHUB_REVIEW_AND_ROADMAP.md`).
 - Do NOT place temporary or generated standalone markdown documentation files in the repository root directory.
 - Keep the repository root clean, containing only essential project files (`README.md`, config files, etc.).
-- **Diagrams & Flows Format Rule**: Do NOT use Mermaid graph blocks. Instead, present all workflows, architectures, comparisons, and processes as clean **Markdown Structured Card Menus, Numbered Step Cards, or Formatted Tables**.
+
 
 ## 10. Copilot / Assistant Behavior Expectation
 
@@ -171,8 +172,8 @@ When generating code or documentation, the Assistant MUST:
 
 - Follow this architecture strictly
 - Respect separation of layers
-- Save all generated documentation, reviews, and guides in `.agent/docs/`
-- Present all architectural flows and workflows as clean Markdown Structured Card Menus and Tables (avoid Mermaid graphs)
+- Save all generated documentation, reviews, and guides in `.agents/docs/`
+- Present all architectural flows and workflows as clean Markdown Structured Card Menus and Tables 
 - Reuse existing patterns instead of inventing new ones
 - Keep code consistent with current project structure
 - Treat orchestrators as intentional workflow coordinators, not as a mandatory default

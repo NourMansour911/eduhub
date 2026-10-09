@@ -6,4 +6,4 @@ __pycache__/
 *.py[cod]
 deploy/
 tests/test_logger.py
-.agent/docs
+.agents/docs
