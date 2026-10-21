@@ -27,13 +27,13 @@ This workflow automatically creates and maintains a dedicated discussion documen
 ### Step 2: Initialize Discussion Document
 Create a new dedicated Markdown file under `.agents/docs/` (or `docs/discussions/`).
 - **Filename convention**: `DISCUSS_<topic_name_snake_case>.md` (e.g., `DISCUSS_langgraph_integration.md`).
+- **No Status Field**: Do not include a `Status` field in discussion documents (keep header strictly to `Date` and `Location`).
 - **Initial Document Template**:
 
 ```markdown
 # Discussion & Implementation Plan: [Topic Name]
 
-> **Date**: [YYYY-MM-DD]  
-> **Status**: In Progress 🟡  
+> **Date**: [YYYY-MM-DD]   
 > **Location**: `.agents/docs/DISCUSS_[topic_name].md`
 
 ---
@@ -83,5 +83,4 @@ Create a new dedicated Markdown file under `.agents/docs/` (or `docs/discussions
 - Reflect agreed-upon options, architecture diagrams (Mermaid), API signatures, or code snippets in the document.
 
 ### Step 5: Finalization & Transition to Plan
-- Once discussion concludes, update the document status to `Approved 🟢`.
 - Offer to transition the final roadmap into a `/plan` execution workflow or task breakdown.

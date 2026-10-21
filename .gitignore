@@ -7,3 +7,4 @@ __pycache__/
 deploy/
 tests/test_logger.py
 .agents/docs
+.agents/rules
