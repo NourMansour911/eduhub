@@ -11,8 +11,12 @@ MONGODB_URL=
 QDRANT_URL=
 REDIS_URL=
 
+DB_BASE_URL=
+
 COHERE_API_KEY=
 OPENAI_API_URL=https://openrouter.ai/api/v1
+
+HF_TOKEN=
 
 OPENAI_API_KEY=
 # OPENAI_API_KEY=
@@ -26,10 +30,13 @@ PROMPT_ENVIRONMENT_TAG=production
 PROMPT_FETCH_REMOTE=true
 
 GENERATION_BACKEND=OPENAI
-GENERATION_MODEL_ID=deepseek-v4-flash
+GENERATION_MODEL_ID=deepseek/deepseek-v4-flash
+# GENERATION_MODEL_ID=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+
 
 EMBEDDING_BACKEND=HF
-EMBEDDING_MODEL_ID=BAAI/bge-base-en-v1.5
+# EMBEDDING_MODEL_ID=BAAI/bge-base-en-v1.5
+EMBEDDING_MODEL_ID=intfloat/multilingual-e5-base
 EMBEDDING_MODEL_SIZE=768
 
 
