@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
 
 
     # APIs
+    HF_TOKEN: Optional[str] = None
     COHERE_API_KEY: str
     LANGSMITH_API_KEY: str
     LANGSMITH_WORKSPACE: str = "nourmansour"

@@ -37,6 +37,7 @@ from services.grading.set_reference import SetReferenceService
 from services.grading.set_score import SetScoreService
 from orchestrators.lecture_orchestrator import LectureOrchestrator
 from services.chatbot.chatbot_service import ChatbotService
+from services.chatbot.security.guardrail_pipeline import GuardrailPipeline
 
 # Prompt templates for registry fallbacks
 from services.chatbot.nodes.orchestrator_node import OrchestratorNode
@@ -189,6 +190,9 @@ async def lifespan(app: FastAPI):
       embedding_client=app.state.embedding_client,
   )
 
+  app.state.guardrail_pipeline = GuardrailPipeline(settings=settings)
+  logger.info("GuardrailPipeline loaded successfully")
+
   app.state.chatbot_service = ChatbotService(
       lc_openai_client=app.state.langchain_client,
       settings=settings,
@@ -200,6 +204,7 @@ async def lifespan(app: FastAPI):
       evaluation_repo=app.state.evaluation_repo,
       student_persona_repo=app.state.student_persona_repo,
       prompt_registry=app.state.prompt_registry,
+      guardrail_pipeline=app.state.guardrail_pipeline,
   )
   logger.info("All services and orchestrators loaded successfully")
 

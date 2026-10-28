@@ -13,7 +13,7 @@ applyTo: "**/*.py"
 - **Services**: Own business logic, reusable, independent of HTTP.
 - **Orchestrators**: Optional. Use ONLY when coordinating multiple independent services.
 - **Integrations**: All external APIs (LLMs, Redis, Qdrant) MUST go through `src/integrations/`.
-- **Docs Location**: All generated docs/reviews MUST go into `.agents/docs/` (keep repository root clean).
+- **Docs & Plans Location**: All generated docs/discussions MUST go into `.agents/docs/`, and all implementation plans MUST go into `.agents/plans/` (keep repository root clean).
 
 ---
 

@@ -27,6 +27,7 @@ This repository is a **graduation project** implementing the AI backend microser
 | **Rolling Session Summary** | Incremental LLM-powered summary compressed and stored per session |
 | **Cross-turn RAG Memory** | Last 3 turns of tool outputs injected as context into new retrievals |
 | **OCR + Structure-Aware PDF Parsing** | Azure AI Document Intelligence preserves section headers, tables, and paragraphs — no naive character splits |
+| **Multi-Tier Guardrail Pipeline** (Meta Prompt-Guard-86M + NeMo) | Chatbot Perimeter — CPU neural classification (~10ms) blocks prompt injection/jailbreak; local embeddings intercept greetings & off-topic with 0 LLM cost |
 | **Fire-and-forget Evaluation Pipeline** | Per-response structured LLM telemetry pushed to MongoDB asynchronously |
 | **LangSmith Tracing** | Full graph and chain tracing for debugging and quality monitoring |
 
@@ -57,6 +58,14 @@ This system replaces that pattern entirely:
 | **Dependency handling** | Implicit (LLM decides order) | Explicit `depends_on` DAG — deterministic, traceable |
 
 **Concretely:** A query that needs 3 independent tool calls costs **1 Planner LLM call + 3 parallel async tool calls** (no LLM involved in execution) instead of **3 sequential LLM calls + 3 sequential tool calls**.
+
+### Multi-Tier Perimeter Guardrails (Zero-LLM Overhead)
+
+Before entering the LangGraph execution pipeline, all queries are screened by an eager in-memory perimeter gate:
+
+1. **Tier 1 — Prompt Injection & Jailbreak Neural Detection**: Evaluates query safety via Meta's `meta-llama/Prompt-Guard-86M` sequence classifier (~350MB RAM, ~10ms CPU inference). Queries attempting system prompt overrides or jailbreaks are blocked immediately.
+2. **Tier 2 — Conversational Boundary Enforcement (NeMo Guardrails)**: NVIDIA NeMo Guardrails running with local `intfloat/multilingual-e5-base` sentence embeddings (`embeddings_only: true`). Pure greetings receive an immediate warm Nova greeting, while out-of-scope non-academic requests are redirected without calling an LLM.
+3. **Zero Token Cost & Low Latency**: Injections, greetings, and off-topic queries are intercepted in <20ms and persisted to session history without calling LangGraph or consuming LLM generation tokens.
 
 ### Two-Level Graph Structure
 
@@ -165,6 +174,7 @@ eduhub/
 │   ├── main.py                    # FastAPI app factory
 │   ├── services/
 │   │   ├── chatbot/               # Two-level LangGraph chatbot + Agentic RAG
+│   │   │   ├── security/          # Multi-tier GuardrailPipeline (MetaGuard 86M + NeMo Guardrails)
 │   │   │   ├── agents/rag/        # RAG subgraph (Planner, Executor, Reflection, Finalize)
 │   │   │   ├── nodes/             # Outer graph nodes (Orchestrator, RAG, Answering)
 │   │   │   ├── chains/            # Summary and persona LangChain chains

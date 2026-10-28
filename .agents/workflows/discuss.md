@@ -83,4 +83,5 @@ Create a new dedicated Markdown file under `.agents/docs/` (or `docs/discussions
 - Reflect agreed-upon options, architecture diagrams (Mermaid), API signatures, or code snippets in the document.
 
 ### Step 5: Finalization & Transition to Plan
-- Offer to transition the final roadmap into a `/plan` execution workflow or task breakdown.
+- Transition the agreed roadmap into an implementation plan saved directly under `.agents/docs/plans/PLAN_<topic_name_snake_case>.md` via the `/plan` workflow.
+- Offer to begin execution once the user approves the plan.

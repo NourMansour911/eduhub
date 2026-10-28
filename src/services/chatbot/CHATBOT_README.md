@@ -33,6 +33,10 @@ HTTP POST /assistant/chat/{user_id}/{session_id}
 ChatbotService.chat()
   ├── Input validation (query length ≤ 1000 chars, student_id, session_id)
   ├── Load RedisSessionDTO (messages, persona, summary, contexts, courses)
+  ├── ★ Multi-Tier GuardrailPipeline (Interception Gate, 0 LLM cost) ★
+  │     ├── Tier 1: Meta Prompt-Guard-86M (CPU ~10ms) → Injection / Jailbreak block
+  │     └── Tier 2: NeMo Guardrails (Local Embeddings) → Greetings / Off-topic short-circuit
+  │     └── [If blocked/short-circuited: save to Redis & return response immediately]
   ├── Cache/fetch student_courses from SQL (Redis-first, SQL fallback)
   ├── Deduplicate last 3 turns of tool outputs from Redis contexts
   ├── Invoke chatbot_graph.ainvoke(...)
@@ -47,6 +51,50 @@ ChatbotService.chat()
   ├── asyncio.create_task → _push_evaluation() [fire-and-forget → MongoDB]
   └── asyncio.create_task → _update_persona_and_summary_background() [if flagged]
 ```
+
+---
+
+## Security & Guardrail Pipeline (Perimeter Gate)
+
+**Directory:** `security/`  
+**Components:** `GuardrailPipeline`, `InjectionGuard`, `NemoRailsManager`
+
+The security pipeline operates as an **eager in-memory interception perimeter** before the LangGraph agent executes. It protects downstream LLMs from prompt injections, jailbreaks, and off-topic conversations with zero generation token cost.
+
+```
+Incoming User Query
+         │
+         ▼
+┌────────────────────────────────────────────────────────┐
+│  GuardrailPipeline.evaluate(query)                     │
+│                                                        │
+│  Tier 1: InjectionGuard (Meta Prompt-Guard-86M)        │
+│          └── Sequence classification (~10ms, CPU)      │
+│          └── If Injection/Jailbreak → Block & Exit     │
+│                                                        │
+│  Tier 2: NemoRailsManager (NeMo Guardrails)            │
+│          └── Local embeddings (multilingual-e5-base)   │
+│          └── If Pure Greeting → Warm Nova Welcome      │
+│          └── If Off-Topic → Scope Redirection          │
+└────────────────────────────────────────────────────────┘
+         │ (Clean, in-scope academic queries)
+         ▼
+Proceed to Chatbot LangGraph (Orchestrator → RAG → Nova)
+```
+
+### Components
+
+| Component | Technology | Role | Latency |
+|---|---|---|---|
+| **`InjectionGuard`** | `meta-llama/Prompt-Guard-86M` via `transformers` | Classifies prompt injections and jailbreak attempts using deep sequence classification | ~10–15ms (CPU) |
+| **`NemoRailsManager`** | `nemoguardrails` + `sentence-transformers` | Semantic intent matching with Colang flows against diverse multi-disciplinary academic centroids | ~5–10ms (In-memory) |
+| **`GuardrailPipeline`** | Unified facade | Orchestrates Tier 1 and Tier 2 evaluations; loaded eagerly as a singleton on `app.state` | ~15–20ms total |
+
+### Short-Circuit Behavior
+When a query triggers any guardrail:
+1. An immediate safe response is generated without touching the LangGraph or making external LLM calls.
+2. The user query and assistant response are appended to the active Redis session to maintain full chat history continuity.
+3. The response is returned directly to the client with sub-20ms latency.
 
 ---
 
@@ -69,9 +117,9 @@ The Orchestrator is the first node in every request. It acts as a **query router
 | `needs_summary_update` | bool | True if a new topic or milestone is introduced |
 
 **Smart routing logic:**
-- Returns `direct_answer` when the query is a follow-up on already-discussed content, a greeting, or a question about enrolled courses (already available in state).
+- Returns `direct_answer` when the query is a follow-up on already-discussed content or a question about enrolled courses (already available in state).
 - Returns `route_to_rag` when fresh database retrieval is needed.
-- On prompt injection attempts, sets `needs_retrieval=False` and preserves the query for safe downstream handling by Nova.
+- Focuses entirely on academic query resolution; queries reaching this node are already validated safe by the perimeter guardrail.
 
 ---
 
@@ -97,7 +145,7 @@ Nova is the final response generator. It's a **Socratic educational mentor** wit
 - Always concludes with a follow-up question to check student comprehension.
 - Cites sources inline (lecture names, page references) from chunk metadata without exposing raw IDs.
 - Responds in the student's preferred language.
-- Refuses off-topic queries, prompt injection attempts, and out-of-scope content politely.
+- Remains focused on Socratic mentoring and academic tutoring, protected by perimeter guardrails.
 
 **Short-circuit logic:**
 - If `rag_status == "failed"` → returns an error message without LLM invocation.

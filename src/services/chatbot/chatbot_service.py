@@ -33,6 +33,7 @@ from .chains.persona_chain import build_persona_chain
 
 from services.chatbot.agents.rag.retrieving.sql.sql_server_calling import SqlServerCalling
 from services.chatbot.utils import format_student_courses, format_chat_history_for_graph, deduplicate_tool_outputs, clip_message_content
+from .security.guardrail_pipeline import GuardrailPipeline
 
 logger = get_chatbot_logger(__name__)
 
@@ -50,6 +51,7 @@ class ChatbotService:
         evaluation_repo: EvaluationRepo,
         student_persona_repo: StudentPersonaRepo,
         prompt_registry: Optional[PromptRegistry] = None,
+        guardrail_pipeline: Optional[GuardrailPipeline] = None,
     ) -> None:
         sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
         self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
@@ -57,6 +59,7 @@ class ChatbotService:
         self.evaluation_repo = evaluation_repo
         self.student_persona_repo = student_persona_repo
         self.prompt_registry = prompt_registry
+        self.guardrail_pipeline = guardrail_pipeline
 
         prompt_map = {}
         if prompt_registry:
@@ -172,6 +175,24 @@ class ChatbotService:
                 message="Active session not found. Please start a session before chatting.",
                 details={"student_id": student_id, "session_id": session_id}
             )
+
+        # Multi-Tier Guardrails Evaluation (MetaGuard 86M & NeMo Guardrails)
+        if self.guardrail_pipeline is not None:
+            guardrail_decision = await self.guardrail_pipeline.evaluate(user_query)
+            if guardrail_decision.is_blocked:
+                ai_reply = guardrail_decision.response_text or "I cannot process this request due to safety policies."
+                response_obj = ChatResponse(ai_response=ai_reply)
+
+                # Maintain conversation context in Redis session
+                collection.messages.append({"role": "user", "content": user_query})
+                collection.messages.append({"role": "assistant", "content": response_obj.ai_response})
+                await self.redis_provider.save_collection(collection, session_id=session_id)
+
+                logger.info(
+                    "ChatbotService: Query short-circuited by GuardrailPipeline (action=%s). Returning early.",
+                    guardrail_decision.action,
+                )
+                return response_obj
 
         student_courses = await self._get_and_cache_student_courses(student_id, collection)
 

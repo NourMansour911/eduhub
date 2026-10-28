@@ -1,0 +1,86 @@
+define user express greeting
+  "hello"
+  "hi"
+  "hey"
+  "hey Nova"
+  "good morning"
+  "good evening"
+  "how are you"
+  "how are you doing today"
+  "greetings"
+  "what's up"
+  "hi there"
+  "nice to meet you"
+  "just dropping by to say hello"
+
+define user ask academic question
+  "hi can you explain this concept from the lecture"
+  "hello Nova I have a question about my midterm exam"
+  "hey can you help me solve this math problem"
+  "good morning how do I approach this business case study"
+  "hello could you explain this scientific theory"
+  "explain the laws of thermodynamics in physics"
+  "how does cellular respiration work in biology"
+  "can you explain organic chemistry reaction mechanisms"
+  "how do I calculate eigenvalues in linear algebra"
+  "help me solve this differential equation step by step"
+  "how do electrical circuits and Kirchhoff laws work"
+  "explain stress and strain analysis in structural mechanics"
+  "what is the mechanism of action of this antibiotic in pharmacology"
+  "describe the anatomical structures of the human heart"
+  "what is the difference between microeconomics and macroeconomics"
+  "how do I prepare a balance sheet and income statement in accounting"
+  "explain Porters five forces model in corporate strategy"
+  "what are the fundamental principles of constitutional law"
+  "explain Piagets stages of cognitive development in psychology"
+  "summarize the main causes of the Industrial Revolution in history"
+  "how do I structure a formal literature review for my research paper"
+  "help me debug this programming code for my assignment"
+  "what are the graduation requirements and credit hours"
+  "what is the minimum GPA to avoid academic probation"
+  "what are the course withdrawal rules and deadlines"
+  "what is the prerequisite course for this subject"
+  "summarize lecture 3 and key formulas from the textbook"
+  "can you give me practice questions to prepare for finals"
+
+define flow academic question
+  user ask academic question
+  bot pass to graph
+
+define flow greeting
+  user express greeting
+  bot express greeting
+  stop
+
+define bot express greeting
+  "Hello! I am Nova, your AI academic tutor at EduHub. How can I assist you with your studies today?"
+
+define user ask off topic
+  "how to cook pasta carbonara"
+  "recipe for homemade pizza"
+  "best chocolate cake recipe"
+  "who won the football match yesterday"
+  "latest scores and standings in the premier league"
+  "who is the best basketball player in the NBA"
+  "recommend a good action movie on Netflix"
+  "tell me about the latest Marvel film"
+  "celebrity news and gossip"
+  "tell me a funny joke to make me laugh"
+  "tell me an interesting riddle"
+  "what is the weather forecast for tomorrow"
+  "is it going to rain this weekend"
+  "top tourist attractions in Paris"
+  "who is the president of France"
+  "latest political news and headlines"
+  "write a romantic love poem for my partner"
+  "tips for car maintenance and changing engine oil"
+  "how do I fix a leaking bathroom pipe"
+  "what does my horoscope say for today"
+
+define flow off topic
+  user ask off topic
+  bot refuse off topic
+  stop
+
+define bot refuse off topic
+  "I am an academic assistant dedicated to answering questions about courses, curriculum, and university regulations at EduHub. Please ask an academic question related to your studies."

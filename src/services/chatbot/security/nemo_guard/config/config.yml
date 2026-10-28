@@ -1,0 +1,17 @@
+models:
+  - type: main
+    engine: openai
+    model: dummy
+    parameters:
+      base_url: "http://localhost:8000/v1"
+      api_key: "dummy"
+
+  - type: embeddings
+    engine: sentence_transformers
+    model: intfloat/multilingual-e5-base
+
+rails:
+  dialog:
+    user_messages:
+      embeddings_only: true
+      embeddings_only_similarity_threshold: 0.7

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from integrations.redis_provider import RedisProvider
     from integrations.llm.prompt_registry import PromptRegistry
     from services.chatbot.chatbot_service import ChatbotService
+    from services.chatbot.security.guardrail_pipeline import GuardrailPipeline
     from services.lectures.lecture_service import LectureService
     from services.summarize.summarize_service import SummarizeService
     from services.vdb_service.vectordb_service import VDBService
@@ -96,6 +97,10 @@ def get_lecture_orchestrator(request: Request) -> "LectureOrchestrator":
 
 def get_prompt_registry(request: Request) -> "PromptRegistry":
     return request.app.state.prompt_registry
+
+
+def get_guardrail_pipeline(request: Request) -> "GuardrailPipeline":
+    return request.app.state.guardrail_pipeline
 
 
 
