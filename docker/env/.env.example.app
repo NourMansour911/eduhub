@@ -14,15 +14,12 @@ REDIS_URL=
 DB_BASE_URL=
 
 COHERE_API_KEY=
-OPENAI_API_URL=https://openrouter.ai/api/v1
+OPENAI_API_URL=http://litellm:4000/v1
 
 HF_TOKEN=
 
-OPENAI_API_KEY=
-# OPENAI_API_KEY=
-# OPENAI_API_KEY=
-# OPENAI_API_KEY=
-# OPENAI_API_KEY=
+# LiteLLM Master Key (acts as OPENAI_API_KEY for the application)
+OPENAI_API_KEY=sk-eduhub-litellm-master-secret-key-2026
 
 LANGSMITH_API_KEY=
 LANGSMITH_WORKSPACE=nourmansour
@@ -32,6 +29,16 @@ PROMPT_FETCH_REMOTE=true
 GENERATION_BACKEND=OPENAI
 GENERATION_MODEL_ID=deepseek/deepseek-v4-flash
 # GENERATION_MODEL_ID=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+
+# Per-Node Virtual Model Routing (LiteLLM aliases)
+ORCHESTRATOR_MODEL_ID=eduhub/router
+ANSWERING_MODEL_ID=eduhub/answering
+PLANNER_MODEL_ID=eduhub/planner
+REFLECTION_MODEL_ID=eduhub/reflection
+SUMMARY_MODEL_ID=eduhub/summary
+PERSONA_MODEL_ID=eduhub/persona
+GRADING_MODEL_ID=eduhub/grading
+REWRITER_MODEL_ID=eduhub/rewriter
 
 
 EMBEDDING_BACKEND=HF

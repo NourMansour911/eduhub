@@ -142,7 +142,7 @@ async def lifespan(app: FastAPI):
   app.state.vdb_service = VDBService(vdb_client=app.state.vdb_client)
 
   summary_llm = app.state.langchain_client.get_langchain_llm(
-      model=settings.GENERATION_MODEL_ID,
+      model=settings.get_model_for("summary"),
       temperature=0.1,
       top_p=0.85,
   )

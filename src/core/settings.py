@@ -35,6 +35,22 @@ class Settings(BaseSettings):
     GENERATION_BACKEND: str
     GENERATION_MODEL_ID: str
 
+    # Per-node model routing (defaults to GENERATION_MODEL_ID if unset)
+    ORCHESTRATOR_MODEL_ID: Optional[str] = None
+    ANSWERING_MODEL_ID: Optional[str] = None
+    PLANNER_MODEL_ID: Optional[str] = None
+    REFLECTION_MODEL_ID: Optional[str] = None
+    SUMMARY_MODEL_ID: Optional[str] = None
+    PERSONA_MODEL_ID: Optional[str] = None
+    GRADING_MODEL_ID: Optional[str] = None
+    REWRITER_MODEL_ID: Optional[str] = None
+
+    def get_model_for(self, node: str) -> str:
+        """Return node-specific virtual model ID or fall back to GENERATION_MODEL_ID."""
+        field_name = f"{node.upper()}_MODEL_ID"
+        specific = getattr(self, field_name, None)
+        return specific or self.GENERATION_MODEL_ID
+
     EMBEDDING_BACKEND: str
     EMBEDDING_MODEL_ID: str
     EMBEDDING_MODEL_SIZE: int

@@ -1,16 +1,3 @@
-# ====================================================================
-# EduHub Docker Compose Example Setup
-# --------------------------------------------------------------------
-# Quick Start:
-# 1. Copy the example environment files under `docker/env/`:
-#      cp env/.env.example.app env/.env.app
-#      cp env/.env.example.mongodb env/.env.mongodb
-#      cp env/.env.example.redis env/.env.redis
-#      cp env/.env.example.grafana env/.env.grafana
-# 2. Add your secret keys and credentials to the newly created .env files.
-# 3. Start the services:
-#      docker compose -f docker-compose.example.yml up -d
-# ====================================================================
 
 services:
   api:
@@ -32,6 +19,7 @@ services:
       - mongodb
       - qdrant
       - redis
+      - litellm
 
   qdrant:
     image: qdrant/qdrant:v1.17
@@ -76,6 +64,53 @@ services:
     command: >
       redis-server --requirepass ${REDIS_PASSWORD:-redisadmin123} --appendonly yes
 
+  litellm-db:
+    image: postgres:16-alpine
+    container_name: litellm-db
+    volumes:
+      - litellm_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD:-litellmpass123}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: litellm-proxy
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm/litellm_config.yaml:/app/config.yaml:ro
+    networks:
+      - backend
+    restart: always
+    env_file:
+      - ./env/.env.litellm
+    environment:
+      - DATABASE_URL=postgresql://litellm:${LITELLM_DB_PASSWORD:-litellmpass123}@litellm-db:5432/litellm
+    command: >
+      --config /app/config.yaml
+      --port 4000
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 networks:
   backend:
     driver: bridge
@@ -84,3 +119,4 @@ volumes:
   eduhub_qdrant_data:
   eduhub_mongodata:
   eduhub_redis_data:
+  litellm_pgdata:

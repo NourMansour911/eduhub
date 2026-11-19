@@ -218,7 +218,7 @@ class SearchService:
 
 		try:
 			llm = self.langchain_client.get_langchain_llm(
-				model=self.settings.GENERATION_MODEL_ID,
+				model=self.settings.get_model_for("rewriter"),
 				temperature=0.2,
 				max_tokens=256,
 			)

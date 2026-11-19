@@ -36,11 +36,11 @@ class RAGSubgraph:
         rag_llm_map: Dict[str, ChatOpenAI] = {
             # Planner needs to reason and generate structured DAG plans — slightly creative
             "planner": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.1, max_tokens=1000
+                model=settings.get_model_for("planner"), temperature=0.1, max_tokens=1000
             ),
             # Reflection is a binary classifier — deterministic
             "reflection": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0, max_tokens=200
+                model=settings.get_model_for("reflection"), temperature=0.0, max_tokens=200
             ),
         }
 

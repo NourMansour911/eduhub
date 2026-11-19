@@ -24,7 +24,7 @@ class SetScoreService:
         prompt: Optional[ChatPromptTemplate] = None,
     ) -> None:
         self.answer_repo: AnswerRepo = answer_repo
-        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.GENERATION_MODEL_ID, top_p=0.1, temperature=0.0)
+        self.llm: ChatOpenAI = lc_openai_client.get_langchain_llm(model=settings.get_model_for("grading"), top_p=0.1, temperature=0.0)
         self.prompt = prompt
 
 
@@ -89,4 +89,4 @@ class SetScoreService:
                 details={"error": str(e)}
             )
         
-        return BatchGradingResponse(results=results)
+        return BatchGradingResponse(results=results)

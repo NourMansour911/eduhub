@@ -84,16 +84,16 @@ class ChatbotService:
 
         llm_map = {
             "orchestrator": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.0
+                model=settings.get_model_for("orchestrator"), temperature=0.0
             ),
             "answering": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.7
+                model=settings.get_model_for("answering"), temperature=0.7
             ),
             "summary": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.2
+                model=settings.get_model_for("summary"), temperature=0.2
             ),
             "persona": lc_openai_client.get_langchain_llm(
-                model=settings.GENERATION_MODEL_ID, temperature=0.1
+                model=settings.get_model_for("persona"), temperature=0.1
             ),
         }
 
