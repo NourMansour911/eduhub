@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -36,8 +37,6 @@ logger = get_chatbot_logger(__name__)
 
 
 class ChatbotService:
-
-
     def __init__(
         self,
         lc_openai_client: LCOpenAI,
@@ -64,7 +63,6 @@ class ChatbotService:
         self.prompt_registry = prompt_registry
         self.guardrail_pipeline = guardrail_pipeline
 
-        
         self._init_graph_and_chains(
             lc_openai_client=lc_openai_client,
             settings=settings,
@@ -74,7 +72,6 @@ class ChatbotService:
             summarize_service=summarize_service,
         )
 
-       
         self.preflight = ChatPreflightHandler(
             redis_provider=self.redis_provider,
             rate_limiter=self.rate_limiter,
@@ -169,7 +166,6 @@ class ChatbotService:
         self.generation_model_id = settings.GENERATION_MODEL_ID
 
     async def chat(self, payload: ChatRequest, student_id: str, session_id: str) -> ChatResponse:
-        
         ctx = await self.preflight.prepare_context(
             student_id=student_id,
             session_id=session_id,
@@ -177,6 +173,14 @@ class ChatbotService:
         )
 
         if ctx.is_guardrail_blocked:
+            asyncio.create_task(
+                self.post_processor.push_guardrail_evaluation(
+                    ctx=ctx,
+                    action=ctx.guardrail_action or "blocked",
+                    violation_type=ctx.guardrail_violation_type,
+                    score=ctx.guardrail_score,
+                )
+            )
             return ChatResponse(ai_response=ctx.guardrail_response)
 
         try:
@@ -198,7 +202,6 @@ class ChatbotService:
         response_obj = ChatResponse(ai_response=ai_reply)
         cleaned_reply = response_obj.ai_response
 
-        
         await self.post_processor.process(
             ctx=ctx,
             ai_reply=cleaned_reply,
@@ -211,7 +214,6 @@ class ChatbotService:
     async def chat_stream(
         self, payload: ChatRequest, student_id: str, session_id: str
     ) -> AsyncGenerator[str, None]:
-       
         try:
             ctx = await self.preflight.prepare_context(
                 student_id=student_id,
@@ -226,6 +228,14 @@ class ChatbotService:
             return
 
         if ctx.is_guardrail_blocked:
+            asyncio.create_task(
+                self.post_processor.push_guardrail_evaluation(
+                    ctx=ctx,
+                    action=ctx.guardrail_action or "blocked",
+                    violation_type=ctx.guardrail_violation_type,
+                    score=ctx.guardrail_score,
+                )
+            )
             blocked_reply = ctx.guardrail_response or "I cannot process this request due to safety policies."
             yield f"data: {json.dumps({'token': blocked_reply}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'done': True, 'full_response': blocked_reply}, ensure_ascii=False)}\n\n"
@@ -276,7 +286,6 @@ class ChatbotService:
 
         yield f"data: {json.dumps({'done': True, 'full_response': accumulated_text}, ensure_ascii=False)}\n\n"
 
-       
         try:
             await self.post_processor.process(
                 ctx=ctx,
@@ -289,7 +298,6 @@ class ChatbotService:
 
     @staticmethod
     def _format_sse_error(exc: ChatbotValidationError) -> str:
-       
         payload: Dict[str, Any] = {"error": exc.message}
         if exc.details:
             if "rpm_limit" in exc.details or "daily_limit" in exc.details:
@@ -299,7 +307,6 @@ class ChatbotService:
                 payload["code"] = 402
                 payload.update(exc.details)
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-
 
     async def _get_and_cache_student_courses(self, student_id: str, collection: RedisSessionDTO) -> str:
         return await self.preflight.get_and_cache_student_courses(student_id, collection)
@@ -314,7 +321,6 @@ class ChatbotService:
         await self.post_processor.update_persona_and_summary_background(**kwargs)
 
     async def delete_student_persona(self, user_id: str) -> DeletePersonaResponse:
-       
         user_id = (user_id or "").strip()
         if not user_id:
             raise ChatbotValidationError(

@@ -19,8 +19,6 @@ logger = get_chatbot_logger(__name__)
 
 @dataclass
 class ChatContext:
-    """Encapsulates verified session, user plan, query, and LangGraph inputs."""
-
     student_id: str
     session_id: str
     user_query: str
@@ -29,11 +27,12 @@ class ChatContext:
     graph_input: Dict[str, Any] = field(default_factory=dict)
     is_guardrail_blocked: bool = False
     guardrail_response: Optional[str] = None
+    guardrail_action: Optional[str] = None
+    guardrail_violation_type: Optional[str] = None
+    guardrail_score: float = 0.0
 
 
 class ChatPreflightHandler:
-
-
     def __init__(
         self,
         redis_provider: RedisProvider,
@@ -49,7 +48,6 @@ class ChatPreflightHandler:
         self.litellm_admin = litellm_admin
 
     def validate_inputs(self, student_id: str, session_id: str, user_query: str) -> Tuple[str, str, str]:
-        
         user_query = (user_query or "").strip()
         query_len = len(user_query)
         if query_len > 1000:
@@ -75,7 +73,6 @@ class ChatPreflightHandler:
         return student_id, session_id, user_query
 
     async def get_and_validate_session(self, student_id: str, session_id: str) -> RedisSessionDTO:
-        
         collection = await self.redis_provider.get_collection(user_id=student_id, session_id=session_id)
         if collection is None:
             raise SessionNotFoundError(
@@ -85,7 +82,6 @@ class ChatPreflightHandler:
         return collection
 
     async def check_rate_limits(self, student_id: str, collection: RedisSessionDTO) -> str:
-       
         student_plan = getattr(collection, "plan", "free") or "free"
         plan_config = get_user_plan_config(student_plan)
 
@@ -102,7 +98,6 @@ class ChatPreflightHandler:
         return student_plan
 
     async def check_budget(self, student_id: str, student_plan: str) -> None:
-        
         if self.litellm_admin:
             has_budget, current_spend, max_b = await self.litellm_admin.check_user_budget(student_id)
             if not has_budget:
@@ -125,14 +120,12 @@ class ChatPreflightHandler:
 
     async def evaluate_guardrails(
         self, user_query: str, collection: RedisSessionDTO, session_id: str
-    ) -> Tuple[bool, Optional[str]]:
-       
+    ) -> Tuple[bool, Optional[str], Optional[str], Optional[str], float]:
         if self.guardrail_pipeline is not None:
             guardrail_decision = await self.guardrail_pipeline.evaluate(user_query)
             if guardrail_decision.is_blocked:
                 ai_reply = guardrail_decision.response_text or "I cannot process this request due to safety policies."
 
-                # Maintain conversation context in Redis session
                 collection.messages.append({"role": "user", "content": user_query})
                 collection.messages.append({"role": "assistant", "content": ai_reply})
                 await self.redis_provider.save_collection(collection, session_id=session_id)
@@ -141,11 +134,16 @@ class ChatPreflightHandler:
                     "ChatPreflightHandler: Query short-circuited by GuardrailPipeline (action=%s).",
                     guardrail_decision.action,
                 )
-                return True, ai_reply
-        return False, None
+                return (
+                    True,
+                    ai_reply,
+                    guardrail_decision.action,
+                    guardrail_decision.violation_type,
+                    guardrail_decision.score,
+                )
+        return False, None, None, None, 0.0
 
     async def get_and_cache_student_courses(self, student_id: str, collection: RedisSessionDTO) -> str:
-        
         if collection.student_courses:
             logger.info("Using cached student_courses from Redis: %s", collection.student_courses)
             return collection.student_courses
@@ -163,7 +161,6 @@ class ChatPreflightHandler:
         return courses_str
 
     async def prepare_context(self, student_id: str, session_id: str, user_query: str) -> ChatContext:
-
         valid_student_id, valid_session_id, valid_query = self.validate_inputs(student_id, session_id, user_query)
         logger.info(
             "Chatbot session pre-flight initiated. student_id: %s | session_id: %s",
@@ -175,7 +172,9 @@ class ChatPreflightHandler:
         student_plan = await self.check_rate_limits(valid_student_id, collection)
         await self.check_budget(valid_student_id, student_plan)
 
-        is_blocked, guardrail_reply = await self.evaluate_guardrails(valid_query, collection, valid_session_id)
+        is_blocked, guardrail_reply, action, violation_type, score = await self.evaluate_guardrails(
+            valid_query, collection, valid_session_id
+        )
         if is_blocked:
             return ChatContext(
                 student_id=valid_student_id,
@@ -185,6 +184,9 @@ class ChatPreflightHandler:
                 collection=collection,
                 is_guardrail_blocked=True,
                 guardrail_response=guardrail_reply,
+                guardrail_action=action,
+                guardrail_violation_type=violation_type,
+                guardrail_score=score,
             )
 
         student_courses = await self.get_and_cache_student_courses(valid_student_id, collection)
