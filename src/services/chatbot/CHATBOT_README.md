@@ -27,29 +27,34 @@ The practical effect: a query requiring 3 independent tool calls costs **1 LLM c
 The service is built as two nested LangGraph graphs:
 
 ```
-HTTP POST /assistant/chat/{user_id}/{session_id}
+HTTP POST /assistant/chat/{user_id}/{session_id}  (or /stream)
   │
   ▼
-ChatbotService.chat()
-  ├── Input validation (query length ≤ 1000 chars, student_id, session_id)
-  ├── Load RedisSessionDTO (messages, persona, summary, contexts, courses)
-  ├── ★ Multi-Tier GuardrailPipeline (Interception Gate, 0 LLM cost) ★
-  │     ├── Tier 1: Meta Prompt-Guard-86M (CPU ~10ms) → Injection / Jailbreak block
-  │     └── Tier 2: NeMo Guardrails (Local Embeddings) → Greetings / Off-topic short-circuit
-  │     └── [If blocked/short-circuited: save to Redis & return response immediately]
-  ├── Cache/fetch student_courses from SQL (Redis-first, SQL fallback)
-  ├── Deduplicate last 3 turns of tool outputs from Redis contexts
-  ├── Invoke chatbot_graph.ainvoke(...)
+ChatbotService.chat() / chat_stream()
+  │
+  ├── 1. ChatPreflightHandler.prepare_context()
+  │     ├── Input validation (query length ≤ 1000 chars, student_id, session_id)
+  │     ├── Load RedisSessionDTO from Redis
+  │     ├── Plan rate limits check (RPM, Daily Limit)
+  │     ├── LiteLLM hard budget check
+  │     ├── GuardrailPipeline evaluation (Injection / Jailbreak / Off-topic gate)
+  │     ├── Retrieve/cache student_courses (Redis-first, SQL fallback)
+  │     └── Format messages_history & package ChatContext
+  │
+  ├── 2. LangGraph Execution
+  │     ├── chat: ainvoke()
+  │     └── chat_stream: astream_events() token-by-token
   │     │
   │     ▼
   │   [Orchestrator] ── route_to_rag ──► [RAG Node] ──► [Answering (Nova)]
   │         └──────── direct_answer ────────────────► [Answering (Nova)]
   │
-  ├── Append user/assistant messages to Redis
-  ├── Persist run_step_outputs to Redis contexts
-  ├── Save RedisSessionDTO back to Redis
-  ├── asyncio.create_task → _push_evaluation() [fire-and-forget → MongoDB]
-  └── asyncio.create_task → _update_persona_and_summary_background() [if flagged]
+  └── 3. ChatPostProcessor.process() (Temporal Activity-ready)
+        ├── Append user/assistant messages to Redis session
+        ├── Persist run_step_outputs to Redis contexts
+        ├── Save RedisSessionDTO to Redis
+        ├── push_evaluation() [fire-and-forget → MongoDB]
+        └── trigger_background_updates() [persona & summary chains if flagged]
 ```
 
 ---
