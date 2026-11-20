@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     OPENAI_API_URL: str
     OPENAI_API_KEY: str
 
+    # LiteLLM Gateway Administration
+    LITELLM_ADMIN_URL: str = "http://litellm:4000"
+    LITELLM_MASTER_KEY: Optional[str] = None
+
+    def get_litellm_master_key(self) -> str:
+        return self.LITELLM_MASTER_KEY or self.OPENAI_API_KEY
+
     # Models
     GENERATION_BACKEND: str
     GENERATION_MODEL_ID: str

@@ -7,6 +7,7 @@ class ChatbotState(BaseModel):
     user_query: str
     student_id: str
     session_id: str
+    user_plan: str = "free"
     student_courses: str = ""
     user_persona: Optional[str] = None
     session_summary: Optional[str] = None

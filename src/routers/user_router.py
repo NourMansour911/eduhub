@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, Path
 
 from helpers.logger import get_logger
-from schemas.session_schema import DeleteUserSessionsResponse
+from schemas.session_schema import (
+    DeleteUserSessionsResponse,
+    UpdateUserPlanRequest,
+    UpdateUserPlanResponse,
+)
 from schemas.assistant_schema import DeletePersonaResponse
 from services.session.session_service import SessionService
 from services.chatbot.chatbot_service import ChatbotService
@@ -51,3 +55,21 @@ async def delete_persona(
     chatbot_service: ChatbotService = Depends(get_chatbot_service),
 ):
     return await chatbot_service.delete_student_persona(user_id)
+
+
+@user_route.patch(
+    "/plan",
+    summary="Update student plan tier",
+    description=(
+        "Updates the user's subscription plan (free, standard, premium). "
+        "Immediately syncs with LiteLLM database budget limits and updates all active Redis sessions on-the-fly."
+    ),
+    response_model=UpdateUserPlanResponse,
+)
+async def update_user_plan(
+    payload: UpdateUserPlanRequest,
+    user_id: str = Path(..., description="User identifier whose plan is being updated."),
+    session_service: SessionService = Depends(get_session_service),
+):
+    return await session_service.update_user_plan(user_id=user_id, plan=payload.plan)
+

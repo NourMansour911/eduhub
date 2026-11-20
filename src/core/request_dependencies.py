@@ -103,6 +103,14 @@ def get_guardrail_pipeline(request: Request) -> "GuardrailPipeline":
     return request.app.state.guardrail_pipeline
 
 
+def get_rate_limiter(request: Request):
+    return getattr(request.app.state, "rate_limiter", None)
+
+
+def get_litellm_admin(request: Request):
+    return getattr(request.app.state, "litellm_admin", None)
+
+
 
 
 

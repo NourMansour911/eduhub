@@ -7,9 +7,20 @@ from helpers.utils import CleanMarkdownStr
 class SessionRequest(BaseModel):
     user_id: str = Field(..., description="Unique identifier for the user starting the session.")
     session_id: str = Field(..., description="Unique identifier for the session being started.")
+    plan: Optional[str] = Field(default="free", description="Subscription plan tier: free, standard, premium")
 
 class SessionStartResponse(BaseModel):
     cache_key: str = Field(..., description="Key for the session data stored in the cache.")
+
+class UpdateUserPlanRequest(BaseModel):
+    plan: str = Field(..., description="New target plan tier: free, standard, premium")
+
+class UpdateUserPlanResponse(BaseModel):
+    user_id: str = Field(..., description="User ID whose plan was updated")
+    plan: str = Field(..., description="Active plan name after update")
+    litellm_synced: bool = Field(..., description="Whether LiteLLM database was updated")
+    active_sessions_updated: int = Field(..., description="Number of currently active sessions updated in Redis")
+    message: str = Field(..., description="Status message")
 
 class SessionEndResponse(BaseModel):
     summary: CleanMarkdownStr = Field(..., description="Summary of the session content.")

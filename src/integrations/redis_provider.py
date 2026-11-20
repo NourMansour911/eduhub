@@ -155,3 +155,21 @@ class RedisProvider:
         """Check if a specific session is currently active in Redis."""
         key = self.build_collection_key(user_id=user_id, session_id=session_id)
         return await self.get(key) is not None
+
+    async def update_user_sessions_plan(self, user_id: str, plan: str) -> int:
+        
+        pattern = f"user:{user_id}:session:*"
+        keys = await self._ensure_client().keys(pattern)
+        updated_count = 0
+        for key in keys:
+            raw_value = await self.get(key)
+            if not raw_value:
+                continue
+            try:
+                data = json.loads(raw_value)
+                data["plan"] = plan
+                await self.set(key, json.dumps(data))
+                updated_count += 1
+            except Exception as exc:
+                logger.error("Failed to update plan for session key '%s': %s", key, exc)
+        return updated_count

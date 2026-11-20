@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import uuid
 from repositories.student_persona_repo import StudentPersonaRepo
 from dtos.redis_session_dto import RedisSessionDTO
@@ -7,7 +7,13 @@ from dtos.vdb_payload_dto import VDBChunkPayload
 from helpers.logger import get_logger
 from integrations.redis_provider import RedisProvider
 from integrations.llm import LLMInterface
-from schemas.session_schema import SessionEndResponse, SessionRequest, SessionStartResponse
+from integrations.litellm_admin import LiteLLMAdminClient
+from schemas.session_schema import (
+    SessionEndResponse,
+    SessionRequest,
+    SessionStartResponse,
+    UpdateUserPlanResponse,
+)
 from services.embedding.embedding_service import ChunkEmbeddingService
 from .session_exceptions import SessionNotFoundError, SessionProcessingError, SessionValidationError
 from services.vdb_service.vectordb_service import VDBService
@@ -25,19 +31,21 @@ class SessionService:
         embedding_client: LLMInterface,
         vdb_service: VDBService,
         student_persona_repo: StudentPersonaRepo,
+        litellm_admin: Optional[LiteLLMAdminClient] = None,
     ):
         self.redis_provider = redis_provider
         self.embedding_service = ChunkEmbeddingService(embedding_client=embedding_client)
         self.vdb_service = vdb_service
         self.student_persona_repo = student_persona_repo
-
+        self.litellm_admin = litellm_admin
 
     async def start_session(self, request: SessionRequest) -> SessionStartResponse:
         user_id = request.user_id
         session_id = request.session_id
+        plan_name = (request.plan or "free").lower().strip()
         
         collection = await self.redis_provider.get_collection(user_id=user_id, session_id=session_id)
-        if collection :
+        if collection:
             raise SessionProcessingError(
                 message="Session already exists",
                 details={"user_id": user_id, "session_id": session_id},
@@ -45,11 +53,37 @@ class SessionService:
         persona_doc = await self.student_persona_repo.get_persona_by_student_id(user_id)
         persona_str = persona_doc.persona if persona_doc else None
 
-        collection = RedisSessionDTO(user_id=user_id, persona=persona_str)
+        collection = RedisSessionDTO(user_id=user_id, persona=persona_str, plan=plan_name)
         await self.redis_provider.save_collection(collection, session_id=session_id)
+
+        if self.litellm_admin:
+            await self.litellm_admin.sync_user_budget(user_id=user_id, plan_name=plan_name)
 
         return SessionStartResponse(
             cache_key=self.redis_provider.build_collection_key(user_id=user_id, session_id=session_id),
+        )
+
+    async def update_user_plan(self, user_id: str, plan: str) -> UpdateUserPlanResponse:
+        
+        normalized_plan = (plan or "free").lower().strip()
+        litellm_synced = False
+        if self.litellm_admin:
+            litellm_synced = await self.litellm_admin.sync_user_budget(user_id=user_id, plan_name=normalized_plan)
+
+        updated_count = await self.redis_provider.update_user_sessions_plan(user_id=user_id, plan=normalized_plan)
+        logger.info(
+            "User plan updated for '%s': plan=%s, litellm_synced=%s, active_sessions_updated=%d",
+            user_id,
+            normalized_plan,
+            litellm_synced,
+            updated_count,
+        )
+        return UpdateUserPlanResponse(
+            user_id=user_id,
+            plan=normalized_plan,
+            litellm_synced=litellm_synced,
+            active_sessions_updated=updated_count,
+            message=f"Plan successfully updated to '{normalized_plan}' for user '{user_id}'. Active sessions updated: {updated_count}."
         )
 
     async def end_session(self, request: SessionRequest) -> SessionEndResponse:

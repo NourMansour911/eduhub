@@ -23,6 +23,8 @@ from . import session_schema
 from .session_schema import SessionEndResponse
 from .session_schema import SessionRequest
 from .session_schema import SessionStartResponse
+from .session_schema import UpdateUserPlanRequest
+from .session_schema import UpdateUserPlanResponse
 from . import vectordb_schema
 from .vectordb_schema import ChunkResponse
 from .vectordb_schema import ChunksQuerySchema

@@ -23,6 +23,9 @@ from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
 from services.chatbot.agents.rag.retrieving.vdb.search_service import SearchService
 from services.lectures.lecture_service import LectureService
 from services.summarize.summarize_service import SummarizeService
+from core.plans import get_user_plan_config
+from integrations.litellm_admin import LiteLLMAdminClient
+from .rate_limiter import UserRateLimiter
 
 from .agents.rag.builder import build_rag_subgraph
 from .builder import build_chatbot_graph
@@ -52,10 +55,14 @@ class ChatbotService:
         student_persona_repo: StudentPersonaRepo,
         prompt_registry: Optional[PromptRegistry] = None,
         guardrail_pipeline: Optional[GuardrailPipeline] = None,
+        rate_limiter: Optional[UserRateLimiter] = None,
+        litellm_admin: Optional[LiteLLMAdminClient] = None,
     ) -> None:
         sql_server_calling = SqlServerCalling(base_url=settings.DB_BASE_URL)
         self.sql_tools = SQLTools(embedding_client=embedding_client, sql_server_calling=sql_server_calling)
         self.redis_provider = redis_provider
+        self.rate_limiter = rate_limiter or UserRateLimiter(redis_provider=redis_provider)
+        self.litellm_admin = litellm_admin
         self.evaluation_repo = evaluation_repo
         self.student_persona_repo = student_persona_repo
         self.prompt_registry = prompt_registry
@@ -88,6 +95,15 @@ class ChatbotService:
             ),
             "answering": lc_openai_client.get_langchain_llm(
                 model=settings.get_model_for("answering"), temperature=0.7
+            ),
+            "answering_free": lc_openai_client.get_langchain_llm(
+                model="eduhub/answering-free", temperature=0.7
+            ),
+            "answering_standard": lc_openai_client.get_langchain_llm(
+                model="eduhub/answering", temperature=0.7
+            ),
+            "answering_premium": lc_openai_client.get_langchain_llm(
+                model="eduhub/answering-premium", temperature=0.7
             ),
             "summary": lc_openai_client.get_langchain_llm(
                 model=settings.get_model_for("summary"), temperature=0.2
@@ -176,6 +192,42 @@ class ChatbotService:
                 details={"student_id": student_id, "session_id": session_id}
             )
 
+        
+        student_plan = getattr(collection, "plan", "free") or "free"
+        plan_config = get_user_plan_config(student_plan)
+
+        is_allowed, reason, meta = await self.rate_limiter.check_and_increment(
+            student_id=student_id,
+            rpm_limit=plan_config.rpm,
+            daily_limit=plan_config.daily_limit,
+        )
+        if not is_allowed:
+            raise ChatbotValidationError(
+                message=reason,
+                details={"student_id": student_id, "plan": student_plan, **meta},
+            )
+
+        # Pre-flight LiteLLM Budget Check (Hard Block before Guardrails / SQL / LangGraph)
+        if self.litellm_admin:
+            has_budget, current_spend, max_b = await self.litellm_admin.check_user_budget(student_id)
+            if not has_budget:
+                logger.warning(
+                    "ChatbotService: Pre-flight budget check failed for student '%s'. Spend=$%.4f >= Max=$%.2f. Hard-blocking before graph execution.",
+                    student_id,
+                    current_spend,
+                    max_b,
+                )
+                raise ChatbotValidationError(
+                    message=f"You have exhausted your monthly plan budget (${current_spend:.2f} of ${max_b:.2f}). Please upgrade your plan to continue.",
+                    details={
+                        "student_id": student_id,
+                        "spend": current_spend,
+                        "max_budget": max_b,
+                        "plan": student_plan,
+                        "reason": "monthly_budget_exhausted",
+                    },
+                )
+
         # Multi-Tier Guardrails Evaluation (MetaGuard 86M & NeMo Guardrails)
         if self.guardrail_pipeline is not None:
             guardrail_decision = await self.guardrail_pipeline.evaluate(user_query)
@@ -205,6 +257,7 @@ class ChatbotService:
                 "user_query": user_query,
                 "student_id": student_id,
                 "session_id": session_id,
+                "user_plan": student_plan,
                 "student_courses": student_courses,
                 "messages_history": last_messages,
                 "user_persona": collection.persona,
@@ -309,6 +362,32 @@ class ChatbotService:
             yield f"data: {json.dumps({'error': 'Active session not found. Please start a session before chatting.'}, ensure_ascii=False)}\n\n"
             return
 
+        
+        student_plan = getattr(collection, "plan", "free") or "free"
+        plan_config = get_user_plan_config(student_plan)
+
+        is_allowed, reason, meta = await self.rate_limiter.check_and_increment(
+            student_id=student_id,
+            rpm_limit=plan_config.rpm,
+            daily_limit=plan_config.daily_limit,
+        )
+        if not is_allowed:
+            yield f"data: {json.dumps({'error': reason, 'code': 429, 'plan': student_plan, **meta}, ensure_ascii=False)}\n\n"
+            return
+
+        # Pre-flight LiteLLM Budget Check (Hard Block before Guardrails / SQL / Streaming Graph)
+        if self.litellm_admin:
+            has_budget, current_spend, max_b = await self.litellm_admin.check_user_budget(student_id)
+            if not has_budget:
+                logger.warning(
+                    "ChatbotService [stream]: Pre-flight budget check failed for student '%s'. Spend=$%.4f >= Max=$%.2f. Hard-blocking stream.",
+                    student_id,
+                    current_spend,
+                    max_b,
+                )
+                yield f"data: {json.dumps({'error': f'You have exhausted your monthly plan budget (${current_spend:.2f} of ${max_b:.2f}). Please upgrade your plan to continue.', 'code': 402, 'spend': current_spend, 'max_budget': max_b, 'plan': student_plan, 'reason': 'monthly_budget_exhausted'}, ensure_ascii=False)}\n\n"
+                return
+
         student_courses = await self._get_and_cache_student_courses(student_id, collection)
         last_messages = format_chat_history_for_graph(collection.messages or [], limit=6)
 
@@ -322,6 +401,7 @@ class ChatbotService:
                     "user_query": user_query,
                     "student_id": student_id,
                     "session_id": session_id,
+                    "user_plan": student_plan,
                     "student_courses": student_courses,
                     "messages_history": last_messages,
                     "user_persona": collection.persona,
@@ -333,7 +413,7 @@ class ChatbotService:
                 event_type = event.get("event")
                 if event_type == "on_chat_model_stream":
                     node_name = event.get("metadata", {}).get("langgraph_node")
-                    if node_name == "answering" or event.get("name") == "Answering LLM":
+                    if node_name == "answering" or "Answering LLM" in event.get("name", ""):
                         chunk = event.get("data", {}).get("chunk")
                         token = chunk.content if hasattr(chunk, "content") else str(chunk)
                         if token:

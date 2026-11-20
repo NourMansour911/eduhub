@@ -52,7 +52,8 @@ Retrieved Context (Verbatim Sources):
         redis_provider: RedisProvider,
         prompt: Optional[ChatPromptTemplate] = None,
     ):
-        self.llm: ChatOpenAI = llm_map["answering"]
+        self.llm_map = llm_map
+        self.llm: ChatOpenAI = llm_map.get("answering") or next(iter(llm_map.values()))
         self.redis_provider = redis_provider
         self.prompt = prompt or ChatPromptTemplate.from_messages([
             ("system", self.SYSTEM_MSG),
@@ -98,13 +99,19 @@ Retrieved Context (Verbatim Sources):
         messages.append(rendered_messages[1])  # Context (persona, summary, courses, retrieved)
         messages.append(HumanMessage(content=state.user_query))
 
-        response = await self.llm.ainvoke(messages, config={"run_name": "Answering LLM"})
+        
+        plan_key = f"answering_{state.user_plan}" if f"answering_{state.user_plan}" in self.llm_map else "answering"
+        target_llm = self.llm_map.get(plan_key, self.llm)
+
+
+        bound_llm = target_llm.bind(extra_body={"user": state.student_id})
+        response = await bound_llm.ainvoke(messages, config={"run_name": f"Answering LLM [{state.user_plan}]"})
 
         final_response_text = unescape_newlines(str(response.content).strip())
-        logger.info("Nova final answer: %s", final_response_text)
+        logger.info("Nova final answer [%s]: %s", state.user_plan, final_response_text)
 
         llm_usage = extract_llm_usage(response)
-        llm_metadata: dict = extract_llm_metadata(response, self.llm)
+        llm_metadata: dict = extract_llm_metadata(response, target_llm)
 
         logger.info(
             "Answering LLM token usage — prompt: %s | completion: %s | total: %s",

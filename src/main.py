@@ -26,6 +26,8 @@ from routers import grading_router, home_router, lecture_router, session_router,
 from integrations.redis_provider import RedisProvider
 from integrations.vector_db import VectorDBFactory
 from integrations.llm import LLMFactory, LCOpenAI, PromptRegistry
+from integrations.litellm_admin import LiteLLMAdminClient
+from services.chatbot.rate_limiter import UserRateLimiter
 from langchain_core.prompts import ChatPromptTemplate
 
 # Service & orchestrator imports
@@ -165,11 +167,19 @@ async def lifespan(app: FastAPI):
       prompts=summarize_prompts,
   )
 
+  app.state.litellm_admin = LiteLLMAdminClient(
+      base_url=settings.LITELLM_ADMIN_URL,
+      master_key=settings.get_litellm_master_key(),
+  )
+  app.state.rate_limiter = UserRateLimiter(redis_provider=app.state.redis_provider)
+  logger.info("LiteLLMAdminClient and UserRateLimiter initialized successfully")
+
   app.state.session_service = SessionService(
       redis_provider=app.state.redis_provider,
       embedding_client=app.state.embedding_client,
       vdb_service=app.state.vdb_service,
       student_persona_repo=app.state.student_persona_repo,
+      litellm_admin=app.state.litellm_admin,
   )
 
   app.state.set_reference_service = SetReferenceService(
@@ -205,6 +215,8 @@ async def lifespan(app: FastAPI):
       student_persona_repo=app.state.student_persona_repo,
       prompt_registry=app.state.prompt_registry,
       guardrail_pipeline=app.state.guardrail_pipeline,
+      rate_limiter=app.state.rate_limiter,
+      litellm_admin=app.state.litellm_admin,
   )
   logger.info("All services and orchestrators loaded successfully")
 
