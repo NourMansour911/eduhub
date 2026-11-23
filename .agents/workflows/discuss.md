@@ -2,11 +2,16 @@
 description: "brainstorm, discuss design decisions, explore technical options, or plan project implementation with the AI assistant"
 ---
 
+
 # Discuss & Project Architecture Workflow (`/discuss`)
+
+!!!(WITHOUT ANY EMOJIES)
 
 Use this workflow when you want to brainstorm, discuss design decisions, explore technical options, or plan project implementation with the AI assistant.
 
 This workflow automatically creates and maintains a dedicated discussion document (README/Design Doc) where ideas, architectures, trade-offs, and step-by-step implementation plans are recorded iteratively.
+
+
 
 ---
 

@@ -111,6 +111,80 @@ services:
       retries: 3
       start_period: 20s
 
+  temporal-db:
+    image: postgres:16-alpine
+    container_name: temporal-db
+    volumes:
+      - temporal_pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporalpass123}
+      POSTGRES_DB: temporal
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.26.2
+    container_name: temporal-server
+    networks:
+      - backend
+    restart: always
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporalpass123}
+      - POSTGRES_SEEDS=temporal-db
+    depends_on:
+      temporal-db:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:2.33.0
+    container_name: temporal-ui
+    networks:
+      - backend
+    restart: always
+    ports:
+      - "8088:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8088
+    depends_on:
+      - temporal
+
+  temporal-worker:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    container_name: temporal-worker
+    command: ["python", "-m", "workers.temporal_worker"]
+    volumes:
+      - C:/Users/nourm/.cache/huggingface:/root/.cache/huggingface
+      - ../storage:/app/storage
+      - ../src:/app/src
+    networks:
+      - backend
+    restart: always
+    env_file:
+      - ./env/.env.app
+      - ./env/.env.temporal
+    depends_on:
+      - temporal
+      - mongodb
+      - qdrant
+      - redis
+
 networks:
   backend:
     driver: bridge
@@ -120,3 +194,4 @@ volumes:
   eduhub_mongodata:
   eduhub_redis_data:
   litellm_pgdata:
+  temporal_pgdata:
