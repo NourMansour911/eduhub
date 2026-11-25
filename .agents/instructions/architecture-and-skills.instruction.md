@@ -14,6 +14,7 @@ applyTo: "**/*.py"
 - **Orchestrators**: Optional. Use ONLY when coordinating multiple independent services.
 - **Integrations**: All external APIs (LLMs, Redis, Qdrant) MUST go through `src/integrations/`.
 - **Docs & Plans Location**: All generated docs/discussions MUST go into `.agents/docs/`, and all implementation plans MUST go into `.agents/plans/` (keep repository root clean).
+- **Deterministic Configuration & Fallback Policy**: Must strictly follow `deterministic-configuration-and-fallback.instruction.md`. Fail explicitly on missing required configuration/data; never introduce speculative fallbacks or silent defaults.
 
 ---
 

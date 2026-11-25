@@ -5,6 +5,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from langchain_core.runnables import Runnable
 
 from core import Settings
+from core.plans import PLANS
 from dtos.redis_session_dto import RedisSessionDTO
 from helpers.logger import get_chatbot_logger
 from integrations.litellm_admin import LiteLLMAdminClient
@@ -124,13 +125,13 @@ class ChatbotService:
                 model=settings.get_model_for("answering"), temperature=0.7
             ),
             "answering_free": lc_openai_client.get_langchain_llm(
-                model="eduhub/answering-free", temperature=0.7
+                model=PLANS["free"].model_alias, temperature=0.7
             ),
             "answering_standard": lc_openai_client.get_langchain_llm(
-                model="eduhub/answering", temperature=0.7
+                model=PLANS["standard"].model_alias, temperature=0.7
             ),
             "answering_premium": lc_openai_client.get_langchain_llm(
-                model="eduhub/answering-premium", temperature=0.7
+                model=PLANS["premium"].model_alias, temperature=0.7
             ),
             "summary": lc_openai_client.get_langchain_llm(
                 model=settings.get_model_for("summary"), temperature=0.2
@@ -281,8 +282,10 @@ class ChatbotService:
             yield f"data: {json.dumps({'token': fallback_resp}, ensure_ascii=False)}\n\n"
 
         if not accumulated_text:
-            accumulated_text = "I'm sorry, I could not generate a response."
-            yield f"data: {json.dumps({'token': accumulated_text}, ensure_ascii=False)}\n\n"
+            err_msg = "Model graph execution completed without producing a response."
+            logger.error(err_msg)
+            yield f"data: {json.dumps({'error': err_msg}, ensure_ascii=False)}\n\n"
+            return
 
         yield f"data: {json.dumps({'done': True, 'full_response': accumulated_text}, ensure_ascii=False)}\n\n"
 

@@ -16,5 +16,5 @@ class LLMFactory:
         if provider == "HF":
             return HuggingFaceProvider()
 
-        return None
+        raise ValueError(f"Unsupported LLM provider: '{provider}'")
 

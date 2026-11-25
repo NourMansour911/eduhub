@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import Depends
 
+from enums.vdb_collection_enum import VDBCollectionEnum
 from dtos.vdb_payload_dto import VDBSearchResultPayload
 from ...states import StepOutput, FailureInfo
 from .search_service import SearchService, get_search_service
@@ -31,7 +32,7 @@ class VDBTools:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
-				collection_name="lectures",
+				collection_name=VDBCollectionEnum.LECTURES.value,
 				field_name="lecture_id",
 				field_value=lecture_id,
 				limit=3,
@@ -94,7 +95,7 @@ class VDBTools:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
-				collection_name="lectures",
+				collection_name=VDBCollectionEnum.LECTURES.value,
 				field_name="course_id",
 				field_value=course_id,
 				limit=5,
@@ -157,7 +158,7 @@ class VDBTools:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
-				collection_name="sessions",
+				collection_name=VDBCollectionEnum.SESSIONS.value,
 				field_name="user_id",
 				field_value=student_id,
 				limit=3,
@@ -218,7 +219,7 @@ class VDBTools:
 
 		payload: List[VDBSearchResultPayload] = (
 			await self.search_service.search_by_metadata_field(
-				collection_name="lectures",
+				collection_name=VDBCollectionEnum.LECTURES.value,
 				field_name="course_id",
 				field_value="REG01",
 				limit=5,

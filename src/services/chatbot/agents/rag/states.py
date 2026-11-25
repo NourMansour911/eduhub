@@ -30,8 +30,8 @@ class PlanStep(BaseModel):
         if isinstance(v, str):
             try:
                 return json.loads(v)
-            except Exception:
-                pass
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Failed to parse JSON string: {v}") from exc
         return v
 
 
@@ -46,8 +46,8 @@ class PlannerOutput(BaseModel):
         if isinstance(v, str):
             try:
                 return json.loads(v)
-            except Exception:
-                pass
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Failed to parse steps JSON string: {v}") from exc
         return v
 
 

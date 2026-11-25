@@ -86,7 +86,11 @@ Do NOT:
 
 
 def build_context_msg_for_level(level: int) -> str:
-    level_instruction = LEVEL_INSTRUCTIONS.get(level, LEVEL_INSTRUCTIONS[1]).strip()
+    if level not in LEVEL_INSTRUCTIONS:
+        raise ValueError(
+            f"Invalid summary level: {level}. Expected one of {list(LEVEL_INSTRUCTIONS.keys())}."
+        )
+    level_instruction = LEVEL_INSTRUCTIONS[level].strip()
     return f"""Lecture content:
 {{lecture_content}}
 
@@ -143,7 +147,14 @@ def build_summarize_chain_for_level(
     level: int = 1,
     prompt: Optional[ChatPromptTemplate] = None,
 ) -> Runnable:
-    prompt_to_use = prompt or PROMPTS.get(level, SUMMARIZE_LEVEL1_PROMPT)
+    if prompt is not None:
+        prompt_to_use = prompt
+    else:
+        if level not in PROMPTS:
+            raise ValueError(
+                f"Invalid summary level: {level}. Expected one of {list(PROMPTS.keys())}."
+            )
+        prompt_to_use = PROMPTS[level]
 
     def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
         lecture_text = inputs.get("lecture_text") or inputs.get("lecture_content")

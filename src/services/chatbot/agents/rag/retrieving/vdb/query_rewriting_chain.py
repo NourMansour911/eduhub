@@ -24,9 +24,12 @@ class QueryRewriteOutput(BaseModel):
 	def parse_rewritten_queries(cls, v):
 		if isinstance(v, str):
 			try:
-				return json.loads(v)
-			except Exception:
-				pass
+				parsed = json.loads(v)
+				if isinstance(parsed, list):
+					return parsed
+			except json.JSONDecodeError as exc:
+				raise ValueError(f"Failed to parse rewritten_queries JSON string: {v}") from exc
+			raise ValueError(f"rewritten_queries JSON string did not deserialize to a list: {v}")
 		return v
 
 
@@ -91,17 +94,27 @@ def build_query_rewriting_chain(llm: ChatOpenAI) -> Runnable:
 	structured_llm = llm.with_structured_output(QueryRewriteOutput, method="function_calling")
 
 	def prepare_input(inputs: Dict[str, Any]) -> Dict[str, Any]:
-		query = (inputs.get("query") or "").strip()
-		rewrite_mode = str(inputs.get("rewrite_mode") or QueryRewriteMode.GENERAL.value).strip().lower()
+		raw_query = inputs.get("query")
+		if not raw_query or not str(raw_query).strip():
+			raise ValueError("Field 'query' is required for query rewriting.")
+		query = str(raw_query).strip()
+
+		raw_mode = inputs.get("rewrite_mode")
+		if raw_mode is None:
+			rewrite_mode = QueryRewriteMode.GENERAL.value
+		else:
+			rewrite_mode = str(raw_mode).strip().lower()
+			if rewrite_mode not in MODE_INSTRUCTIONS:
+				raise ValueError(
+					f"Invalid rewrite_mode '{raw_mode}'. Expected one of {list(MODE_INSTRUCTIONS.keys())}."
+				)
+
 		rewrite_count = max(1, int(inputs.get("rewrite_count") or 3))
 
 		return {
 			"query": query,
 			"rewrite_count": rewrite_count,
-			"mode_instruction": MODE_INSTRUCTIONS.get(
-				rewrite_mode,
-				MODE_INSTRUCTIONS[QueryRewriteMode.GENERAL.value],
-			),
+			"mode_instruction": MODE_INSTRUCTIONS[rewrite_mode],
 		}
 
 	return RunnableLambda(prepare_input) | QUERY_REWRITE_PROMPT | structured_llm

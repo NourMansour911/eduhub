@@ -1,3 +1,4 @@
+from enums.vdb_collection_enum import VDBCollectionEnum
 from models import LectureModel
 from schemas import LectureStoreRequest, LectureStoreResponse
 from services.lectures.lecture_service import LectureService
@@ -51,7 +52,7 @@ class LectureOrchestrator:
                 texts, vectors, ids, metas = await self.embedding_service.embed_chunks(chunk_payloads)
             
 
-            collection_name = "lectures"
+            collection_name = VDBCollectionEnum.LECTURES.value
             if texts and vectors:
                 await self.vdb_service.store_batch(
                     collection_name=collection_name,

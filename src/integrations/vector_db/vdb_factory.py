@@ -19,4 +19,4 @@ class VectorDBFactory:
                 url=self.settings.QDRANT_URL
             )
         
-        return None
+        raise ValueError(f"Unsupported VectorDB provider: '{provider}'")

@@ -39,8 +39,30 @@ def test_session_dto_and_schema_defaults():
     req = SessionRequest(user_id="stu_1", session_id="sess_1")
     assert req.plan == "free"
 
+    req_none = SessionRequest(user_id="stu_1", session_id="sess_1", plan=None)
+    assert req_none.plan == "free"
+
+    req_empty = SessionRequest(user_id="stu_1", session_id="sess_1", plan="")
+    assert req_empty.plan == "free"
+
     req_custom = SessionRequest(user_id="stu_1", session_id="sess_1", plan="premium")
     assert req_custom.plan == "premium"
+
+    with pytest.raises(ValueError):
+        SessionRequest(user_id="stu_1", session_id="sess_1", plan="invalid_tier")
+
+    # UpdateUserPlanRequest defaults to free and validates
+    up_req_default = UpdateUserPlanRequest()
+    assert up_req_default.plan == "free"
+
+    up_req_none = UpdateUserPlanRequest(plan=None)
+    assert up_req_none.plan == "free"
+
+    up_req_custom = UpdateUserPlanRequest(plan="standard")
+    assert up_req_custom.plan == "standard"
+
+    with pytest.raises(ValueError):
+        UpdateUserPlanRequest(plan="invalid_tier")
 
     # RedisSessionDTO defaults to free
     dto = RedisSessionDTO(user_id="stu_1")

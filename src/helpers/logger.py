@@ -6,7 +6,9 @@ from rich.logging import RichHandler
 
 BASE_STORAGE_PATH = os.getenv("STORAGE_PATH")
 if not BASE_STORAGE_PATH:
-    BASE_STORAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage")
+    raise RuntimeError(
+        "Configuration error: 'STORAGE_PATH' environment variable is required and must be defined."
+    )
 elif not os.path.isabs(BASE_STORAGE_PATH):
     src_dir = os.path.dirname(os.path.dirname(__file__))
     BASE_STORAGE_PATH = os.path.abspath(os.path.join(src_dir, BASE_STORAGE_PATH))

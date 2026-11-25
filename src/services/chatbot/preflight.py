@@ -8,7 +8,7 @@ from helpers.logger import get_chatbot_logger
 from integrations.litellm_admin import LiteLLMAdminClient
 from integrations.redis_provider import RedisProvider
 from services.chatbot.agents.rag.retrieving.sql.sql_tools import SQLTools
-from services.chatbot.chatbot_exceptions import ChatbotValidationError
+from services.chatbot.chatbot_exceptions import ChatbotProcessingError, ChatbotValidationError
 from services.chatbot.rate_limiter import UserRateLimiter
 from services.chatbot.security.guardrail_pipeline import GuardrailPipeline
 from services.chatbot.utils import format_chat_history_for_graph, format_student_courses
@@ -82,7 +82,7 @@ class ChatPreflightHandler:
         return collection
 
     async def check_rate_limits(self, student_id: str, collection: RedisSessionDTO) -> str:
-        student_plan = getattr(collection, "plan", "free") or "free"
+        student_plan = collection.plan
         plan_config = get_user_plan_config(student_plan)
 
         is_allowed, reason, meta = await self.rate_limiter.check_and_increment(
@@ -153,8 +153,11 @@ class ChatPreflightHandler:
             courses = await self.sql_tools.sql_server_calling.get_student_courses(student_id)
             courses_str = format_student_courses(courses)
         except Exception as exc:
-            logger.warning("Failed to retrieve student courses from SQL. Error: %s. Falling back to placeholder.", exc)
-            courses_str = "Information temporarily unavailable"
+            logger.error("Failed to retrieve student courses from SQL server for student_id=%s: %s", student_id, exc)
+            raise ChatbotProcessingError(
+                message=f"Failed to retrieve student courses for student '{student_id}': {exc}",
+                details={"student_id": student_id, "error": str(exc)},
+            ) from exc
 
         collection.student_courses = courses_str
         logger.info("Cached formatted student_courses: %s", courses_str)

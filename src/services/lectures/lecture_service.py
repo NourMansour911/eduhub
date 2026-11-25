@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from pymongo.errors import DuplicateKeyError
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat,AnalyzeResult
+from enums.vdb_collection_enum import VDBCollectionEnum
 from integrations.vector_db import VectorDBInterface
 from models import LectureModel
 from repositories.lecture_repo import LectureRepo
@@ -119,14 +120,18 @@ class LectureService:
 
         try:
             await self.vdb_client.delete_by_filter(
-                collection_name="lectures",
+                collection_name=VDBCollectionEnum.LECTURES.value,
                 filters=[{"field": "lecture_id", "value": payload.lecture_id, "op": "eq"}],
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to delete lecture vectors",
+            logger.error(
+                "Failed to delete lecture vectors from vector DB",
                 extra={"lecture_id": payload.lecture_id, "error": str(exc)},
             )
+            raise LectureServiceException(
+                message="Failed to delete lecture vectors from vector database",
+                details={"lecture_id": payload.lecture_id, "error": str(exc)},
+            ) from exc
         return DeleteLectureResponse( deleted_count=deleted_count)
 
     async def delete_lectures_by_course(self, payload: DeleteLectureBycourseIdRequest) -> DeleteLectureResponse:
@@ -139,14 +144,18 @@ class LectureService:
 
         try:
             await self.vdb_client.delete_by_filter(
-                collection_name="lectures",
+                collection_name=VDBCollectionEnum.LECTURES.value,
                 filters=[{"field": "course_id", "value": payload.course_id, "op": "eq"}],
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to delete course vectors",
+            logger.error(
+                "Failed to delete course vectors from vector DB",
                 extra={"course_id": payload.course_id, "error": str(exc)},
             )
+            raise LectureServiceException(
+                message="Failed to delete course vectors from vector database",
+                details={"course_id": payload.course_id, "error": str(exc)},
+            ) from exc
         return DeleteLectureResponse(deleted_count=deleted_count)
 
     

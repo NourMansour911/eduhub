@@ -14,7 +14,7 @@ from integrations.vector_db import VectorDBInterface
 from dtos.vdb_payload_dto import VDBSearchResultPayload
 from services.vdb_service.vdb_exceptions import VectorDBException
 from services.vdb_service.vdb_exceptions import VectorizationError
-from services.service_exceptions import ServiceException
+from services.service_exceptions import ServiceException, ProcessingError
 
 from .query_rewriting_chain import build_query_rewriting_chain
 from .reranker import Reranker
@@ -173,8 +173,8 @@ class SearchService:
 		except ServiceException:
 			raise
 		except Exception as exc:
-			logger.warning(
-				"Rerank failed; falling back to retrieval results",
+			logger.error(
+				"Reranking failed explicitly",
 				extra={
 					"operation": "search.rerank",
 					"collection_name": collection_name,
@@ -182,7 +182,10 @@ class SearchService:
 					"type": type(exc).__name__,
 				},
 			)
-			return self._normalize_vdb_results(candidates[:final_top_k])
+			raise ProcessingError(
+				message=f"Reranking failed for collection '{collection_name}': {str(exc)}",
+				details={"collection_name": collection_name, "error": str(exc)},
+			) from exc
 
 	def _normalize_vdb_results(self, results: List[Dict[str, Any]]) -> List[VDBSearchResultPayload]:
 		normalized_results: List[VDBSearchResultPayload] = []
@@ -232,9 +235,11 @@ class SearchService:
 				config={"run_name": f"Query Rewriting Chain Run ({mode_key})"}
 			)
 			generated = getattr(response, "rewritten_queries", []) or []
+		except ServiceException:
+			raise
 		except Exception as exc:
-			logger.warning(
-				"Query rewriting failed; continuing with explicit rewritten queries only",
+			logger.error(
+				"Query rewriting failed explicitly",
 				extra={
 					"operation": "search.rewrite",
 					"rewrite_mode": mode_key,
@@ -242,7 +247,10 @@ class SearchService:
 					"type": type(exc).__name__,
 				},
 			)
-			return cleaned_queries
+			raise ProcessingError(
+				message=f"Query rewriting failed in mode '{mode_key}': {str(exc)}",
+				details={"rewrite_mode": mode_key, "error": str(exc)},
+			) from exc
 
 		merged: List[str] = []
 		seen = set()

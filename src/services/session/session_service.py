@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional
 import uuid
+from core.plans import PLANS
+from enums.vdb_collection_enum import VDBCollectionEnum
 from repositories.student_persona_repo import StudentPersonaRepo
 from dtos.redis_session_dto import RedisSessionDTO
 from dtos.session_archive_metadata_dto import SessionArchiveMetadataDTO
@@ -23,7 +25,7 @@ logger = get_logger(__name__)
 
 
 class SessionService:
-    COLLECTION_NAME = "sessions"
+    COLLECTION_NAME = VDBCollectionEnum.SESSIONS.value
 
     def __init__(
         self,
@@ -42,7 +44,7 @@ class SessionService:
     async def start_session(self, request: SessionRequest) -> SessionStartResponse:
         user_id = request.user_id
         session_id = request.session_id
-        plan_name = (request.plan or "free").lower().strip()
+        plan_name = request.plan
         
         collection = await self.redis_provider.get_collection(user_id=user_id, session_id=session_id)
         if collection:
@@ -64,8 +66,18 @@ class SessionService:
         )
 
     async def update_user_plan(self, user_id: str, plan: str) -> UpdateUserPlanResponse:
-        
-        normalized_plan = (plan or "free").lower().strip()
+        if not plan or not str(plan).strip():
+            raise SessionValidationError(
+                message="Plan name is required to update user plan.",
+                details={"user_id": user_id, "plan": plan},
+            )
+        normalized_plan = str(plan).lower().strip()
+        if normalized_plan not in PLANS:
+            raise SessionValidationError(
+                message=f"Invalid plan '{plan}'. Allowed plans are: {list(PLANS.keys())}",
+                details={"user_id": user_id, "plan": plan, "allowed_plans": list(PLANS.keys())},
+            )
+
         litellm_synced = False
         if self.litellm_admin:
             litellm_synced = await self.litellm_admin.sync_user_budget(user_id=user_id, plan_name=normalized_plan)

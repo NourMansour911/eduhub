@@ -9,8 +9,6 @@ class PlanConfig:
     daily_limit: int
     monthly_budget_usd: float
     model_alias: str
-    max_uploaded_lectures: int = 10
-    allow_advanced_persona: bool = False
 
 
 PLANS: Dict[str, PlanConfig] = {
@@ -20,8 +18,6 @@ PLANS: Dict[str, PlanConfig] = {
         daily_limit=30,
         monthly_budget_usd=0.50,
         model_alias="eduhub/answering-free",
-        max_uploaded_lectures=3,
-        allow_advanced_persona=False,
     ),
     "standard": PlanConfig(
         name="Standard",
@@ -29,8 +25,6 @@ PLANS: Dict[str, PlanConfig] = {
         daily_limit=150,
         monthly_budget_usd=5.00,
         model_alias="eduhub/answering",
-        max_uploaded_lectures=15,
-        allow_advanced_persona=True,
     ),
     "premium": PlanConfig(
         name="Premium",
@@ -38,8 +32,6 @@ PLANS: Dict[str, PlanConfig] = {
         daily_limit=500,
         monthly_budget_usd=15.00,
         model_alias="eduhub/answering-premium",
-        max_uploaded_lectures=100,
-        allow_advanced_persona=True,
     ),
 }
 

@@ -26,13 +26,13 @@ class PromptRegistry:
         self._sources: Dict[str, str] = {}
 
     def _build_repo_name(self, prompt_key: str) -> str:
-        app_name = (self.settings.APP_NAME or "eduhub").strip().lower()
-        tag = (self.settings.PROMPT_ENVIRONMENT_TAG or "production").strip()
+        app_name = self.settings.APP_NAME.strip().lower()
+        tag = self.settings.PROMPT_ENVIRONMENT_TAG.strip()
         return f"{app_name}-{prompt_key}:{tag}"
 
     async def initialize(self) -> None:
-        app_name = (self.settings.APP_NAME or "eduhub").strip().lower()
-        tag = (self.settings.PROMPT_ENVIRONMENT_TAG or "production").strip()
+        app_name = self.settings.APP_NAME.strip().lower()
+        tag = self.settings.PROMPT_ENVIRONMENT_TAG.strip()
 
         logger.info(
             "Initializing PromptRegistry (App: '%s', Tag: '%s', Fetch Remote: %s)...",
@@ -81,7 +81,11 @@ class PromptRegistry:
     def get(self, prompt_key: str) -> ChatPromptTemplate:
         if prompt_key in self._cache:
             return self._cache[prompt_key]
-        return self.fallbacks.get(prompt_key)
+        if prompt_key in self.fallbacks:
+            return self.fallbacks[prompt_key]
+        raise KeyError(f"Prompt key '{prompt_key}' is not registered in PromptRegistry.")
 
     def get_source(self, prompt_key: str) -> str:
-        return self._sources.get(prompt_key, "Unknown / Direct Fallback")
+        if prompt_key in self._sources:
+            return self._sources[prompt_key]
+        raise KeyError(f"Prompt key '{prompt_key}' is not registered in PromptRegistry sources.")

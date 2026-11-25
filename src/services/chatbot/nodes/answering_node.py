@@ -100,8 +100,12 @@ Retrieved Context (Verbatim Sources):
         messages.append(HumanMessage(content=state.user_query))
 
         
-        plan_key = f"answering_{state.user_plan}" if f"answering_{state.user_plan}" in self.llm_map else "answering"
-        target_llm = self.llm_map.get(plan_key, self.llm)
+        plan_key = f"answering_{state.user_plan}"
+        if plan_key not in self.llm_map:
+            raise KeyError(
+                f"No answering LLM configured in llm_map for plan '{state.user_plan}' (expected key: '{plan_key}')."
+            )
+        target_llm = self.llm_map[plan_key]
 
 
         bound_llm = target_llm.bind(extra_body={"user": state.student_id})

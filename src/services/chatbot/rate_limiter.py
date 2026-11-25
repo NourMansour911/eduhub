@@ -84,5 +84,4 @@ class UserRateLimiter:
 
         except Exception as exc:
             logger.error("Rate limiter encountered Redis error for student %s: %s", student_id, exc)
-            
-            return True, "", {"error": str(exc)}
+            raise RuntimeError(f"Rate limiting failed due to Redis error: {exc}") from exc
